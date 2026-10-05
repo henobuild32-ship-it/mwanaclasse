@@ -33,17 +33,7 @@
   text-decoration: none;
 }
 
-.vitrine__pastille {
-  width: 34px;
-  height: 34px;
-  border-radius: 11px;
-  background: linear-gradient(135deg, var(--mc-primaire), var(--mc-accent));
-  color: #fff;
-  font-size: 1rem;
-  display: grid;
-  place-items: center;
-  box-shadow: 0 8px 18px rgb(29 78 216 / 0.28);
-}
+.vitrine__logo { width: 42px; height: 42px; flex: 0 0 auto; object-fit: contain; }
 
 .vitrine__liens {
   display: flex;

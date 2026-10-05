@@ -34,16 +34,7 @@
   text-decoration: none;
   margin-bottom: 20px;
 }
-.marque-panneau__pastille {
-  width: 32px;
-  height: 32px;
-  border-radius: 10px;
-  background: rgb(255 255 255 / 0.16);
-  border: 1px solid rgb(255 255 255 / 0.3);
-  display: grid;
-  place-items: center;
-  font-size: 0.95rem;
-}
+.marque-panneau__logo-image { width: 42px; height: 42px; flex: 0 0 auto; object-fit: contain; }
 
 .marque-panneau__badge {
   display: inline-flex;
