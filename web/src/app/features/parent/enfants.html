@@ -1,0 +1,55 @@
+<div class="page-entete">
+  <div>
+    <h1>Mes enfants</h1>
+    <p>{{ enfants().length }} enfant(s) rattaché(s) à votre compte</p>
+  </div>
+  <a class="btn btn--primaire btn--ligne" routerLink="/parent/enfants/ajouter">+ Ajouter</a>
+</div>
+
+@if (chargement()) {
+  <app-chargement texte="Chargement de vos enfants…" />
+} @else if (erreur()) {
+  <app-etat-vide texte="{{ erreur() }}" icone="📡" />
+} @else if (enfants().length === 0) {
+  <app-etat-vide
+    texte="Aucun enfant rattaché. Ajoutez-le avec le code de l'école et son code élève."
+    icone="➕"
+    actionTexte="Ajouter un enfant"
+    [actionLien]="['/parent/enfants/ajouter']"
+  />
+} @else {
+  <div class="escalier">
+    @for (e of enfants(); track e.id) {
+      <div class="carte-enfant">
+        <div class="carte-enfant__entete">
+          <span class="avatar">{{ e.full_name[0] }}</span>
+          <div style="flex: 1; min-width: 0">
+            <div class="carte-enfant__nom">{{ e.full_name }}</div>
+            <div class="carte-enfant__sous">
+              {{ e.classe }}@if (e.section) { · {{ e.section }}} · {{ e.ecole }}
+            </div>
+          </div>
+          <app-etiquette
+            [texte]="etiquetteStatut(e.lien_statut ?? 'actif').texte"
+            [variante]="etiquetteStatut(e.lien_statut ?? 'actif').variante"
+          />
+        </div>
+
+        <div class="carte-enfant__stats">
+          <div class="encart">
+            <strong>
+              {{ etiquetteStatut(e.presence_aujourdhui ?? 'non_enregistre').texte }}
+            </strong>
+            Présence aujourd'hui
+          </div>
+          <div class="encart">
+            <strong>{{ e.public_code ?? '—' }}</strong>
+            Code élève
+          </div>
+        </div>
+
+        <a class="btn btn--secondaire" [routerLink]="['/parent/enfants', e.id]">Voir le suivi complet</a>
+      </div>
+    }
+  </div>
+}

@@ -1,0 +1,14 @@
+/* Coquille d'application — styles globaux ailleurs. */
+
+/* Pages vitrine : pas de contrainte de largeur, hauteur minimale écran. */
+.coquille--publique {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+.coquille--publique > main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}

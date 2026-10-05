@@ -1,0 +1,134 @@
+<div class="page-entete">
+  <div>
+    <h1>Classes &amp; sections</h1>
+    <p>{{ classes().length }} classe(s) · {{ sections().length }} section(s)</p>
+  </div>
+  <div class="barre-outils" style="margin: 0">
+    <button class="btn btn--primaire btn--ligne" type="button" (click)="formulaireClasse.set(!formulaireClasse()); formulaireSection.set(false)">
+      + Classe
+    </button>
+    <button class="btn btn--contour btn--ligne" type="button" (click)="formulaireSection.set(!formulaireSection()); formulaireClasse.set(false)">
+      + Section
+    </button>
+  </div>
+</div>
+
+@if (formulaireClasse()) {
+  <div class="carte" style="margin-bottom: 14px">
+    <div class="carte__titre"><span>Nouvelle classe</span></div>
+    <div class="grille-2">
+      <div class="champ">
+        <label for="nom-classe">Nom *</label>
+        <input id="nom-classe" name="nomClasse" required [(ngModel)]="nomClasse" placeholder="6ème A" />
+      </div>
+      <div class="champ">
+        <label for="niveau">Niveau</label>
+        <input id="niveau" name="niveau" [(ngModel)]="niveau" placeholder="Secondaire 1" />
+      </div>
+    </div>
+    <div class="grille-2">
+      <div class="champ">
+        <label for="capacite">Capacité *</label>
+        <input id="capacite" name="capacite" type="number" min="1" max="1000" [(ngModel)]="capacite" />
+      </div>
+      <div class="champ">
+        <label for="salle">Salle</label>
+        <input id="salle" name="salle" [(ngModel)]="salle" />
+      </div>
+    </div>
+    <div class="champ">
+      <label for="notes-classe">Notes</label>
+      <input id="notes-classe" name="notes" [(ngModel)]="notes" />
+    </div>
+    <button class="btn btn--primaire btn--ligne" type="button" (click)="creerClasse()" [disabled]="enCours()">
+      Créer la classe
+    </button>
+  </div>
+}
+
+@if (formulaireSection()) {
+  <div class="carte" style="margin-bottom: 14px">
+    <div class="carte__titre"><span>Nouvelle section</span></div>
+    <div class="champ">
+      <label for="classe-parente">Classe *</label>
+      <select id="classe-parente" name="classId" required [(ngModel)]="classId">
+        <option value="">Choisir…</option>
+        @for (c of classes(); track c.id) {
+          <option [value]="c.id">{{ c.name }}</option>
+        }
+      </select>
+    </div>
+    <div class="grille-2">
+      <div class="champ">
+        <label for="nom-section">Nom *</label>
+        <input id="nom-section" name="nomSection" required [(ngModel)]="nomSection" placeholder="Section A" />
+      </div>
+      <div class="champ">
+        <label for="code-section">Code court</label>
+        <input id="code-section" name="codeSection" [(ngModel)]="codeSection" maxlength="12" />
+      </div>
+    </div>
+    <button class="btn btn--primaire btn--ligne" type="button" (click)="creerSection()" [disabled]="enCours()">
+      Créer la section
+    </button>
+  </div>
+}
+
+@if (chargement()) {
+  <app-chargement texte="Chargement des classes…" />
+} @else if (erreur()) {
+  <app-etat-vide texte="{{ erreur() }}" icone="📡" />
+} @else {
+  <div class="carte">
+    <div class="carte__titre">
+      <span>Effectifs</span>
+      <span class="texte-petit">occupée / capacité</span>
+    </div>
+    <ul class="liste">
+      @for (c of classes(); track c.id) {
+        <li class="ligne-liste">
+          <div class="ligne-liste__principal">
+            <div class="ligne-liste__titre">{{ c.name }}</div>
+            <div class="ligne-liste__sous">
+              {{ c.level ?? '—' }}@if (c.room) { · {{ c.room }}} · {{ c.sections_detail?.length ?? 0 }} section(s)
+            </div>
+            <div class="jauge" style="margin-top: 6px">
+              <div
+                class="jauge__remplissage"
+                [style.width.%]="c.taux_occupation ?? 0"
+              ></div>
+            </div>
+          </div>
+          <div class="ligne-liste__fin">
+            <strong>{{ c.effectif ?? 0 }}/{{ c.max_capacity }}</strong>
+            <div>
+              <app-etiquette
+                [texte]="c.etat_capacite ?? 'normale'"
+                [variante]="c.etat_capacite === 'complete' ? 'danger' : c.etat_capacite === 'proche' ? 'attention' : 'neutre'"
+              />
+            </div>
+          </div>
+        </li>
+      }
+    </ul>
+  </div>
+
+  <div class="carte">
+    <div class="carte__titre"><span>Sections</span></div>
+    @if (sections().length === 0) {
+      <p class="texte-doux">Aucune section enregistrée.</p>
+    } @else {
+      <ul class="liste">
+        @for (s of sections(); track s.id) {
+          <li class="ligne-liste">
+            <div class="ligne-liste__principal">
+              <div class="ligne-liste__titre">{{ s.name }}</div>
+              <div class="ligne-liste__sous">{{ nomDeClasse(s.class_id ?? '') }}</div>
+            </div>
+            <div class="ligne-liste__fin">{{ s.effectif ?? 0 }} élève(s)</div>
+          </li>
+        }
+      </ul>
+    }
+  </div>
+}

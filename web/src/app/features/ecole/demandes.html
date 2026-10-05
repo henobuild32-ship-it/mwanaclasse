@@ -1,0 +1,112 @@
+<div class="page-entete">
+  <div>
+    <h1>Demandes</h1>
+    <p>Demandes d'absence, de justificatif et messages des parents.</p>
+  </div>
+</div>
+
+<div class="barre-outils" role="tablist">
+  @for (f of filtres; track f) {
+    <button class="btn btn--discret btn--ligne" type="button" [class.actif]="filtre() === f" (click)="changerFiltre(f)">
+      {{ f }}
+    </button>
+  }
+</div>
+
+@if (chargement()) {
+  <app-chargement texte="Chargement des demandes…" />
+} @else if (erreur()) {
+  <app-etat-vide texte="{{ erreur() }}" icone="📡" />
+} @else if (demandes().length === 0) {
+  <app-etat-vide texte="Aucune demande pour ce filtre." icone="📨" />
+} @else {
+  <div class="carte">
+    <ul class="liste">
+      @for (d of demandes(); track d.id) {
+        <li class="ligne-liste ligne-liste--haut">
+          <div class="ligne-liste__principal">
+            <div class="ligne-liste__titre">
+              {{ d.subject ?? d.reference ?? 'Demande' }}
+              @if (d.priority === 'haute' || d.priority === 'urgente') {
+                <span class="pastille pastille--danger">{{ d.priority }}</span>
+              }
+            </div>
+            <div class="ligne-liste__sous">
+              {{ d.reference ?? '' }}
+              @if (d.parent) { · {{ d.parent }} }
+              @if (d.eleve) { · {{ d.eleve }} }
+              @if (d.classe) { · {{ d.classe }} }
+              @if (d.kind) { · {{ d.kind }} }
+              @if (d.absence_date) { · absence {{ d.absence_date | slice: 0:10 }} }
+              · {{ d.created_at | slice: 0:16 }}
+            </div>
+            @if (d.message) {
+              <div class="texte-doux" style="margin-top: 4px; white-space: pre-wrap">{{ d.message }}</div>
+            }
+            @if (d.absence_reason) {
+              <div class="texte-doux" style="margin-top: 4px">Motif : {{ d.absence_reason }}</div>
+            }
+          </div>
+          <div class="ligne-liste__fin">
+            <app-etiquette
+              [texte]="etiquetteStatut(d.status).texte"
+              [variante]="etiquetteStatut(d.status).variante"
+            />
+            <button
+              class="btn btn--secondaire btn--petit"
+              type="button"
+              (click)="basculer(d.id)"
+            >
+              {{ idReponse() === d.id ? 'Fermer' : 'Répondre' }}
+            </button>
+          </div>
+        </li>
+
+        @if (idReponse() === d.id) {
+          <li class="bloc-note">
+            <div class="champ">
+              <label [for]="'reponse-' + d.id">Votre réponse *</label>
+              <textarea
+                [id]="'reponse-' + d.id"
+                rows="4"
+                maxlength="8000"
+                [(ngModel)]="reponse"
+                placeholder="Réponse destinée au parent…"
+              ></textarea>
+            </div>
+            <div class="grille-2">
+              <div class="champ">
+                <label [for]="'statut-' + d.id">Nouveau statut</label>
+                <select [id]="'statut-' + d.id" [(ngModel)]="nouveauStatut">
+                  <option value="en_attente">En attente</option>
+                  <option value="en_cours">En cours</option>
+                  <option value="repondu">Répondu</option>
+                  <option value="cloture">Clôturé</option>
+                </select>
+              </div>
+              <div class="champ">
+                <label [for]="'decision-' + d.id">Décision de justification</label>
+                <select [id]="'decision-' + d.id" [(ngModel)]="decision">
+                  <option value="acceptee">Acceptée</option>
+                  <option value="refusee">Refusée</option>
+                  <option value="a_verifier">À vérifier</option>
+                </select>
+              </div>
+            </div>
+            <div class="btn-groupe">
+              <button
+                class="btn btn--primaire btn--ligne"
+                type="button"
+                [disabled]="enCours()"
+                (click)="envoyerReponse(d.id)"
+              >
+                {{ enCours() ? 'Envoi…' : 'Envoyer la réponse' }}
+              </button>
+              <button class="btn btn--discret" type="button" (click)="basculer(d.id)">Annuler</button>
+            </div>
+          </li>
+        }
+      }
+    </ul>
+  </div>
+}

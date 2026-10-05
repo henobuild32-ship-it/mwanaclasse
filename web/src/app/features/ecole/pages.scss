@@ -1,0 +1,118 @@
+/* Pages de l'espace école — styles partagés utilisant le design system. */
+
+.page-header {
+  margin-bottom: 20px;
+}
+.page-header__titre { font-size: 1.3rem; }
+.page-header__sous { margin-top: 4px; color: var(--mc-texte-2); font-size: 0.88rem; }
+
+/* Barre d'outils / filtres */
+.barre-outils {
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+  margin-bottom: 16px;
+}
+.barre-outils select,
+.barre-outils input[type="search"] {
+  min-height: 44px; padding: 8px 12px;
+  border: 1px solid var(--mc-trait); border-radius: 12px;
+  background: var(--mc-fond-2); font-size: 0.92rem;
+  color: var(--mc-texte); min-width: 0; flex: 1 1 180px;
+}
+.barre-outils .btn { flex: 0 0 auto; }
+
+/* Cartes liens (menu Plus) */
+.lien-carte {
+  display: flex; align-items: center; gap: 14px;
+  padding: 16px; border: 1px solid var(--mc-trait);
+  border-radius: 14px; background: var(--mc-fond-2);
+  text-decoration: none; color: var(--mc-texte);
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.06s;
+}
+.lien-carte:hover { border-color: var(--mc-primaire-30); box-shadow: var(--mc-ombre); transform: translateY(-1px); }
+.lien-carte:active { transform: translateY(0); }
+
+.lien-carte__icone {
+  width: 48px; height: 48px; border-radius: 14px;
+  background: var(--mc-primaire-10); display: grid; place-items: center;
+  font-size: 1.4rem; flex: 0 0 auto;
+}
+.lien-carte__texte { flex: 1; min-width: 0; }
+.lien-carte__titre { font-weight: 700; font-size: 1rem; margin-bottom: 2px; }
+.lien-carte__sous { font-size: 0.82rem; color: var(--mc-texte-2); }
+
+/* Jauge de progression */
+.jauge {
+  height: 8px;
+  background: var(--mc-fond);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.jauge__remplissage {
+  height: 100%;
+  background: var(--mc-primaire);
+  border-radius: 999px;
+}
+
+/* Feuille de présence */
+.ligne-liste--feuille { flex-wrap: wrap; row-gap: 8px; }
+.statuts { display: flex; gap: 6px; flex-wrap: wrap; }
+.statut {
+  border: 1px solid var(--mc-trait); background: var(--mc-fond-2);
+  color: var(--mc-texte-2); border-radius: 999px;
+  font-size: 0.76rem; font-weight: 650; padding: 7px 12px;
+  min-height: 38px; cursor: pointer;
+  transition: all 0.15s;
+}
+.statut:hover { border-color: var(--mc-primaire-30); }
+.statut--actif[data-variante='succes'] {
+  background: #ecfdf5; color: var(--mc-succes); border-color: #a7f3d0;
+}
+.statut--actif[data-variante='danger'] {
+  background: #fef2f2; color: var(--mc-danger); border-color: #fecaca;
+}
+.statut--actif[data-variante='attention'] {
+  background: #fffbeb; color: var(--mc-alerte); border-color: #fde68a;
+}
+.statut--actif[data-variante='info'] {
+  background: #eff6ff; color: var(--mc-primaire); border-color: #bfdbfe;
+}
+.statut--actif[data-variante='neutre'] {
+  background: var(--mc-fond); color: var(--mc-texte-2); border-color: var(--mc-trait);
+}
+
+@media (min-width: 720px) { .ligne-liste--feuille { flex-wrap: nowrap; } }
+
+/* KPI / Stats */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+@media (min-width: 720px) {
+  .kpi-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+/* Badge/étiquette pour compat */
+.etiquette {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+  background: var(--mc-fond-2);
+  color: var(--mc-texte-2);
+  border: 1px solid var(--mc-trait);
+}
+
+/* Etat vide */
+.etat-vide {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 12px; padding: 40px 20px; text-align: center;
+}
+.etat-vide__icone { font-size: 3rem; line-height: 1; opacity: 0.5; }
+.etat-vide__titre { font-size: 1.05rem; font-weight: 700; color: var(--mc-texte); }
+.etat-vide__texte { font-size: 0.88rem; color: var(--mc-texte-2); max-width: 280px; }
+.etat-vide__action { margin-top: 8px; }

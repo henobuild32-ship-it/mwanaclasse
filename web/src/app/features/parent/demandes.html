@@ -1,0 +1,108 @@
+<div class="page-entete">
+  <div>
+    <h1>Mes demandes</h1>
+    <p>{{ demandes().length }} demande(s) · réclamations et justifications</p>
+  </div>
+  <button class="btn btn--primaire btn--ligne" type="button" (click)="ouvrirFormulaire()">
+    + Nouvelle demande
+  </button>
+</div>
+
+@if (formulaireOuvert()) {
+  <div class="carte" style="margin-bottom: 16px">
+    <div class="carte__titre">
+      <span>Nouvelle demande</span>
+      <button class="btn btn--discret" type="button" (click)="fermerFormulaire()">Fermer</button>
+    </div>
+
+    @if (!enLigne) {
+      <div class="formulaire-erreur" style="background: #fffbeb; border-color: #fde68a; color: var(--mc-alerte)">
+        Vous êtes hors ligne : la demande sera envoyée au retour de la connexion.
+      </div>
+    }
+
+    <div class="champ">
+      <label for="kind">Type de demande</label>
+      <select id="kind" name="kind" [(ngModel)]="kind">
+        @for (k of kinds; track k.valeur) {
+          <option [value]="k.valeur">{{ k.libelle }}</option>
+        }
+      </select>
+    </div>
+
+    <div class="champ">
+      <label for="enfant">Enfant concerné</label>
+      <select id="enfant" name="studentId" [(ngModel)]="studentId">
+        <option value="">Tous / sans précision</option>
+        @for (e of enfants(); track e.id) {
+          <option [value]="e.id">{{ e.full_name }}</option>
+        }
+      </select>
+    </div>
+
+    <div class="champ">
+      <label for="sujet">Sujet *</label>
+      <input id="sujet" name="sujet" type="text" maxlength="200" required [(ngModel)]="sujet" />
+    </div>
+
+    <div class="champ">
+      <label for="message">Message *</label>
+      <textarea id="message" name="message" maxlength="8000" required [(ngModel)]="message"></textarea>
+    </div>
+
+    <div class="grille-2">
+      <div class="champ">
+        <label for="date-absence">Date d'absence (si concernée)</label>
+        <input id="date-absence" name="absenceDate" type="date" [(ngModel)]="absenceDate" />
+      </div>
+      <div class="champ">
+        <label for="motif">Motif</label>
+        <input id="motif" name="absenceReason" type="text" maxlength="1000" [(ngModel)]="absenceReason" />
+      </div>
+    </div>
+
+    <button class="btn btn--primaire btn--large" type="button" (click)="envoyer()" [disabled]="enCours()">
+      {{ enCours() ? 'Envoi…' : 'Envoyer la demande' }}
+    </button>
+  </div>
+}
+
+@if (chargement()) {
+  <app-chargement texte="Chargement de vos demandes…" />
+} @else if (erreur()) {
+  <app-etat-vide texte="{{ erreur() }}" icone="📡" />
+} @else if (demandes().length === 0) {
+  <app-etat-vide
+    texte="Aucune demande pour le moment."
+    icone="📨"
+    actionTexte="Rédiger une demande"
+  >
+    <button class="btn btn--primaire" type="button" (click)="ouvrirFormulaire()">Rédiger une demande</button>
+  </app-etat-vide>
+} @else {
+  <div class="escalier">
+    @for (d of demandes(); track d.id) {
+      <div class="carte">
+        <div class="carte__titre">
+          <span>{{ d.subject ?? d.reference }}</span>
+          <app-etiquette
+            [texte]="etiquetteStatut(d.status).texte"
+            [variante]="etiquetteStatut(d.status).variante"
+          />
+        </div>
+        <p class="texte-doux" style="margin-top: 0">
+          {{ d.reference }} · {{ d.kind }} · envoyée le {{ d.created_at | slice: 0:10 }}
+        </p>
+        @if (d.message) {
+          <p>{{ d.message }}</p>
+        }
+        @if (echanges(d).length > 1) {
+          <div class="encart">
+            <strong>{{ echanges(d).length }} échange(s)</strong>
+            Dernier : {{ echanges(d)[echanges(d).length - 1].nom }}
+          </div>
+        }
+      </div>
+    }
+  </div>
+}

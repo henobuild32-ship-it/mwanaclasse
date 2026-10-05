@@ -1,0 +1,182 @@
+<section class="page-auth">
+  <aside class="marque-panneau">
+    <a class="marque-panneau__logo" routerLink="/">
+      <span class="marque-panneau__pastille">M</span>
+      <span>MwanaClasse</span>
+    </a>
+
+    <span class="marque-panneau__badge">🏫 Création de compte</span>
+    <h1>Votre école en ligne en deux étapes.</h1>
+    <p class="marque-panneau__texte">
+      Renseignez l'établissement puis son responsable : vos parents pourront
+      ensuite rejoindre l'école avec un simple code.
+    </p>
+
+    <ul class="marque-panneau__avantages">
+      <li>Gratuit, sans carte bancaire</li>
+      <li>Code école généré automatiquement pour les parents</li>
+      <li>Fonctionne dès la première seconde, même hors ligne</li>
+    </ul>
+
+    <a class="marque-panneau__retour" routerLink="/">← Retour à l'accueil</a>
+  </aside>
+
+  <div class="zone-formulaire">
+    <div class="page-auth__carte page-auth__carte--large">
+      <div class="page-auth__entete">
+        <span class="page-auth__pastille">🏫</span>
+        <h2>Créer mon école</h2>
+        <p>Deux petites étapes : l'établissement, puis son responsable.</p>
+      </div>
+
+      @if (erreur()) {
+        <div class="formulaire-erreur" role="alert">
+          {{ erreur() }}
+          @if (details().length) {
+            <ul class="details-erreurs">
+              @for (d of details(); track d.champ) {
+                <li><strong>{{ d.champ }}</strong> — {{ d.message }}</li>
+              }
+            </ul>
+          }
+        </div>
+      }
+
+      <form (ngSubmit)="creerEcole()">
+        <h2 class="titre-etape">1. Informations de l'établissement</h2>
+
+        <div class="champ" [class.champ--erreur]="champEnErreur('officialName')">
+          <label for="nom-ecole">Nom officiel de l'école *</label>
+          <input id="nom-ecole" name="officialName" required [(ngModel)]="officialName" maxlength="180" />
+        </div>
+
+        <div class="champ">
+          <label for="type-ecole">Type d'établissement *</label>
+          <select id="type-ecole" name="type" [(ngModel)]="type">
+            @for (t of types; track t.valeur) {
+              <option [value]="t.valeur">{{ t.libelle }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="grille-2">
+          <div class="champ">
+            <label for="commune">Commune</label>
+            <input id="commune" name="commune" [(ngModel)]="commune" maxlength="120" />
+          </div>
+          <div class="champ">
+            <label for="ville">Ville</label>
+            <input id="ville" name="city" [(ngModel)]="city" maxlength="120" />
+          </div>
+        </div>
+
+        <div class="champ">
+          <label for="adresse">Adresse</label>
+          <input id="adresse" name="addressLine" [(ngModel)]="addressLine" maxlength="240" />
+        </div>
+
+        <div class="grille-2">
+          <div class="champ">
+            <label for="tel-ecole">Téléphone</label>
+            <input id="tel-ecole" name="phone" type="tel" [(ngModel)]="phone" maxlength="32" />
+          </div>
+          <div class="champ">
+            <label for="mail-ecole">E-mail de l'école</label>
+            <input id="mail-ecole" name="emailEcole" type="email" [(ngModel)]="emailEcole" />
+          </div>
+        </div>
+
+        <div class="grille-2">
+          <div class="champ">
+            <label for="annee">Année scolaire *</label>
+            <input id="annee" name="yearLabel" [(ngModel)]="yearLabel" placeholder="2026-2027" required />
+          </div>
+          <div class="champ">
+            <label for="mode-lien">Validation des liens parent</label>
+            <select id="mode-lien" name="parentLinkMode" [(ngModel)]="parentLinkMode">
+              <option value="validation">Validation par l'école</option>
+              <option value="automatique">Accès automatique</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="champ">
+          <label for="horaires">Horaires</label>
+          <input id="horaires" name="openingHours" [(ngModel)]="openingHours" placeholder="07:30 – 16:30" />
+        </div>
+
+        <div class="champ">
+          <label for="description">Description</label>
+          <textarea id="description" name="description" [(ngModel)]="description" maxlength="4000"></textarea>
+        </div>
+
+        <h2 class="titre-etape">2. Informations administratives</h2>
+
+        <div class="champ" [class.champ--erreur]="champEnErreur('directorName')">
+          <label for="nom-responsable">Nom du responsable *</label>
+          <input id="nom-responsable" name="directorName" required [(ngModel)]="directorName" maxlength="160" />
+        </div>
+
+        <div class="grille-2">
+          <div class="champ" [class.champ--erreur]="champEnErreur('directorEmail')">
+            <label for="mail-responsable">E-mail du responsable *</label>
+            <input id="mail-responsable" name="directorEmail" type="email" required [(ngModel)]="directorEmail" />
+          </div>
+          <div class="champ">
+            <label for="tel-responsable">Téléphone</label>
+            <input id="tel-responsable" name="directorPhone" type="tel" [(ngModel)]="directorPhone" />
+          </div>
+        </div>
+
+        <div class="champ">
+          <label for="fonction">Fonction</label>
+          <input id="fonction" name="directorJobTitle" [(ngModel)]="directorJobTitle" />
+        </div>
+
+        <div class="champ" [class.champ--erreur]="champEnErreur('password')">
+          <label for="mdp">Mot de passe *</label>
+          <input
+            id="mdp"
+            name="password"
+            type="password"
+            autocomplete="new-password"
+            required
+            minlength="12"
+            [(ngModel)]="password"
+            (blur)="verifierMotDePasse()"
+          />
+          <span class="champ__aide">12 caractères minimum.
+            @if (forceMotDePasse()) { <strong>Robustesse : {{ forceMotDePasse() }}</strong> }
+          </span>
+        </div>
+
+        <div class="champ">
+          <label for="mdp2">Confirmer le mot de passe *</label>
+          <input
+            id="mdp2"
+            name="confirmation"
+            type="password"
+            autocomplete="new-password"
+            required
+            [(ngModel)]="confirmation"
+          />
+        </div>
+
+        <div class="champ">
+          <label class="case-cochee">
+            <input type="checkbox" name="acceptTerms" [(ngModel)]="acceptTerms" required />
+            <span>J'accepte les conditions d'utilisation et la politique de confidentialité.</span>
+          </label>
+        </div>
+
+        <button class="btn btn--primaire btn--large" type="submit" [disabled]="enCours()">
+          {{ enCours() ? 'Création…' : "Créer l'école" }}
+        </button>
+      </form>
+
+      <div class="page-auth__pied">
+        <a class="lien-action" routerLink="/connexion/ecole">J'ai déjà un compte</a>
+      </div>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,7 @@
+/* Layout espace école — barre haute + navigation (styles dans styles.scss global) */
+
+/* Personnalisation de la barre haute pour l'école */
+.bandeau-haut {
+  --bandeau-couleur: var(--mc-primaire);
+}
+.ecole .bandeau-haut { background: linear-gradient(90deg, var(--mc-fond-2), var(--mc-primaire-10)); }

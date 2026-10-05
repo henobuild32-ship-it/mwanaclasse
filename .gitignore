@@ -1,0 +1,21 @@
+node_modules/
+dist/
+.angular/
+npm-debug.log*
+.npm-cache/
+
+# Environnement et secrets — jamais commités
+.env
+.env.*
+!.env.example
+api/.env
+api/.env.*
+!api/.env.example
+web/.env
+web/.env.*
+!web/.env.example
+api/.env.secrets
+
+# Artefacts de build
+web/dist/
+coverage/

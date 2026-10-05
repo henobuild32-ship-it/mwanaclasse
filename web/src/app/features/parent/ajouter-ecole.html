@@ -1,0 +1,36 @@
+<div class="page-entete">
+  <div>
+    <h1>Rejoindre une école</h1>
+    <p>Saisissez le code public communiqué par l'établissement.</p>
+  </div>
+</div>
+
+<div class="carte">
+  @if (erreur()) {
+    <div class="formulaire-erreur" role="alert">{{ erreur() }}</div>
+  }
+
+  <form (ngSubmit)="rejoindre()">
+    <div class="champ">
+      <label for="code-rejoindre">Code de l'école *</label>
+      <input
+        id="code-rejoindre"
+        name="codeEcole"
+        required
+        minlength="6"
+        maxlength="32"
+        placeholder="MC-ECOLE-XXXXXX"
+        [(ngModel)]="codeEcole"
+        autocomplete="off"
+      />
+      <span class="champ__aide">Ex. MC-ECOLE-DEMO01</span>
+    </div>
+
+    <div class="btn-groupe">
+      <button class="btn btn--primaire btn--ligne" type="submit" [disabled]="enCours()">
+        {{ enCours() ? 'Recherche…' : 'Rejoindre' }}
+      </button>
+      <a class="btn btn--secondaire btn--ligne" routerLink="/parent">Retour</a>
+    </div>
+  </form>
+</div>

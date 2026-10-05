@@ -1,0 +1,79 @@
+<div class="page-entete">
+  <div>
+    <h1>Élèves</h1>
+    <p>{{ total() }} élève(s) — page {{ page() + 1 }}</p>
+  </div>
+  <a class="btn btn--primaire btn--ligne" routerLink="/ecole/eleves/nouveau">+ Inscrire un élève</a>
+</div>
+
+<div class="barre-outils">
+  <input
+    type="search"
+    placeholder="Rechercher un nom ou un code…"
+    [ngModel]="recherche()"
+    (ngModelChange)="changerRecherche($event)"
+    aria-label="Rechercher un élève"
+  />
+  <select [ngModel]="classeId()" (ngModelChange)="changerClasse($event)" aria-label="Filtrer par classe">
+    <option value="">Toutes les classes</option>
+    @for (c of classes(); track c.id) {
+      <option [value]="c.id">{{ c.name }}</option>
+    }
+  </select>
+  <select [ngModel]="statut()" (ngModelChange)="changerStatut($event)" aria-label="Filtrer par statut">
+    <option value="actif">Actifs</option>
+    <option value="archive">Archivés</option>
+    <option value="tous">Tous</option>
+  </select>
+</div>
+
+@if (chargement()) {
+  <app-chargement texte="Chargement des élèves…" />
+} @else if (erreur()) {
+  <app-etat-vide texte="{{ erreur() }}" icone="📡" />
+} @else if (eleves().length === 0) {
+  <app-etat-vide texte="Aucun élève ne correspond à cette recherche." icone="🔍" />
+} @else {
+  <div class="carte">
+    <ul class="liste">
+      @for (e of eleves(); track e.id) {
+        <li class="ligne-liste">
+          <span class="avatar">{{ initiales(e.full_name) }}</span>
+          <div class="ligne-liste__principal">
+            <div class="ligne-liste__titre">
+              <a [routerLink]="['/ecole/eleves', e.id]">{{ e.full_name }}</a>
+            </div>
+            <div class="ligne-liste__sous">
+              {{ e.classe }}@if (e.section) { · {{ e.section }}} · code {{ e.public_code }}
+            </div>
+          </div>
+          <div class="ligne-liste__fin">
+            @if (e.presence_aujourdhui) {
+              <app-etiquette
+                [texte]="etiquetteStatut(e.presence_aujourdhui).texte"
+                [variante]="etiquetteStatut(e.presence_aujourdhui).variante"
+              />
+            } @else {
+              <span class="texte-petit">aujourd'hui : —</span>
+            }
+          </div>
+        </li>
+      }
+    </ul>
+
+    <div class="barre-outils" style="margin: 14px 0 0">
+      <button class="btn btn--secondaire btn--ligne" type="button" (click)="pagePrecedente()" [disabled]="page() === 0">
+        ← Précédent
+      </button>
+      <span class="texte-doux">Page {{ page() + 1 }}</span>
+      <button
+        class="btn btn--secondaire btn--ligne"
+        type="button"
+        (click)="pageSuivante()"
+        [disabled]="(page() + 1) * parPage >= total()"
+      >
+        Suivant →
+      </button>
+    </div>
+  </div>
+}

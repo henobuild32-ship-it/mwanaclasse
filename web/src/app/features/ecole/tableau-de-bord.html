@@ -1,0 +1,96 @@
+<div class="page-entete">
+  <div>
+    <h1>Bonjour, {{ session.nomAffiche() }}</h1>
+    <p>{{ session.ecole()?.nom }} — code {{ session.ecole()?.code }}</p>
+  </div>
+  <a class="btn btn--primaire btn--ligne" routerLink="/ecole/presences">Faire l'appel</a>
+</div>
+
+@if (chargement()) {
+  <app-chargement texte="Chargement du tableau de bord…" />
+} @else if (erreur()) {
+  <app-etat-vide texte="{{ erreur() }}" icone="📡" />
+} @else if (donnees(); as d) {
+  <section class="escalier">
+    <div class="grille-stats">
+      <app-carte-stat
+        [valeur]="d.eleves.total"
+        libelle="Élèves inscrits"
+        detail="année en cours"
+        [accent]="true"
+      />
+      <app-carte-stat
+        [valeur]="d.eleves.presentsAujourdhui"
+        libelle="Présents aujourd'hui"
+        detail="{{ d.eleves.absentsAujourdhui }} absent(s)"
+      />
+      <app-carte-stat
+        [valeur]="d.eleves.retardsAujourdhui"
+        libelle="Retards"
+        detail="{{ d.eleves.departsAnticipesAujourdhui }} départ(s) anticipé(s)"
+      />
+      <app-carte-stat
+        [valeur]="d.eleves.presencesNonEnregistrees"
+        libelle="Non enregistrés"
+        detail="à traiter"
+      />
+    </div>
+
+    <div class="grille-2">
+      <div class="carte">
+        <div class="carte__titre">
+          <span>Classes</span>
+          <a class="lien-action" routerLink="/ecole/plus">Gérer</a>
+        </div>
+        <div class="grille-stats">
+          <app-carte-stat [valeur]="d.classes.total" libelle="Classes" />
+          <app-carte-stat [valeur]="d.classes.sections" libelle="Sections" />
+        </div>
+        <p class="texte-doux" style="margin-top: 12px">
+          Occupation moyenne : {{ d.classes.occupation }} %
+          @if (d.classes.classesProchesCapacite > 0) {
+            — {{ d.classes.classesProchesCapacite }} classe(s) proche(s) de la capacité.
+          }
+        </p>
+        <div class="jauge" aria-hidden="true">
+          <div class="jauge__remplissage" [style.width.%]="d.classes.occupation"></div>
+        </div>
+      </div>
+
+      <div class="carte">
+        <div class="carte__titre"><span>Présences du jour</span></div>
+        <div class="grille-stats">
+          <app-carte-stat [valeur]="d.presences.presents" libelle="Présents" [accent]="true" />
+          <app-carte-stat [valeur]="d.presences.absents" libelle="Absents" />
+          <app-carte-stat [valeur]="d.presences.retards" libelle="Retards" />
+          <app-carte-stat [valeur]="d.presences.classesSansPresence" libelle="Classes sans appel" />
+        </div>
+      </div>
+    </div>
+
+    <div class="grille-2">
+      <div class="carte">
+        <div class="carte__titre">
+          <span>Liens parents à valider</span>
+          <a class="lien-action" routerLink="/ecole/plus">Ouvrir</a>
+        </div>
+        <p class="texte-doux">
+          {{ d.parents.liaisonsAValider }} demande(s) d'accès en attente de décision.
+        </p>
+        <div class="grille-stats" style="margin-top: 10px">
+          <app-carte-stat [valeur]="d.demandes.enAttente" libelle="Demandes en attente" />
+          <app-carte-stat [valeur]="d.demandes.enCours" libelle="Demandes en cours" />
+        </div>
+      </div>
+
+      <div class="carte">
+        <div class="carte__titre"><span>Communiqués</span></div>
+        <div class="grille-stats">
+          <app-carte-stat [valeur]="d.communiques.publies" libelle="Publiés" />
+          <app-carte-stat [valeur]="d.communiques.brouillons" libelle="Brouillons" />
+          <app-carte-stat [valeur]="d.communiques.programmes" libelle="Programmés" />
+        </div>
+      </div>
+    </div>
+  </section>
+}

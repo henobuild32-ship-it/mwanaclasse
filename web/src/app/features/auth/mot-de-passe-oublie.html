@@ -1,0 +1,74 @@
+<section class="page-auth">
+  <aside class="marque-panneau">
+    <a class="marque-panneau__logo" routerLink="/">
+      <span class="marque-panneau__pastille">M</span>
+      <span>MwanaClasse</span>
+    </a>
+
+    <span class="marque-panneau__badge">🔑 Récupération de compte</span>
+    <h1>Retrouvez l'accès à votre espace.</h1>
+    <p class="marque-panneau__texte">
+      Indiquez votre identifiant : nous vous enverrons les instructions de
+      réinitialisation par e-mail.
+    </p>
+
+    <ul class="marque-panneau__avantages">
+      <li>Instructions envoyées en quelques secondes</li>
+      <li>Liens à usage unique et expiration limitée</li>
+      <li>Aucune donnée n'est révélée en cas de compte inconnu</li>
+    </ul>
+
+    <a class="marque-panneau__retour" routerLink="/">← Retour à l'accueil</a>
+  </aside>
+
+  <div class="zone-formulaire">
+    <div class="page-auth__carte">
+      <div class="page-auth__entete">
+        <span class="page-auth__pastille">🔑</span>
+        <h2>Mot de passe oublié</h2>
+        <p>Nous vous enverrons les instructions de réinitialisation.</p>
+      </div>
+
+      @if (envoye()) {
+        <div class="formulaire-erreur formulaire-erreur--succes" role="status">
+          Si un compte correspond, un e-mail de réinitialisation vient d'être envoyé.
+          Pensez aussi à vos spams.
+        </div>
+      } @else {
+        @if (erreur()) {
+          <div class="formulaire-erreur" role="alert">{{ erreur() }}</div>
+        }
+
+        <form (ngSubmit)="envoyer()">
+          <div class="champ">
+            <label for="interface">Votre interface</label>
+            <select id="interface" name="interface" [(ngModel)]="interface">
+              <option value="ecole">École</option>
+              <option value="parent">Parent</option>
+            </select>
+          </div>
+
+          <div class="champ">
+            <label for="identifiant">E-mail ou téléphone</label>
+            <input
+              id="identifiant"
+              name="identifiant"
+              type="text"
+              required
+              [(ngModel)]="identifiant"
+              placeholder="vous@exemple.cd"
+            />
+          </div>
+
+          <button class="btn btn--primaire btn--large" type="submit" [disabled]="enCours()">
+            {{ enCours() ? 'Envoi…' : 'Envoyer les instructions' }}
+          </button>
+        </form>
+      }
+
+      <div class="page-auth__pied">
+        <a class="lien-action" routerLink="/connexion/ecole">Retour à la connexion</a>
+      </div>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,165 @@
+<section class="page-auth">
+  <aside class="marque-panneau">
+    <a class="marque-panneau__logo" routerLink="/">
+      <span class="marque-panneau__pastille">M</span>
+      <span>MwanaClasse</span>
+    </a>
+
+    <span class="marque-panneau__badge">👨‍👩‍👧 Compte parent</span>
+    <h1>Créez votre compte parent.</h1>
+    <p class="marque-panneau__texte">
+      Munissez-vous du code de votre école : il permet de rattacher votre compte
+      à l'établissement dès l'inscription.
+    </p>
+
+    <ul class="marque-panneau__avantages">
+      <li>Code école obligatoire : aucune inscription anonyme</li>
+      <li>Présence de l'enfant visible chaque jour, même hors ligne</li>
+      <li>Communiqués, demandes et calendrier au même endroit</li>
+    </ul>
+
+    <a class="marque-panneau__retour" routerLink="/">← Retour à l'accueil</a>
+  </aside>
+
+  <div class="zone-formulaire">
+    <div class="page-auth__carte page-auth__carte--large">
+      <div class="page-auth__entete">
+        <span class="page-auth__pastille">👨‍👩‍👧</span>
+        <h2>Créer un compte parent</h2>
+        <p>Renseignez votre identité et le code de votre école.</p>
+      </div>
+
+      @if (erreur()) {
+        <div class="formulaire-erreur" role="alert">
+          {{ erreur() }}
+          @if (details().length) {
+            <ul class="details-erreurs">
+              @for (d of details(); track d.champ) {
+                <li><strong>{{ d.champ }}</strong> — {{ d.message }}</li>
+              }
+            </ul>
+          }
+        </div>
+      }
+
+      <form (ngSubmit)="creerCompte()">
+        <div class="champ" [class.champ--erreur]="champEnErreur('fullName')">
+          <label for="nom-parent">Nom complet *</label>
+          <input
+            id="nom-parent"
+            name="fullName"
+            required
+            minlength="3"
+            maxlength="160"
+            [(ngModel)]="fullName"
+            placeholder="Ex. Marie Kabeya"
+          />
+        </div>
+
+        <div class="champ" [class.champ--erreur]="champEnErreur('codeEcole')">
+          <label for="code-ecole-parent">Code de l'école *</label>
+          <input
+            id="code-ecole-parent"
+            name="codeEcole"
+            type="text"
+            required
+            minlength="6"
+            maxlength="32"
+            autocomplete="organization"
+            [(ngModel)]="codeEcole"
+            placeholder="MC-ECOLE-DEMO01"
+            class="champ__code"
+          />
+          <span class="champ__aide">
+            Code remis par l'établissement (ex. <strong>MC-ECOLE-DEMO01</strong>).
+            Obligatoire.
+          </span>
+        </div>
+
+        <div class="grille-2">
+          <div class="champ" [class.champ--erreur]="champEnErreur('email')">
+            <label for="mail-parent">E-mail</label>
+            <input
+              id="mail-parent"
+              name="email"
+              type="email"
+              autocomplete="email"
+              [(ngModel)]="email"
+              placeholder="vous@exemple.cd"
+            />
+          </div>
+          <div class="champ" [class.champ--erreur]="champEnErreur('phone')">
+            <label for="tel-parent">Téléphone</label>
+            <input
+              id="tel-parent"
+              name="phone"
+              type="tel"
+              autocomplete="tel"
+              maxlength="32"
+              [(ngModel)]="phone"
+              placeholder="+243…"
+            />
+          </div>
+        </div>
+        <p class="champ__aide" style="margin-top: -8px;">
+          Au moins un e-mail ou un numéro de téléphone est obligatoire.
+        </p>
+
+        <div class="champ">
+          <label for="relation-parent">Votre lien avec l'enfant</label>
+          <select id="relation-parent" name="relationship" [(ngModel)]="relationship">
+            @for (r of relations; track r.valeur) {
+              <option [value]="r.valeur">{{ r.libelle }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="champ" [class.champ--erreur]="champEnErreur('password')">
+          <label for="mdp-parent-inscription">Mot de passe *</label>
+          <input
+            id="mdp-parent-inscription"
+            name="password"
+            type="password"
+            autocomplete="new-password"
+            required
+            minlength="12"
+            [(ngModel)]="password"
+            (blur)="verifierMotDePasse()"
+          />
+          <span class="champ__aide">
+            12 caractères minimum.
+            @if (forceMotDePasse()) { <strong>Robustesse : {{ forceMotDePasse() }}</strong> }
+          </span>
+        </div>
+
+        <div class="champ" [class.champ--erreur]="champEnErreur('confirmation')">
+          <label for="mdp2-parent">Confirmer le mot de passe *</label>
+          <input
+            id="mdp2-parent"
+            name="confirmation"
+            type="password"
+            autocomplete="new-password"
+            required
+            [(ngModel)]="confirmation"
+          />
+        </div>
+
+        <div class="champ">
+          <label class="case-cochee">
+            <input type="checkbox" name="acceptTerms" [(ngModel)]="acceptTerms" required />
+            <span>J'accepte les conditions d'utilisation et la politique de confidentialité.</span>
+          </label>
+        </div>
+
+        <button class="btn btn--primaire btn--large" type="submit" [disabled]="enCours()">
+          {{ enCours() ? 'Création…' : 'Créer mon compte parent' }}
+        </button>
+      </form>
+
+      <div class="page-auth__pied">
+        <a class="lien-action" routerLink="/connexion/parent">J'ai déjà un compte</a>
+        <a class="lien-action" routerLink="/inscription/ecole">Je suis une école</a>
+      </div>
+    </div>
+  </div>
+</section>

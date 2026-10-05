@@ -1,0 +1,52 @@
+<div class="page-entete">
+  <div>
+    <h1>Documents</h1>
+    <p>{{ documents().length }} document(s) de l'établissement</p>
+  </div>
+</div>
+
+@if (chargement()) {
+  <app-chargement texte="Chargement des documents…" />
+} @else if (erreur()) {
+  <app-etat-vide texte="{{ erreur() }}" icone="📡" />
+} @else if (documents().length === 0) {
+  <app-etat-vide texte="Aucun document disponible." icone="📄" />
+} @else {
+  <div class="carte">
+    <ul class="liste">
+      @for (d of documents(); track d.id) {
+        <li class="ligne-liste">
+          <span class="icone-vignette" aria-hidden="true">📄</span>
+          <div class="ligne-liste__principal">
+            <div class="ligne-liste__titre">{{ d.title }}</div>
+            <div class="ligne-liste__sous">
+              {{ d.category ?? 'divers' }} · {{ d.file_name ?? '—' }} · {{ taille(d) }}
+              @if (d.created_at) { · {{ d.created_at | slice: 0:10 }} }
+              @if (d.uploaded_by_name) { · {{ d.uploaded_by_name }} }
+            </div>
+            @if (d.description) {
+              <div class="texte-doux" style="margin-top: 4px">{{ d.description }}</div>
+            }
+          </div>
+          <div class="ligne-liste__fin">
+            <app-etiquette
+              [texte]="etiquetteStatut(d.visibility ?? 'ecole').texte"
+              [variante]="etiquetteStatut(d.visibility ?? 'ecole').variante"
+            />
+            <div class="texte-petit">{{ d.downloads ?? 0 }} téléchargement(s)</div>
+            @if (d.file_url) {
+              <a
+                class="btn btn--secondaire btn--petit"
+                [href]="d.file_url"
+                target="_blank"
+                rel="noopener"
+              >
+                Ouvrir
+              </a>
+            }
+          </div>
+        </li>
+      }
+    </ul>
+  </div>
+}

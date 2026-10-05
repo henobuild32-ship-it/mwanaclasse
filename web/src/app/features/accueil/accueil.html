@@ -1,0 +1,166 @@
+<div class="vitrine">
+  <header class="vitrine__barre">
+    <a class="vitrine__marque" routerLink="/">
+      <span class="vitrine__pastille">M</span>
+      <span>MwanaClasse</span>
+    </a>
+    <nav class="vitrine__liens">
+      <a routerLink="/connexion/ecole">Connexion</a>
+      <a class="vitrine__cta" routerLink="/inscription/ecole">Créer mon école</a>
+    </nav>
+  </header>
+
+  <main class="accueil">
+    <section class="hero">
+      <div class="hero__texte">
+        <span class="hero__badge">📶 Fonctionne hors ligne · PWA installable</span>
+
+        <h1>
+          L'école et les parents,
+          <span class="hero__accent">enfin synchronisés.</span>
+        </h1>
+
+        <p class="hero__accroche">
+          Présences, communiqués, demandes et calendrier : MwanaClasse relie
+          l'établissement et les familles, même sans connexion internet.
+        </p>
+
+        @if (!connectivite.enLigne()) {
+          <p class="hero__hors-ligne">
+            Vous êtes hors ligne : les données déjà synchronisées restent consultables.
+          </p>
+        }
+
+        <div class="hero__choix">
+          <div class="choix choix--ecole">
+            <a class="choix__lien" routerLink="/connexion/ecole">
+              <span class="choix__icone">🏫</span>
+              <span class="choix__contenu">
+                <span class="choix__titre">Je suis une École</span>
+                <span class="choix__texte">Gérez classes, élèves, présences et communiqués.</span>
+              </span>
+            </a>
+            <a class="choix__secondaire" routerLink="/inscription/ecole">
+              <strong>Créer mon école</strong> <span aria-hidden="true">→</span>
+            </a>
+            <span class="choix__fleche" aria-hidden="true">→</span>
+          </div>
+
+          <div class="choix choix--parent">
+            <a class="choix__lien" routerLink="/connexion/parent">
+              <span class="choix__icone">👨‍👩‍👧</span>
+              <span class="choix__contenu">
+                <span class="choix__titre">Je suis Parent</span>
+                <span class="choix__texte">Suivez la présence et la scolarité de vos enfants.</span>
+              </span>
+            </a>
+            <a class="choix__secondaire" routerLink="/inscription/parent">
+              <strong>Créer un compte parent</strong> <span aria-hidden="true">→</span>
+            </a>
+            <span class="choix__fleche" aria-hidden="true">→</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="hero__visuel" aria-hidden="true">
+        <div class="mock">
+          <div class="mock__barre">
+            <span class="mock__point"></span>
+            <span class="mock__point"></span>
+            <span class="mock__point"></span>
+            <span class="mock__titre">Présences du jour</span>
+          </div>
+
+          <div class="mock__stats">
+            <div class="mock__stat">
+              <strong>42</strong>
+              <span>Présents</span>
+            </div>
+            <div class="mock__stat mock__stat--alerte">
+              <strong>3</strong>
+              <span>Absents</span>
+            </div>
+            <div class="mock__stat mock__stat--info">
+              <strong>2</strong>
+              <span>Retards</span>
+            </div>
+          </div>
+
+          <ul class="mock__lignes">
+            <li>
+              <span class="mock__avatar"></span>
+              <span class="mock__nom"></span>
+              <span class="mock__tag mock__tag--succes">Présent</span>
+            </li>
+            <li>
+              <span class="mock__avatar"></span>
+              <span class="mock__nom mock__nom--court"></span>
+              <span class="mock__tag mock__tag--alerte">Retard</span>
+            </li>
+            <li>
+              <span class="mock__avatar"></span>
+              <span class="mock__nom"></span>
+              <span class="mock__tag mock__tag--succes">Présent</span>
+            </li>
+            <li>
+              <span class="mock__avatar"></span>
+              <span class="mock__nom mock__nom--court"></span>
+              <span class="mock__tag mock__tag--danger">Absent</span>
+            </li>
+          </ul>
+
+          <div class="mock__pied">
+            <span class="mock__pastille-vert"></span>
+            Enregistré hors ligne · synchronisé
+          </div>
+        </div>
+
+        <div class="flottant flottant--1">✅ Appel enregistré</div>
+        <div class="flottant flottant--2">📨 Nouveau communiqué lu</div>
+      </div>
+    </section>
+
+    <section class="atouts">
+      <div class="atout">
+        <span class="atout__icone">📴</span>
+        <h2 class="atout__titre">Hors ligne d'abord</h2>
+        <p class="atout__texte">
+          Toute l'application reste utilisable sans réseau : les saisies sont
+          mises en file puis synchronisées automatiquement.
+        </p>
+      </div>
+      <div class="atout">
+        <span class="atout__icone">📱</span>
+        <h2 class="atout__titre">Pensé pour le mobile</h2>
+        <p class="atout__texte">
+          Interface 100 % adaptée aux téléphones, installable comme une
+          application native en un clic.
+        </p>
+      </div>
+      <div class="atout">
+        <span class="atout__icone">🔒</span>
+        <h2 class="atout__titre">Sécurisé &amp; traçable</h2>
+        <p class="atout__texte">
+          Données cloisonnées par école, mots de passe robustes et journal
+          d'audit inaltérable pour chaque action sensible.
+        </p>
+      </div>
+    </section>
+
+    <footer class="pied">
+      <div class="pied__liens">
+        <a routerLink="/connexion/ecole">Connexion école</a>
+        <a routerLink="/connexion/parent">Connexion parent</a>
+        <a routerLink="/inscription/ecole">Créer mon école</a>
+        <a href="#" (click)="$event.preventDefault()">À propos</a>
+        <a href="#" (click)="$event.preventDefault()">Aide</a>
+        <a href="#" (click)="$event.preventDefault()">Conditions d'utilisation</a>
+        <a href="#" (click)="$event.preventDefault()">Confidentialité</a>
+      </div>
+      <p class="pied__note">
+        © 2026 MwanaClasse · Application installable (PWA) : elle mémorise vos
+        données et synchronise automatiquement dès que la connexion revient.
+      </p>
+    </footer>
+  </main>
+</div>

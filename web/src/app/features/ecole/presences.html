@@ -1,0 +1,107 @@
+<div class="page-entete">
+  <div>
+    <h1>Présences</h1>
+    <p>
+      Appel du jour
+      @if (recap(); as r) {
+        — {{ r.presents }} présents · {{ r.absents }} absents · {{ r.retards }} retards
+        @if (r.nonEnregistres > 0) { · {{ r.nonEnregistres }} non enregistrés }
+      }
+    </p>
+  </div>
+  @if (!enLigne) {
+    <span class="pastille-en-ligne pastille-hors-ligne">Hors ligne</span>
+  }
+</div>
+
+<div class="barre-outils">
+  <input
+    type="date"
+    [ngModel]="date()"
+    (ngModelChange)="date.set($event); chargerFeuille()"
+    aria-label="Date de l'appel"
+  />
+  <select
+    [ngModel]="classeId()"
+    (ngModelChange)="classeId.set($event); chargerFeuille()"
+    aria-label="Classe"
+  >
+    <option value="">Choisir une classe</option>
+    @for (c of classes(); track c.id) {
+      <option [value]="c.id">{{ c.name }}</option>
+    }
+  </select>
+  <button class="btn btn--secondaire btn--ligne" type="button" (click)="chargerFeuille()">
+    Actualiser
+  </button>
+</div>
+
+<div class="barre-outils">
+  <button class="btn btn--contour btn--ligne" type="button" (click)="toutPresent()" [disabled]="!eleves().length">
+    ✔ Tout présent
+  </button>
+  <button
+    class="btn btn--primaire btn--ligne"
+    type="button"
+    (click)="enregistrer()"
+    [disabled]="!modifie() || sauvegardeEnCours()"
+  >
+    {{ sauvegardeEnCours() ? 'Enregistrement…' : 'Enregistrer la feuille' }}
+  </button>
+  <button
+    class="btn btn--contour btn--ligne"
+    type="button"
+    (click)="exporterPDF()"
+    [disabled]="exportEnCours() || !eleves().length"
+    title="Télécharger la feuille en PDF"
+  >
+    📄 PDF
+  </button>
+  <button
+    class="btn btn--contour btn--ligne"
+    type="button"
+    (click)="exporterDOCX()"
+    [disabled]="exportEnCours() || !eleves().length"
+    title="Télécharger la feuille en DOCX"
+  >
+    📝 DOCX
+  </button>
+  @if (operationsEnFile > 0) {
+    <span class="pastille-en-ligne pastille-file">{{ operationsEnFile }} opération(s) en file</span>
+  }
+</div>
+
+@if (chargement()) {
+  <app-chargement texte="Chargement de la feuille de présence…" />
+} @else if (erreur()) {
+  <app-etat-vide texte="{{ erreur() }}" icone="📡" />
+} @else if (eleves().length === 0) {
+  <app-etat-vide texte="Aucun élève dans cette classe pour la date choisie." />
+} @else {
+  <div class="carte">
+    <ul class="liste">
+      @for (e of eleves(); track e.student_id) {
+        <li class="ligne-liste ligne-liste--feuille">
+          <span class="avatar">{{ e.full_name[0] }}</span>
+          <div class="ligne-liste__principal">
+            <div class="ligne-liste__titre">{{ e.full_name }}</div>
+            <div class="ligne-liste__sous">{{ e.classe }}@if (e.section) { · {{ e.section }}} · {{ e.public_code }}</div>
+          </div>
+          <div class="statuts">
+            @for (s of statuts; track s.valeur) {
+              <button
+                type="button"
+                class="statut"
+                [class.statut--actif]="statutDe(e) === s.valeur"
+                [attr.data-variante]="s.variante"
+                (click)="choisir(e, s.valeur)"
+              >
+                {{ s.libelle }}
+              </button>
+            }
+          </div>
+        </li>
+      }
+    </ul>
+  </div>
+}

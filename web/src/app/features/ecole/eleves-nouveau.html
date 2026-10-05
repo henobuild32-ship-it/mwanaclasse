@@ -1,0 +1,109 @@
+<div class="page-entete">
+  <div>
+    <h1>Inscrire un élève</h1>
+    <p>Les informations permettent de générer le code unique de l'élève.</p>
+  </div>
+</div>
+
+<div class="carte">
+  @if (erreur()) {
+    <div class="formulaire-erreur" role="alert">
+      {{ erreur() }}
+      @if (details().length) {
+        <ul style="margin: 6px 0 0; padding-left: 18px; font-size: 0.8rem">
+          @for (d of details(); track d.champ) {
+            <li><strong>{{ d.champ }}</strong> — {{ d.message }}</li>
+          }
+        </ul>
+      }
+    </div>
+  }
+
+  <form (ngSubmit)="enregistrer()">
+    <div class="grille-2">
+      <div class="champ">
+        <label for="nom">Nom *</label>
+        <input id="nom" name="lastName" required [(ngModel)]="lastName" maxlength="80" />
+      </div>
+      <div class="champ">
+        <label for="postnom">Post-nom</label>
+        <input id="postnom" name="middleName" [(ngModel)]="middleName" maxlength="80" />
+      </div>
+    </div>
+
+    <div class="grille-2">
+      <div class="champ">
+        <label for="prenom">Prénom *</label>
+        <input id="prenom" name="firstName" required [(ngModel)]="firstName" maxlength="80" />
+      </div>
+      <div class="champ">
+        <label for="genre">Genre</label>
+        <select id="genre" name="gender" [(ngModel)]="gender">
+          <option value="M">Masculin</option>
+          <option value="F">Féminin</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="grille-2">
+      <div class="champ">
+        <label for="naissance">Date de naissance</label>
+        <input id="naissance" name="dateOfBirth" type="date" [(ngModel)]="dateOfBirth" />
+      </div>
+      <div class="champ">
+        <label for="lieu">Lieu de naissance</label>
+        <input id="lieu" name="placeOfBirth" [(ngModel)]="placeOfBirth" maxlength="120" />
+      </div>
+    </div>
+
+    <div class="grille-2">
+      <div class="champ">
+        <label for="classe">Classe *</label>
+        <select id="classe" name="classId" required [(ngModel)]="classId" (ngModelChange)="changerClasse()">
+          <option value="">Choisir…</option>
+          @for (c of classes(); track c.id) {
+            <option [value]="c.id">{{ c.name }} ({{ c.effectif ?? 0 }}/{{ c.max_capacity }})</option>
+          }
+        </select>
+      </div>
+      <div class="champ">
+        <label for="section">Section</label>
+        <select id="section" name="sectionId" [(ngModel)]="sectionId">
+          <option value="">—</option>
+          @for (s of sectionsDeClasse(); track s.id) {
+            <option [value]="s.id">{{ s.name }}</option>
+          }
+        </select>
+      </div>
+    </div>
+
+    <div class="grille-2">
+      <div class="champ">
+        <label for="interne">N° interne</label>
+        <input id="interne" name="internalNumber" [(ngModel)]="internalNumber" maxlength="40" />
+      </div>
+      <div class="champ">
+        <label for="tel-tuteur">Téléphone du tuteur</label>
+        <input id="tel-tuteur" name="guardianPhone" type="tel" [(ngModel)]="guardianPhone" maxlength="32" />
+      </div>
+    </div>
+
+    <div class="champ">
+      <label for="adresse-eleve">Adresse</label>
+      <input id="adresse-eleve" name="address" [(ngModel)]="address" maxlength="300" />
+    </div>
+
+    <div class="champ">
+      <label for="notes">Notes médicales</label>
+      <textarea id="notes" name="medicalNotes" [(ngModel)]="medicalNotes" maxlength="4000"></textarea>
+      <span class="champ__aide">Champs sensibles : leur consultation est journalisée.</span>
+    </div>
+
+    <div class="btn-groupe">
+      <button class="btn btn--primaire btn--ligne" type="submit" [disabled]="enCours()">
+        {{ enCours() ? 'Enregistrement…' : "Inscrire l'élève" }}
+      </button>
+      <a class="btn btn--secondaire btn--ligne" routerLink="/ecole/eleves">Annuler</a>
+    </div>
+  </form>
+</div>

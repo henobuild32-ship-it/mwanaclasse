@@ -1,0 +1,109 @@
+<div class="page-entete">
+  <div>
+    <h1>Calendrier</h1>
+    <p>{{ evenements().length }} événement(s) scolaire(s)</p>
+  </div>
+  <button class="btn btn--primaire btn--ligne" type="button" (click)="formulaire.set(!formulaire())">
+    + Événement
+  </button>
+</div>
+
+@if (formulaire()) {
+  <div class="carte" style="margin-bottom: 14px">
+    <div class="carte__titre"><span>Nouvel événement</span></div>
+    <div class="champ">
+      <label for="titre-evt">Titre *</label>
+      <input id="titre-evt" name="titre" maxlength="160" [(ngModel)]="titre" />
+    </div>
+    <div class="grille-2">
+      <div class="champ">
+        <label for="type-evt">Type</label>
+        <select id="type-evt" name="type" [(ngModel)]="type">
+          @for (t of types; track t) {
+            <option [value]="t">{{ t }}</option>
+          }
+        </select>
+      </div>
+      <div class="champ">
+        <label for="lieu-evt">Lieu</label>
+        <input id="lieu-evt" name="lieu" maxlength="160" [(ngModel)]="lieu" />
+      </div>
+    </div>
+    <div class="grille-2">
+      <div class="champ">
+        <label for="debut-evt">Début *</label>
+        <input id="debut-evt" name="debut" type="date" required [(ngModel)]="debut" />
+      </div>
+      <div class="champ">
+        <label for="fin-evt">Fin</label>
+        <input id="fin-evt" name="fin" type="date" [(ngModel)]="fin" />
+      </div>
+    </div>
+    <label class="case-a-cocher">
+      <input type="checkbox" name="toutLaJournee" [(ngModel)]="toutLaJournee" />
+      <span>Toute la journée</span>
+    </label>
+    @if (!toutLaJournee) {
+      <div class="grille-2">
+        <div class="champ">
+          <label for="heure-debut">Heure de début</label>
+          <input id="heure-debut" name="heureDebut" type="time" [(ngModel)]="heureDebut" />
+        </div>
+        <div class="champ">
+          <label for="heure-fin">Heure de fin</label>
+          <input id="heure-fin" name="heureFin" type="time" [(ngModel)]="heureFin" />
+        </div>
+      </div>
+    }
+    <div class="champ">
+      <label for="description-evt">Description</label>
+      <textarea id="description-evt" name="description" maxlength="4000" [(ngModel)]="description"></textarea>
+    </div>
+    <div class="btn-groupe">
+      <button class="btn btn--primaire btn--ligne" type="button" (click)="creer()" [disabled]="enCours()">
+        {{ enCours() ? 'Enregistrement…' : 'Ajouter' }}
+      </button>
+      <button class="btn btn--discret" type="button" (click)="formulaire.set(false)">Annuler</button>
+    </div>
+  </div>
+}
+
+@if (chargement()) {
+  <app-chargement texte="Chargement du calendrier…" />
+} @else if (erreur()) {
+  <app-etat-vide texte="{{ erreur() }}" icone="📡" />
+} @else if (evenements().length === 0) {
+  <app-etat-vide texte="Aucun événement planifié." icone="📅" />
+} @else {
+  <div class="carte">
+    <ul class="liste">
+      @for (e of evenements(); track e.id) {
+        <li class="ligne-liste">
+          <div class="vignette-date">
+            <strong>{{ e.starts_on | slice: 8:10 }}</strong>
+            <span>{{ e.starts_on | slice: 5:7 }}</span>
+          </div>
+          <div class="ligne-liste__principal">
+            <div class="ligne-liste__titre">{{ e.title }}</div>
+            <div class="ligne-liste__sous">
+              {{ e.kind ?? '—' }}
+              @if (e.ends_on) { · jusqu'au {{ e.ends_on | slice: 0:10 }} }
+              @if (e.start_time) { · {{ e.start_time }} }
+              @if (e.location) { · {{ e.location }} }
+              · {{ e.audience_kind ?? 'toute_ecole' }}
+            </div>
+            @if (e.description) {
+              <div class="texte-doux" style="margin-top: 4px">{{ e.description }}</div>
+            }
+          </div>
+          <div class="ligne-liste__fin">
+            <app-etiquette
+              [texte]="e.is_published ? 'publié' : 'brouillon'"
+              [variante]="e.is_published ? 'succes' : 'neutre'"
+            />
+          </div>
+        </li>
+      }
+    </ul>
+  </div>
+}

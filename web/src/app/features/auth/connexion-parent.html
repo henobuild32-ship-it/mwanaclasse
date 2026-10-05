@@ -1,0 +1,79 @@
+<section class="page-auth">
+  <aside class="marque-panneau">
+    <a class="marque-panneau__logo" routerLink="/">
+      <span class="marque-panneau__pastille">M</span>
+      <span>MwanaClasse</span>
+    </a>
+
+    <span class="marque-panneau__badge">👨‍👩‍👧 Espace parent</span>
+    <h1>La scolarité de vos enfants, en poche.</h1>
+    <p class="marque-panneau__texte">
+      Suivez les présences jour après jour, recevez les communiqués de l'école
+      et échangez avec l'administration en quelques clics.
+    </p>
+
+    <ul class="marque-panneau__avantages">
+      <li>Présence de l'enfant visible chaque jour, même hors ligne</li>
+      <li>Communiqués, calendrier et documents de l'école au même endroit</li>
+      <li>Demandes (justificatifs, réclamations) suivies en temps réel</li>
+    </ul>
+
+    <a class="marque-panneau__retour" routerLink="/">← Retour à l'accueil</a>
+  </aside>
+
+  <div class="zone-formulaire">
+    <div class="page-auth__carte">
+      <div class="page-auth__entete">
+        <span class="page-auth__pastille">👨‍👩‍👧</span>
+        <h2>Connexion</h2>
+        <p>Suivez la présence et la scolarité de vos enfants.</p>
+      </div>
+
+      @if (erreur()) {
+        <div class="formulaire-erreur" role="alert">{{ erreur() }}</div>
+      }
+
+      <form (ngSubmit)="seConnecter()">
+        <div class="champ">
+          <label for="identifiant">E-mail ou numéro de téléphone</label>
+          <input
+            id="identifiant"
+            name="emailOrPhone"
+            type="text"
+            autocomplete="username"
+            required
+            [(ngModel)]="identifiant"
+            placeholder="parent@exemple.cd / +243…"
+          />
+        </div>
+
+        <div class="champ">
+          <label for="mdp-parent">Mot de passe</label>
+          <input
+            id="mdp-parent"
+            name="password"
+            type="password"
+            autocomplete="current-password"
+            required
+            [(ngModel)]="motDePasse"
+            placeholder="••••••••••••"
+          />
+        </div>
+
+        <button class="btn btn--primaire btn--large" type="submit" [disabled]="enCours()">
+          {{ enCours() ? 'Connexion…' : 'Se connecter' }}
+        </button>
+      </form>
+
+      <div class="page-auth__pied">
+        <button type="button" class="lien-action" (click)="motDePasseOublie()">
+          Mot de passe oublié ?
+        </button>
+        <a class="lien-action lien-action--accent" routerLink="/inscription/parent">
+          Créer un compte parent
+        </a>
+        <a class="lien-action" routerLink="/connexion/ecole">Je suis une école</a>
+      </div>
+    </div>
+  </div>
+</section>

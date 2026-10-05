@@ -1,0 +1,73 @@
+<div class="page-entete">
+  <div>
+    <h1>Calendrier</h1>
+    <p>Événements des écoles de vos enfants.</p>
+  </div>
+</div>
+
+@if (chargement()) {
+  <app-chargement texte="Chargement du calendrier…" />
+} @else if (erreur()) {
+  <app-etat-vide texte="{{ erreur() }}" icone="📡" />
+} @else if (evenements().length === 0) {
+  <app-etat-vide texte="Aucun événement à venir." icone="📅" />
+} @else {
+  @if (semaine().length) {
+    <div class="carte">
+      <div class="carte__titre"><span>Cette semaine</span></div>
+      <ul class="liste">
+        @for (e of semaine(); track e.id) {
+          <li class="ligne-liste">
+            <div class="vignette-date">
+              <strong>{{ e.starts_on | slice: 8:10 }}</strong>
+              <span>{{ e.starts_on | slice: 5:7 }}</span>
+            </div>
+            <div class="ligne-liste__principal">
+              <div class="ligne-liste__titre">{{ e.title }}</div>
+              <div class="ligne-liste__sous">
+                {{ e.kind ?? '—' }} @if (e.start_time) { · {{ e.start_time }} }
+                @if (e.location) { · {{ e.location }} } @if (e.ecole) { · {{ e.ecole }} }
+              </div>
+            </div>
+          </li>
+        }
+      </ul>
+    </div>
+  }
+
+  <div class="carte">
+    <div class="carte__titre"><span>À venir</span></div>
+    <ul class="liste">
+      @for (e of evenements(); track e.id) {
+        <li class="ligne-liste ligne-liste--haut">
+          <div class="vignette-date">
+            <strong>{{ e.starts_on | slice: 8:10 }}</strong>
+            <span>{{ e.starts_on | slice: 5:7 }}</span>
+          </div>
+          <div class="ligne-liste__principal">
+            <div class="ligne-liste__titre">{{ e.title }}</div>
+            <div class="ligne-liste__sous">
+              {{ e.kind ?? '—' }}
+              @if (e.ends_on) { · jusqu'au {{ e.ends_on | slice: 0:10 }} }
+              @if (e.start_time) { · {{ e.start_time }} }
+              @if (e.location) { · {{ e.location }} }
+              @if (e.ecole) { · {{ e.ecole }} }
+              @if (e.portee) { · {{ e.portee }} }
+            </div>
+            @if (e.description) {
+              <div class="texte-doux" style="margin-top: 4px">{{ e.description }}</div>
+            }
+            @if (e.enfants_concernes?.length) {
+              <div class="texte-petit" style="margin-top: 4px">
+                Concerne : {{ e.enfants_concernes!.join(', ') }}
+              </div>
+            }
+          </div>
+          <div class="ligne-liste__fin">
+            <app-etiquette texte="prévu" variante="neutre" />
+          </div>
+        </li>
+      }
+    </ul>
+  </div>
+}

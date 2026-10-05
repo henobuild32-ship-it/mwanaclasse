@@ -1,0 +1,92 @@
+@if (chargement()) {
+  <app-chargement texte="Chargement de la fiche…" />
+} @else if (erreur()) {
+  <app-etat-vide texte="{{ erreur() }}" icone="🔎">
+    <button class="btn btn--secondaire" type="button" (click)="retour()">Retour à la liste</button>
+  </app-etat-vide>
+} @else if (eleve(); as e) {
+  <div class="page-entete">
+    <div>
+      <h1>{{ e.full_name }}</h1>
+      <p>
+        {{ e.classe }}@if (e.section) { · {{ e.section }}} · code {{ e.public_code }} ·
+        {{ e.annee_scolaire }}
+      </p>
+    </div>
+    <app-etiquette
+      [texte]="etiquetteStatut(e.status).texte"
+      [variante]="etiquetteStatut(e.status).variante"
+    />
+  </div>
+
+  <section class="escalier">
+    <div class="grille-stats">
+      <div class="carte">
+        <div class="carte__titre"><span>Présence du mois</span></div>
+        <div class="grille-stats">
+          <div class="encart"><strong>{{ resume().presents ?? 0 }}</strong> présents</div>
+          <div class="encart"><strong>{{ resume().absents ?? 0 }}</strong> absents</div>
+          <div class="encart"><strong>{{ resume().retards ?? 0 }}</strong> retards</div>
+          <div class="encart"><strong>{{ resume().tauxPresence ?? 0 }} %</strong> de présence</div>
+        </div>
+      </div>
+
+      <div class="carte">
+        <div class="carte__titre"><span>Identité</span></div>
+        <ul class="liste">
+          <li class="ligne-liste"><span class="ligne-liste__principal">Né(e) le</span><span>{{ e.date_of_birth ?? '—' }}</span></li>
+          <li class="ligne-liste"><span class="ligne-liste__principal">Lieu de naissance</span><span>{{ e.place_of_birth ?? '—' }}</span></li>
+          <li class="ligne-liste"><span class="ligne-liste__principal">Genre</span><span>{{ e.gender === 'F' ? 'Féminin' : e.gender === 'M' ? 'Masculin' : '—' }}</span></li>
+          <li class="ligne-liste"><span class="ligne-liste__principal">N° interne</span><span>{{ e.internal_number ?? '—' }}</span></li>
+          <li class="ligne-liste"><span class="ligne-liste__principal">Inscrit le</span><span>{{ e.enrolled_on ?? '—' }}</span></li>
+        </ul>
+      </div>
+
+      <div class="carte">
+        <div class="carte__titre"><span>Contact &amp; santé</span></div>
+        <ul class="liste">
+          <li class="ligne-liste"><span class="ligne-liste__principal">Téléphone du tuteur</span><span>{{ e.telephoneTuteur ?? '—' }}</span></li>
+          <li class="ligne-liste"><span class="ligne-liste__principal">Adresse</span><span>{{ e.adresse ?? '—' }}</span></li>
+          <li class="ligne-liste"><span class="ligne-liste__principal">Notes médicales</span><span>{{ e.notesMedicales ?? '—' }}</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="carte">
+      <div class="carte__titre"><span>Parents connectés</span></div>
+      @if (!donnees()?.parents?.length) {
+        <p class="texte-doux">Aucun parent rattaché à cet élève.</p>
+      } @else {
+        <ul class="liste">
+          @for (p of donnees()!.parents; track p.id) {
+            <li class="ligne-liste">
+              <span class="avatar">{{ p.full_name[0] }}</span>
+              <div class="ligne-liste__principal">
+                <div class="ligne-liste__titre">{{ p.full_name }}</div>
+                <div class="ligne-liste__sous">{{ p.email ?? p.phone }} · {{ p.relationship ?? 'parent' }}</div>
+              </div>
+              <app-etiquette
+                [texte]="etiquetteStatut(p.status).texte"
+                [variante]="etiquetteStatut(p.status).variante"
+              />
+            </li>
+          }
+        </ul>
+      }
+    </div>
+
+    <div class="barre-outils">
+      <a class="btn btn--secondaire btn--ligne" routerLink="/ecole/presences">Voir les présences</a>
+      @if (e.status === 'archive' || e.status === 'archeve') {
+        <button class="btn btn--contour btn--ligne" type="button" (click)="changerEtat(false)">
+          Réactiver l'élève
+        </button>
+      } @else {
+        <button class="btn btn--danger btn--ligne" type="button" (click)="changerEtat(true)">
+          Archiver l'élève
+        </button>
+      }
+      <button class="btn btn--discret" type="button" (click)="retour()">← Retour</button>
+    </div>
+  </section>
+}

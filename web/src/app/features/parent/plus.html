@@ -1,0 +1,19 @@
+<div class="page-entete">
+  <div>
+    <h1>Plus</h1>
+    <p>{{ session.nomAffiche() }}</p>
+  </div>
+</div>
+
+<div class="escalier">
+  @for (d of destinations; track d.chemin) {
+    <a class="lien-carte" [routerLink]="d.chemin">
+      <span class="lien-carte__icone">{{ d.icone }}</span>
+      <span class="lien-carte__texte">
+        <span class="lien-carte__titre">{{ d.titre }}</span>
+        <span class="lien-carte__sous">{{ d.sous }}</span>
+      </span>
+      <span aria-hidden="true">›</span>
+    </a>
+  }
+</div>

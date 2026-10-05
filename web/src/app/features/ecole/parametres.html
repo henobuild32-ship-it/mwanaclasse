@@ -1,0 +1,158 @@
+@if (chargement()) {
+  <app-chargement texte="Chargement des paramètres…" />
+} @else if (erreur()) {
+  <app-etat-vide texte="{{ erreur() }}" icone="📡" />
+} @else {
+  <div class="page-entete">
+    <div>
+      <h1>Paramètres</h1>
+      <p>
+        Code public <strong>{{ donnees()!.ecole.public_code }}</strong>
+        @if (donnees()!.ecole.current_year_label) { · année {{ donnees()!.ecole.current_year_label }} }
+      </p>
+    </div>
+  </div>
+
+  <section class="escalier">
+    <div class="carte">
+      <div class="carte__titre"><span>Identité de l'établissement</span></div>
+      <div class="grille-2">
+        <div class="champ">
+          <label for="nom-officiel">Nom officiel *</label>
+          <input id="nom-officiel" name="officialName" minlength="3" maxlength="180" [(ngModel)]="officialName" />
+        </div>
+        <div class="champ">
+          <label for="nom-court">Nom court</label>
+          <input id="nom-court" name="shortName" maxlength="80" [(ngModel)]="shortName" />
+        </div>
+      </div>
+      <div class="grille-2">
+        <div class="champ">
+          <label for="adresse">Adresse</label>
+          <input id="adresse" name="addressLine" maxlength="240" [(ngModel)]="addressLine" />
+        </div>
+        <div class="champ">
+          <label for="commune">Commune</label>
+          <input id="commune" name="commune" maxlength="120" [(ngModel)]="commune" />
+        </div>
+      </div>
+      <div class="grille-2">
+        <div class="champ">
+          <label for="ville">Ville</label>
+          <input id="ville" name="city" maxlength="120" [(ngModel)]="city" />
+        </div>
+        <div class="champ">
+          <label for="province">Province</label>
+          <input id="province" name="province" maxlength="120" [(ngModel)]="province" />
+        </div>
+      </div>
+      <div class="grille-2">
+        <div class="champ">
+          <label for="tel-ecole">Téléphone</label>
+          <input id="tel-ecole" name="phone" type="tel" maxlength="32" [(ngModel)]="phone" />
+        </div>
+        <div class="champ">
+          <label for="email-ecole">Courriel</label>
+          <input id="email-ecole" name="email" type="email" maxlength="200" [(ngModel)]="email" />
+        </div>
+      </div>
+      <div class="grille-2">
+        <div class="champ">
+          <label for="site">Site web</label>
+          <input id="site" name="website" maxlength="200" [(ngModel)]="website" />
+        </div>
+        <div class="champ">
+          <label for="horaires">Heures d'ouverture</label>
+          <input id="horaires" name="openingHours" maxlength="600" [(ngModel)]="openingHours" />
+        </div>
+      </div>
+      <div class="champ">
+        <label for="description-ecole">Présentation</label>
+        <textarea id="description-ecole" name="description" rows="3" maxlength="4000" [(ngModel)]="description"></textarea>
+      </div>
+      <div class="grille-2">
+        <div class="champ">
+          <label for="couleur">Couleur principale</label>
+          <input id="couleur" name="primaryColor" type="color" [(ngModel)]="primaryColor" />
+        </div>
+        <div class="champ">
+          <label for="mode-liaison">Mode de liaison parent</label>
+          <select id="mode-liaison" name="parentLinkMode" [(ngModel)]="parentLinkMode">
+            <option value="automatique">Automatique</option>
+            <option value="validation">Validation manuelle</option>
+          </select>
+        </div>
+      </div>
+      <div class="grille-2">
+        <div class="champ">
+          <label for="signature-nom">Nom de la signature</label>
+          <input id="signature-nom" name="signatureName" maxlength="160" [(ngModel)]="signatureName" />
+        </div>
+        <div class="champ">
+          <label for="signature-titre">Fonction signataire</label>
+          <input id="signature-titre" name="signatureTitle" maxlength="80" [(ngModel)]="signatureTitle" />
+        </div>
+      </div>
+      <div class="btn-groupe">
+        <button class="btn btn--primaire btn--ligne" type="button" (click)="enregistrer()" [disabled]="enCours()">
+          {{ enCours() ? 'Enregistrement…' : 'Enregistrer' }}
+        </button>
+      </div>
+    </div>
+
+    <div class="carte">
+      <div class="carte__titre"><span>Années scolaires</span></div>
+      <ul class="liste">
+        @for (a of donnees()!.anneesScolaires; track a.id) {
+          <li class="ligne-liste">
+            <div class="ligne-liste__principal">
+              <div class="ligne-liste__titre">{{ a.label }}</div>
+              <div class="ligne-liste__sous">
+                {{ a.starts_on ?? '—' }} → {{ a.ends_on ?? '—' }}
+              </div>
+            </div>
+            <div class="ligne-liste__fin">
+              <app-etiquette
+                [texte]="a.is_current ? 'courante' : a.is_archived ? 'archivée' : 'à venir'"
+                [variante]="a.is_current ? 'succes' : a.is_archived ? 'neutre' : 'attention'"
+              />
+            </div>
+          </li>
+        }
+      </ul>
+    </div>
+
+    <div class="carte">
+      <div class="carte__titre">
+        <span>Personnel</span>
+        <span class="texte-petit">{{ donnees()!.personnel.length }} compte(s)</span>
+      </div>
+      <ul class="liste">
+        @for (m of donnees()!.personnel; track m.id) {
+          <li class="ligne-liste">
+            <span class="avatar">{{ m.full_name[0] }}</span>
+            <div class="ligne-liste__principal">
+              <div class="ligne-liste__titre">
+                {{ m.full_name }}
+                @if (m.is_owner) { <span class="pastille pastille--info">propriétaire</span> }
+              </div>
+              <div class="ligne-liste__sous">
+                {{ m.email }} · {{ m.job_title ?? '—' }}
+                @if (m.last_login_at) { · vu le {{ m.last_login_at | slice: 0:10 }} }
+              </div>
+            </div>
+            <div class="ligne-liste__fin">
+              <app-etiquette
+                [texte]="m.is_active ? 'actif' : 'désactivé'"
+                [variante]="m.is_active ? 'succes' : 'neutre'"
+              />
+              @if (m.totp_enabled) {
+                <app-etiquette texte="2FA" variante="info" />
+              }
+            </div>
+          </li>
+        }
+      </ul>
+    </div>
+  </section>
+}

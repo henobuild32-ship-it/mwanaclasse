@@ -1,0 +1,51 @@
+<div class="page-entete">
+  <div>
+    <h1>Notifications</h1>
+    <p>{{ nonLues() }} non lue(s)</p>
+  </div>
+  <button
+    class="btn btn--secondaire btn--ligne"
+    type="button"
+    [disabled]="enCours() || nonLues() === 0"
+    (click)="marquerLues()"
+  >
+    Tout marquer comme lu
+  </button>
+</div>
+
+@if (chargement()) {
+  <app-chargement texte="Chargement des notifications…" />
+} @else if (erreur()) {
+  <app-etat-vide texte="{{ erreur() }}" icone="📡" />
+} @else if (notifications().length === 0) {
+  <app-etat-vide texte="Aucune notification." icone="🔔" />
+} @else {
+  <div class="carte">
+    <ul class="liste">
+      @for (n of notifications(); track n.id) {
+        <li class="ligne-liste ligne-liste--haut" [class.non-lue]="!n.read_at" (click)="ouvrir(n)">
+          <span class="vignette-icone" aria-hidden="true">
+            {{ n.severity === 'critique' ? '🚨' : n.severity === 'alerte' ? '⚠️' : '🔔' }}
+          </span>
+          <div class="ligne-liste__principal">
+            <div class="ligne-liste__titre">
+              {{ n.title }}
+              @if (!n.read_at) { <span class="pastille pastille--info">nouveau</span> }
+            </div>
+            @if (n.body) {
+              <div class="texte-doux" style="margin-top: 4px; white-space: pre-wrap">{{ n.body }}</div>
+            }
+            <div class="ligne-liste__sous">
+              {{ n.kind ?? 'info' }} · {{ n.created_at | slice: 0:16 }}
+            </div>
+          </div>
+          <div class="ligne-liste__fin">
+            @if (n.action_url) {
+              <span class="texte-petit">ouvrir →</span>
+            }
+          </div>
+        </li>
+      }
+    </ul>
+  </div>
+}

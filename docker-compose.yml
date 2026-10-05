@@ -1,0 +1,34 @@
+# ============================================================================
+#  MWANA CLASSE — Base de données locale (développement)
+# ============================================================================
+#  Démarrage :  docker compose up -d
+#  Arrêt :      docker compose down          (les données persistent)
+#  Réinitialisation complète : docker compose down -v
+#
+#  Cette base est destinée au développement LOCAL uniquement.
+# ============================================================================
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    container_name: mwanaclasse-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: mwana
+      POSTGRES_PASSWORD: mwana_local_dev
+      POSTGRES_DB: mwanaclasse
+      # Fuseau et langues conformes aux réglages de l'application
+      TZ: Africa/Kinshasa
+      PGTZ: Africa/Kinshasa
+    ports:
+      - "5432:5432"
+    volumes:
+      - mwana_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mwana -d mwanaclasse"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  mwana_pgdata:

@@ -1,0 +1,116 @@
+<div class="page-entete">
+  <div>
+    <h1>Bonjour, {{ session.nomAffiche() }}</h1>
+    <p>
+      @if (nonLues() > 0) {
+        {{ nonLues() }} notification(s) non lue(s)
+      } @else {
+        Vous êtes à jour.
+      }
+    </p>
+  </div>
+  <a class="btn btn--primaire btn--ligne" routerLink="/parent/enfants/ajouter">+ Ajouter un enfant</a>
+</div>
+
+@if (chargement()) {
+  <app-chargement texte="Chargement de votre tableau de bord…" />
+} @else if (erreur()) {
+  <app-etat-vide texte="{{ erreur() }}" icone="📡" actionTexte="Réessayer" [actionLien]="['/parent']" />
+} @else {
+  <section class="escalier">
+    <div>
+      <div class="page-entete" style="padding-bottom: 6px">
+        <h2 style="font-size: 1.02rem; margin: 0">Mes enfants</h2>
+        <a class="lien-action" routerLink="/parent/enfants">Tout voir</a>
+      </div>
+
+      @if (enfants().length === 0) {
+        <div class="carte texte-centre">
+          <p class="texte-doux">Aucun enfant rattaché pour le moment.</p>
+          <a class="btn btn--primaire" routerLink="/parent/enfants/ajouter">Ajouter mon premier enfant</a>
+        </div>
+      } @else {
+        <div class="escalier">
+          @for (e of enfants(); track e.id) {
+            <div class="carte-enfant">
+              <div class="carte-enfant__entete">
+                <span class="avatar">{{ e.full_name[0] }}</span>
+                <div style="flex: 1; min-width: 0">
+                  <div class="carte-enfant__nom">{{ e.full_name }}</div>
+                  <div class="carte-enfant__sous">{{ e.classe }} · {{ e.ecole }}</div>
+                </div>
+                <app-etiquette
+                  [texte]="etiquetteStatut(e.presence ?? 'non_enregistre').texte"
+                  [variante]="etiquetteStatut(e.presence ?? 'non_enregistre').variante"
+                />
+              </div>
+
+              <div class="carte-enfant__stats">
+                <div class="encart">
+                  <strong>{{ e.code_ecole ?? '—' }}</strong>
+                  Code école
+                </div>
+                <div class="encart">
+                  <strong>{{ e.lien_statut === 'actif' ? 'Actif' : 'En attente' }}</strong>
+                  Lien parent
+                </div>
+              </div>
+
+              <a class="btn btn--secondaire" [routerLink]="['/parent/enfants', e.id]">
+                Voir le suivi complet
+              </a>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <div class="grille-2">
+      <div class="carte">
+        <div class="carte__titre">
+          <span>Prochains événements</span>
+          <a class="lien-action" routerLink="/parent/plus">Calendrier</a>
+        </div>
+        @if (calendrier().length === 0) {
+          <p class="texte-doux">Aucun événement à venir.</p>
+        } @else {
+          <ul class="liste">
+            @for (ev of calendrier().slice(0, 4); track ev.id) {
+              <li class="ligne-liste">
+                <div class="ligne-liste__principal">
+                  <div class="ligne-liste__titre">{{ ev.title }}</div>
+                  <div class="ligne-liste__sous">{{ ev.starts_on }}{{ ev.location ? ' · ' + ev.location : '' }}</div>
+                </div>
+              </li>
+            }
+          </ul>
+        }
+      </div>
+
+      <div class="carte">
+        <div class="carte__titre">
+          <span>Mes demandes</span>
+          <a class="lien-action" routerLink="/parent/demandes">Tout voir</a>
+        </div>
+        @if (demandes().length === 0) {
+          <p class="texte-doux">Aucune demande envoyée.</p>
+        } @else {
+          <ul class="liste">
+            @for (d of demandes(); track d.id) {
+              <li class="ligne-liste">
+                <div class="ligne-liste__principal">
+                  <div class="ligne-liste__titre">{{ d.subject ?? d.reference }}</div>
+                  <div class="ligne-liste__sous">{{ d.created_at }}</div>
+                </div>
+                <app-etiquette
+                  [texte]="etiquetteStatut(d.status).texte"
+                  [variante]="etiquetteStatut(d.status).variante"
+                />
+              </li>
+            }
+          </ul>
+        }
+      </div>
+    </div>
+  </section>
+}

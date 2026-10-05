@@ -1,0 +1,43 @@
+<div class="coquille" [class.coquille--publique]="pagePublique()">
+  @if (!pagePublique()) {
+    <header class="bandeau-haut">
+      <div class="bandeau-haut__interieur">
+        <a class="marque" routerLink="/">
+          <span class="marque__pastille">M</span>
+          <span>MwanaClasse</span>
+        </a>
+
+        <div class="bandeau-actions">
+          @if (connectivite.enLigne()) {
+            <span class="pastille-en-ligne" title="Connexion active">● En ligne</span>
+          } @else {
+            <span class="pastille-en-ligne pastille-hors-ligne" title="Pas de connexion">
+              ● Hors ligne
+            </span>
+          }
+
+          @if (sync.operationsEnFile() > 0) {
+            <span class="pastille-en-ligne pastille-file" title="Opérations en attente d'envoi">
+              {{ sync.operationsEnFile() }} en file
+            </span>
+          }
+
+          @if (session.connecte()) {
+            <span class="avatar" [attr.title]="session.nomAffiche()">{{ initiales() }}</span>
+            <button type="button" class="btn btn--discret btn--ligne" (click)="deconnexion()">
+              Quitter
+            </button>
+          } @else {
+            <a class="btn btn--primaire btn--ligne" routerLink="/connexion/ecole">Connexion</a>
+          }
+        </div>
+      </div>
+    </header>
+  }
+
+  <main [class.contenu]="!pagePublique()" [class.encadre-navigation]="!pagePublique()">
+    <router-outlet />
+  </main>
+
+  <app-toast-container />
+</div>

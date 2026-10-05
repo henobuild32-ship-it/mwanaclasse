@@ -1,0 +1,64 @@
+<header class="bandeau-haut" role="banner">
+  <div class="bandeau-haut__interieur">
+    <a class="marque" routerLink="/ecole" aria-label="Accueil école">
+      <span class="marque__pastille">M</span>
+      <span>MwanaClasse</span>
+    </a>
+
+    <div class="bandeau-actions">
+      <span class="pastille-en-ligne" [class.pastille-hors-ligne]="!connectivite.enLigne()" [class.pastille-file]="sync.statutSync() === 'en_cours'">
+        <span class="pastille__point" [class]="connectivite.enLigne() ? '' : 'hors-ligne'"></span>
+        {{ connectivite.enLigne() ? 'En ligne' : 'Hors ligne' }}
+      </span>
+
+      @if (sync.statutSync() === 'en_cours') {
+        <span class="pastille pastille-file" aria-live="polite">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="animate-spin"><circle cx="12" cy="12" r="10" stroke-opacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10"/></svg>
+          Synchronisation…
+        </span>
+      }
+
+      <div class="dropdown">
+        <button class="btn btn--discret btn--ligne" (click)="toggleMenu()" [aria-expanded]="menuOuvert()" aria-haspopup="true">
+          <span class="avatar" style="width:32px;height:32px;font-size:0.85rem;">{{ session.profil()?.fullName?.charAt(0) ?? 'J' }}</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        @if (menuOuvert()) {
+          <div class="dropdown__menu" role="menu">
+            <div class="dropdown__item" role="menuitem">
+              <strong>{{ session.profil()?.fullName ?? '' }}</strong>
+              <span style="font-size:0.75rem;color:var(--mc-texte-2);margin-left:auto;">{{ session.ecole()?.code }}</span>
+            </div>
+            <div class="dropdown__separateur"></div>
+            <button class="dropdown__item" role="menuitem" (click)="router.navigate(['/ecole/profil'])">
+              👤 Mon profil
+            </button>
+            <button class="dropdown__item dropdown__item--danger" role="menuitem" (click)="deconnexion()">
+              🚪 Déconnexion
+            </button>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+</header>
+
+<nav class="navigation" aria-label="Navigation espace école">
+  @for (o of onglets(); track o.chemin) {
+    <a
+      class="navigation__lien"
+      [routerLink]="o.chemin"
+      routerLinkActive="navigation__lien--actif"
+      [routerLinkActiveOptions]="{ exact: o.chemin === '/ecole' }"
+    >
+      <span class="navigation__icone">{{ o.icone }}</span>
+      <span>{{ o.libelle }}</span>
+    </a>
+  }
+</nav>
+
+<main class="encadre-navigation">
+  <router-outlet />
+</main>
+
+<app-toast-container />

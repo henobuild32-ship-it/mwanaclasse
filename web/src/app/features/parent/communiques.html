@@ -1,0 +1,72 @@
+<div class="page-entete">
+  <div>
+    <h1>Communiqués</h1>
+    <p>{{ nonLus() }} non lu(s) sur {{ communiques().length }}</p>
+  </div>
+  <button
+    class="btn btn--secondaire btn--ligne"
+    type="button"
+    [disabled]="enCours() || nonLus() === 0"
+    (click)="marquerLus()"
+  >
+    Tout marquer comme lu
+  </button>
+</div>
+
+@if (chargement()) {
+  <app-chargement texte="Chargement des communiqués…" />
+} @else if (erreur()) {
+  <app-etat-vide texte="{{ erreur() }}" icone="📡" />
+} @else if (communiques().length === 0) {
+  <app-etat-vide texte="Aucun communiqué reçu." icone="📢" />
+} @else {
+  <div class="carte">
+    <ul class="liste">
+      @for (c of communiques(); track c.id) {
+        <li class="ligne-liste ligne-liste--haut">
+          <div class="ligne-liste__principal">
+            <div class="ligne-liste__titre">
+              @if (!c.read_at) { <span class="pastille pastille--info">nouveau</span> }
+              @if (c.is_urgent) { <span class="pastille pastille--danger">URGENT</span> }
+              {{ c.title }}
+            </div>
+            <div class="ligne-liste__sous">
+              @if (c.reference) { {{ c.reference }} · }
+              {{ c.subject ?? c.kind ?? '—' }}
+              @if (c.ecole) { · {{ c.ecole }} }
+              @if (c.eleve) { · {{ c.eleve }} }
+              @if (c.classe) { · {{ c.classe }} }
+              @if (c.published_at) { · {{ c.published_at | slice: 0:10 }} }
+            </div>
+            @if (c.summary) {
+              <div class="texte-doux" style="margin-top: 4px">{{ c.summary }}</div>
+            }
+          </div>
+          <div class="ligne-liste__fin">
+            <button class="btn btn--secondaire btn--petit" type="button" (click)="basculer(c.id)">
+              {{ ouvert() === c.id ? 'Réduire' : 'Lire' }}
+            </button>
+          </div>
+        </li>
+
+        @if (ouvert() === c.id) {
+          <li class="bloc-note">
+            @if (c.body_html) {
+              <div class="contenu-richesse" [innerHTML]="c.body_html"></div>
+            }
+            <div class="btn-groupe">
+              @if (c.pdf_url) {
+                <a class="btn btn--contour btn--ligne" [href]="c.pdf_url" target="_blank" rel="noopener">
+                  Ouvrir le PDF
+                </a>
+              }
+              @if (c.attachment_name) {
+                <span class="texte-petit">Pièce jointe : {{ c.attachment_name }}</span>
+              }
+            </div>
+          </li>
+        }
+      }
+    </ul>
+  </div>
+}

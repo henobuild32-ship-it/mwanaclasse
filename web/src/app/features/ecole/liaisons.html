@@ -1,0 +1,99 @@
+<div class="page-entete">
+  <div>
+    <h1>Demandes de liaison</h1>
+    <p>Approuver ou refuser les rattachements parent ⇄ élève.</p>
+  </div>
+</div>
+
+<div class="barre-outils" role="tablist">
+  @for (f of filtres; track f) {
+    <button
+      class="btn btn--discret btn--ligne"
+      type="button"
+      [class.actif]="filtre() === f"
+      (click)="changerFiltre(f)"
+    >
+      {{ f }}
+    </button>
+  }
+</div>
+
+@if (chargement()) {
+  <app-chargement texte="Chargement des liaisons…" />
+} @else if (erreur()) {
+  <app-etat-vide texte="{{ erreur() }}" icone="📡" />
+} @else if (liaisons().length === 0) {
+  <app-etat-vide texte="Aucune demande de liaison dans cette liste." icone="🔗" />
+} @else {
+  <div class="carte">
+    <ul class="liste">
+      @for (l of liaisons(); track l.id) {
+        <li class="ligne-liste">
+          <div class="ligne-liste__principal">
+            <div class="ligne-liste__titre">
+              {{ l.parent ?? 'Parent' }} ⇄ {{ l.eleve ?? 'élève' }}
+            </div>
+            <div class="ligne-liste__sous">
+              {{ l.email ?? l.phone ?? '—' }}
+              @if (l.classe) { · {{ l.classe }}@if (l.section) { / {{ l.section }} } }
+              @if (l.relationship) { · {{ l.relationship }} }
+              @if (l.requested_at) { · {{ l.requested_at | slice: 0:10 }} }
+              @if (l.requested_method) { · {{ l.requested_method }} }
+            </div>
+          </div>
+          <div class="ligne-liste__fin">
+            <app-etiquette
+              [texte]="etiquetteStatut(l.status).texte"
+              [variante]="etiquetteStatut(l.status).variante"
+            />
+            @if (l.status === 'en_attente') {
+              <div class="btn-groupe" style="justify-content: flex-end; margin-top: 6px">
+                <button
+                  class="btn btn--primaire btn--petit"
+                  type="button"
+                  [disabled]="enCoursId() === l.id"
+                  (click)="basculerNote(l.id)"
+                >
+                  Approuver
+                </button>
+                <button
+                  class="btn btn--danger btn--petit"
+                  type="button"
+                  [disabled]="enCoursId() === l.id"
+                  (click)="decider(l.id, 'refuser')"
+                >
+                  Refuser
+                </button>
+              </div>
+            }
+          </div>
+        </li>
+
+        @if (noteOuverte === l.id) {
+          <li class="bloc-note">
+            <div class="champ">
+              <label [for]="'note-' + l.id">Note de décision (facultative)</label>
+              <input
+                [id]="'note-' + l.id"
+                name="note"
+                [(ngModel)]="note"
+                placeholder="Ex : pièce d'identité vérifiée au bureau"
+              />
+            </div>
+            <div class="btn-groupe">
+              <button
+                class="btn btn--primaire btn--ligne"
+                type="button"
+                [disabled]="enCoursId() === l.id"
+                (click)="decider(l.id, 'approuver')"
+              >
+                Confirmer l'approbation
+              </button>
+              <button class="btn btn--discret" type="button" (click)="basculerNote(l.id)">Annuler</button>
+            </div>
+          </li>
+        }
+      }
+    </ul>
+  </div>
+}

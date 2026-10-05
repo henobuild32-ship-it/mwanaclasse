@@ -1,0 +1,94 @@
+import { SlicePipe } from '@angular/common';
+import { Component, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { ApiService, toApiError } from '../../core/api.service';
+import { Demande } from '../../core/models';
+import { ToastService } from '../../core/toast.service';
+import { Chargement, EtatVide, Etiquette, etiquetteStatut } from '../../shared/ui';
+
+type Filtre = 'tous' | 'en_attente' | 'en_cours' | 'repondu' | 'cloture';
+
+interface DemandeEcole extends Demande {
+  parent?: string | null;
+  eleve?: string | null;
+  classe?: string | null;
+  messages_parent?: unknown[];
+  messages_ecole?: unknown[];
+}
+
+/** Demandes des parents (traitement côté école, spec §5). */
+@Component({
+  selector: 'app-demandes-ecole',
+  imports: [SlicePipe, FormsModule, Chargement, EtatVide, Etiquette],
+  templateUrl: './demandes.html',
+  styleUrl: './pages.scss',
+})
+export class DemandesEcole {
+  private readonly api = inject(ApiService);
+  private readonly toasts = inject(ToastService);
+  protected readonly etiquetteStatut = etiquetteStatut;
+
+  protected readonly filtre = signal<Filtre>('tous');
+  protected readonly filtres: Filtre[] = ['tous', 'en_attente', 'en_cours', 'repondu', 'cloture'];
+  protected readonly demandes = signal<DemandeEcole[]>([]);
+  protected readonly chargement = signal(true);
+  protected readonly erreur = signal('');
+  protected readonly enCours = signal(false);
+  protected readonly idReponse = signal('');
+
+  reponse = '';
+  nouveauStatut: 'en_cours' | 'repondu' | 'cloture' | 'en_attente' = 'repondu';
+  decision: 'acceptee' | 'refusee' | 'a_verifier' = 'acceptee';
+
+  constructor() {
+    void this.charger();
+  }
+
+  protected async charger(): Promise<void> {
+    this.chargement.set(true);
+    this.erreur.set('');
+    try {
+      const statut = this.filtre() === 'tous' ? undefined : this.filtre();
+      const r = await this.api.lire<{ demandes: DemandeEcole[] }>('ecole/demandes', { statut, limit: 200 });
+      this.demandes.set(r.demandes ?? []);
+    } catch (err) {
+      const e = toApiError(err);
+      this.erreur.set(e.horsLigne ? 'Hors ligne : demandes indisponibles.' : e.message);
+    } finally {
+      this.chargement.set(false);
+    }
+  }
+
+  protected changerFiltre(f: Filtre): void {
+    this.filtre.set(f);
+    void this.charger();
+  }
+
+  protected basculer(id: string): void {
+    this.idReponse.set(this.idReponse() === id ? '' : id);
+    this.reponse = '';
+    this.nouveauStatut = 'repondu';
+  }
+
+  protected async envoyerReponse(id: string): Promise<void> {
+    if (!this.reponse.trim()) {
+      this.toasts.erreur('La réponse ne peut pas être vide.');
+      return;
+    }
+    this.enCours.set(true);
+    try {
+      await this.api.envoyer(`ecole/demandes/${id}/repondre`, {
+        message: this.reponse.trim(),
+        nouveauStatut: this.nouveauStatut,
+        decisionJustification: this.decision,
+      });
+      this.toasts.succes('Réponse envoyée au parent.');
+      this.idReponse.set('');
+      await this.charger();
+    } catch (err) {
+      this.toasts.erreur(toApiError(err).message);
+    } finally {
+      this.enCours.set(false);
+    }
+  }
+}

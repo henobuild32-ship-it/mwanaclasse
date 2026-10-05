@@ -1,0 +1,89 @@
+<section class="page-auth">
+  <aside class="marque-panneau">
+    <a class="marque-panneau__logo" routerLink="/">
+      <span class="marque-panneau__pastille">M</span>
+      <span>MwanaClasse</span>
+    </a>
+
+    <span class="marque-panneau__badge">🏫 Espace école</span>
+    <h1>Votre établissement, sous contrôle.</h1>
+    <p class="marque-panneau__texte">
+      Classes, élèves, présences et familles réunis dans une seule application,
+      utilisable même sans connexion internet.
+    </p>
+
+    <ul class="marque-panneau__avantages">
+      <li>Appel de présence en moins d'une minute, synchronisé ensuite</li>
+      <li>Communiqués et demandes des parents centralisés</li>
+      <li>Données cloisonnées par école et actions journalisées</li>
+    </ul>
+
+    <a class="marque-panneau__retour" routerLink="/">← Retour à l'accueil</a>
+  </aside>
+
+  <div class="zone-formulaire">
+    <div class="page-auth__carte">
+      <div class="page-auth__entete">
+        <span class="page-auth__pastille">🏫</span>
+        <h2>Connexion</h2>
+        <p>Connectez-vous pour gérer votre établissement.</p>
+      </div>
+
+      @if (erreur()) {
+        <div class="formulaire-erreur" role="alert">{{ erreur() }}</div>
+      }
+
+      <form (ngSubmit)="seConnecter()" #formulaire="ngForm">
+        <div class="champ">
+          <label for="email-ecole">Adresse e-mail</label>
+          <input
+            id="email-ecole"
+            name="email"
+            type="email"
+            autocomplete="username"
+            required
+            [(ngModel)]="email"
+            placeholder="directeur@votre-ecole.cd"
+          />
+        </div>
+
+        <div class="champ">
+          <label for="mdp-ecole">Mot de passe</label>
+          <input
+            id="mdp-ecole"
+            name="password"
+            type="password"
+            autocomplete="current-password"
+            required
+            [(ngModel)]="motDePasse"
+            placeholder="••••••••••••"
+          />
+        </div>
+
+        <div class="champ">
+          <label for="code-ecole">Code de l'école <span class="texte-petit">(facultatif)</span></label>
+          <input
+            id="code-ecole"
+            name="schoolCode"
+            type="text"
+            autocomplete="organization"
+            [(ngModel)]="codeEcole"
+            placeholder="MC-ECOLE-DEMO01"
+          />
+        </div>
+
+        <button class="btn btn--primaire btn--large" type="submit" [disabled]="enCours()">
+          {{ enCours() ? 'Connexion…' : 'Se connecter' }}
+        </button>
+      </form>
+
+      <div class="page-auth__pied">
+        <button type="button" class="lien-action" (click)="motDePasseOublie()">
+          Mot de passe oublié ?
+        </button>
+        <a class="lien-action" routerLink="/inscription/ecole">Créer mon école</a>
+        <a class="lien-action" routerLink="/connexion/parent">Je suis parent</a>
+      </div>
+    </div>
+  </div>
+</section>

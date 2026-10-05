@@ -1,0 +1,49 @@
+<div class="page-entete">
+  <div>
+    <h1>Parents</h1>
+    <p>{{ parents().length }} compte(s) parent(s)</p>
+  </div>
+  <a class="btn btn--secondaire btn--ligne" routerLink="/ecole/liaisons">Demandes de liaison</a>
+</div>
+
+<div class="barre-outils">
+  <input
+    type="search"
+    placeholder="Rechercher un parent…"
+    [ngModel]="recherche()"
+    (ngModelChange)="recherche.set($event); charger()"
+    aria-label="Rechercher un parent"
+  />
+</div>
+
+@if (chargement()) {
+  <app-chargement texte="Chargement des parents…" />
+} @else if (erreur()) {
+  <app-etat-vide texte="{{ erreur() }}" icone="📡" />
+} @else if (parents().length === 0) {
+  <app-etat-vide texte="Aucun compte parent enregistré." icone="👨‍👩‍👧" />
+} @else {
+  <div class="carte">
+    <ul class="liste">
+      @for (p of parents(); track p.id) {
+        <li class="ligne-liste">
+          <span class="avatar">{{ initiales(p.full_name) }}</span>
+          <div class="ligne-liste__principal">
+            <div class="ligne-liste__titre">{{ p.full_name }}</div>
+            <div class="ligne-liste__sous">
+              {{ p.email ?? p.phone ?? '—' }}
+              @if (p.relationship) { · {{ p.relationship }} }
+              @if (p.last_seen_at) { · vu le {{ p.last_seen_at | slice: 0:10 }} }
+            </div>
+          </div>
+          <div class="ligne-liste__fin">
+            <strong>{{ p.enfants_actifs ?? 0 }}</strong> enfant(s)
+            @if ((p.en_attente ?? 0) > 0) {
+              <div><app-etiquette texte="en attente" variante="attention" /></div>
+            }
+          </div>
+        </li>
+      }
+    </ul>
+  </div>
+}

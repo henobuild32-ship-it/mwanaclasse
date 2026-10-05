@@ -1,0 +1,102 @@
+@if (chargement()) {
+  <app-chargement texte="Chargement du suivi…" />
+} @else if (erreur()) {
+  <app-etat-vide texte="{{ erreur() }}" icone="📡">
+    <button class="btn btn--secondaire" type="button" (click)="retour()">Retour</button>
+  </app-etat-vide>
+} @else if (eleve(); as e) {
+  <div class="page-entete">
+    <div>
+      <h1>{{ e.full_name }}</h1>
+      <p>
+        {{ e.classe }}@if (e.section) { · {{ e.section }}} · {{ e.ecole }}
+        @if (e.annee_scolaire) { · {{ e.annee_scolaire }} }
+      </p>
+    </div>
+    <app-etiquette
+      [texte]="etiquetteStatut(e.presence_aujourdhui ?? 'non_enregistre').texte"
+      [variante]="etiquetteStatut(e.presence_aujourdhui ?? 'non_enregistre').variante"
+    />
+  </div>
+
+  @if (detail()?.clarification) {
+    <p class="note-precision">{{ detail()!.clarification }}</p>
+  }
+
+  <section class="escalier">
+    <div class="grille-stats">
+      <div class="carte">
+        <div class="carte__titre"><span>Présence aujourd'hui</span></div>
+        <ul class="liste">
+          <li class="ligne-liste">
+            <span class="ligne-liste__principal">Statut</span>
+            <span>{{ e.presence_aujourdhui ?? 'non enregistré' }}</span>
+          </li>
+          <li class="ligne-liste">
+            <span class="ligne-liste__principal">Arrivée</span>
+            <span>{{ e.arrival_time ?? '—' }}</span>
+          </li>
+          <li class="ligne-liste">
+            <span class="ligne-liste__principal">Départ</span>
+            <span>{{ e.departure_time ?? '—' }}</span>
+          </li>
+          <li class="ligne-liste">
+            <span class="ligne-liste__principal">Mode</span>
+            <span>{{ e.method ?? '—' }}</span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="carte">
+        <div class="carte__titre"><span>30 derniers jours</span></div>
+        <div class="grille-stats">
+          <div class="encart"><strong>{{ detail()?.resume30Jours?.presents ?? 0 }}</strong> présents</div>
+          <div class="encart"><strong>{{ detail()?.resume30Jours?.absents ?? 0 }}</strong> absents</div>
+          <div class="encart"><strong>{{ detail()?.resume30Jours?.retards ?? 0 }}</strong> retards</div>
+          <div class="encart"><strong>{{ detail()?.resume30Jours?.departs ?? 0 }}</strong> départs</div>
+        </div>
+      </div>
+
+      <div class="carte">
+        <div class="carte__titre"><span>Contacts école</span></div>
+        <ul class="liste">
+          <li class="ligne-liste"><span class="ligne-liste__principal">Téléphone</span><span>{{ e.phone_contact ?? '—' }}</span></li>
+          <li class="ligne-liste"><span class="ligne-liste__principal">Courriel</span><span>{{ e.email_ecole ?? '—' }}</span></li>
+          <li class="ligne-liste"><span class="ligne-liste__principal">Code enfant</span><span>{{ e.public_code }}</span></li>
+          <li class="ligne-liste"><span class="ligne-liste__principal">Lien</span><span>{{ e.relationship ?? '—' }} · {{ e.lien_statut ?? '—' }}</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="carte">
+      <div class="carte__titre"><span>Historique récent</span></div>
+      @if (!historique()?.jours?.length) {
+        <p class="texte-doux">Aucune présence enregistrée.</p>
+      } @else {
+        <ul class="liste">
+          @for (j of historique()!.jours.slice(0, 10); track j.attendance_date) {
+            <li class="ligne-liste">
+              <div class="ligne-liste__principal">
+                <div class="ligne-liste__titre">{{ j.attendance_date | slice: 0:10 }}</div>
+                <div class="ligne-liste__sous">
+                  arrivée {{ j.arrival_time ?? '—' }} · départ {{ j.departure_time ?? '—' }}
+                  @if (j.reason) { · {{ j.reason }} }
+                </div>
+              </div>
+              <app-etiquette
+                [texte]="etiquetteStatut(j.status).texte"
+                [variante]="etiquetteStatut(j.status).variante"
+              />
+            </li>
+          }
+        </ul>
+      }
+    </div>
+
+    <div class="barre-outils">
+      <a class="btn btn--secondaire btn--ligne" routerLink="/parent/demandes">Voir les demandes</a>
+      <button class="btn btn--contour btn--ligne" type="button" (click)="creerDemande()">Demander une clarification</button>
+      <button class="btn btn--discret" type="button" (click)="retour()">← Retour</button>
+    </div>
+  </section>
+}
