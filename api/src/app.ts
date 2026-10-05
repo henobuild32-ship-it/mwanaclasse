@@ -400,3 +400,19 @@ export async function shutdown(deps: AppDependencies, reason: string): Promise<v
   await deps.app.close();
   await deps.db.close();
 }
+
+/* ==========================================================================
+ *  Point d'entrée Serverless (Vercel / RequestListener)
+ * ========================================================================== */
+
+let serverlessApp: FastifyInstance | null = null;
+
+export default async function handler(req: any, res: any): Promise<void> {
+  if (!serverlessApp) {
+    const deps = await buildApp();
+    await deps.app.ready();
+    serverlessApp = deps.app;
+  }
+  serverlessApp.server.emit('request', req, res);
+}
+

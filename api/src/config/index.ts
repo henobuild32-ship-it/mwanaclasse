@@ -100,7 +100,21 @@ let cached: AppConfig | null = null;
 export function loadConfig(overrides: Record<string, string | undefined> = {}): AppConfig {
   if (cached) return cached;
 
-  const raw = { ...process.env, ...overrides };
+  const vercelHost = process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL;
+  const vercelOrigin = vercelHost ? `https://${vercelHost.replace(/^https?:\/\//, '')}` : undefined;
+
+  const defaultsForPlatform: Record<string, string | undefined> = {};
+  if (process.env.VERCEL) {
+    defaultsForPlatform.TRUST_PROXY = process.env.TRUST_PROXY ?? 'true';
+    defaultsForPlatform.COOKIE_SECURE = process.env.COOKIE_SECURE ?? 'true';
+    if (vercelOrigin) {
+      if (!process.env.API_PUBLIC_URL) defaultsForPlatform.API_PUBLIC_URL = vercelOrigin;
+      if (!process.env.WEB_PUBLIC_URL) defaultsForPlatform.WEB_PUBLIC_URL = vercelOrigin;
+      if (!process.env.CORS_ORIGINS) defaultsForPlatform.CORS_ORIGINS = vercelOrigin;
+    }
+  }
+
+  const raw = { ...defaultsForPlatform, ...process.env, ...overrides };
   const parsed = EnvSchema.safeParse(raw);
 
   if (!parsed.success) {
@@ -166,6 +180,13 @@ export function loadConfig(overrides: Record<string, string | undefined> = {}): 
   const corsOrigins = env.CORS_ORIGINS.split(',')
     .map((o) => o.trim())
     .filter(Boolean);
+
+  if (process.env.VERCEL && process.env.VERCEL_URL) {
+    const previewOrigin = `https://${process.env.VERCEL_URL.replace(/^https?:\/\//, '')}`;
+    if (!corsOrigins.includes(previewOrigin)) {
+      corsOrigins.push(previewOrigin);
+    }
+  }
 
   cached = {
     ...env,
