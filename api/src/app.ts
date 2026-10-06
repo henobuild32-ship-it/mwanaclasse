@@ -47,6 +47,23 @@ export interface AppDependencies {
   authService: AuthService;
 }
 
+/**
+ * Catégorise une erreur de base pour la sonde /sante sans exposer d'information
+ * d'infrastructure (hôte, utilisateur, mot de passe) : uniquement un mot-clé
+ * et, s'il figure dans le message, le SQLSTATE.
+ */
+function diagnosticBase(message?: string): string {
+  const m = message ?? '';
+  if (/tenant\/user/i.test(m)) return 'tenant_inconnu';
+  if (/SELF_SIGNED|CERT/i.test(m)) return 'ssl_certificat';
+  if (/ENOTFOUND|EAI_AGAIN|getaddrinfo/i.test(m)) return 'dns';
+  if (/ECONNREFUSED|ECONNRESET|EHOSTUNREACH|ENETUNREACH/i.test(m)) return 'connexion';
+  if (/password|28P01|28000/i.test(m)) return 'authentification';
+  if (/timeout|ETIMEOUT|57014/i.test(m)) return 'delai_depasse';
+  const sqlstate = /\(([0-9A-Z]{5})\)/.exec(m);
+  return sqlstate ? `inconnu:${sqlstate[1]}` : 'inconnu';
+}
+
 /* ==========================================================================
  *  Constructeur
  * ========================================================================== */
@@ -371,7 +388,8 @@ export async function buildApp(overrides: Record<string, string | undefined> = {
   /* ---------------------------------------------------------------------- */
 
   // Sonde de disponibilité : volontairement sans authentification, mais ne
-  // révèle ni version applicative, ni détail d'infrastructure.
+  // révèle ni version applicative, ni détail d'infrastructure : sur échec on
+  // n'expose qu'une catégorie et un SQLSTATE, jamais l'hôte ni l'utilisateur.
   app.get('/sante', async (_req, reply) => {
     const health = await db.health();
     return reply.code(health.ok ? 200 : 503).send({
@@ -379,6 +397,7 @@ export async function buildApp(overrides: Record<string, string | undefined> = {
       base: health.ok ? 'connectee' : 'indisponible',
       latenceMs: health.latencyMs,
       isolationActives: health.rlsForcedTables,
+      ...(health.ok ? {} : { diagnostic: diagnosticBase(health.error) }),
     });
   });
 
