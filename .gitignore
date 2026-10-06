@@ -18,4 +18,5 @@ api/.env.secrets
 
 # Artefacts de build
 web/dist/
+api/lib/
 coverage/

@@ -8,15 +8,15 @@
     "node": ">=20.11"
   },
   "scripts": {
-    "dev": "node --watch --enable-source-maps dist/server.js",
+    "dev": "node --watch --enable-source-maps lib/server.js",
     "build": "tsc -p tsconfig.json",
-    "start": "node --enable-source-maps dist/server.js",
+    "start": "node --enable-source-maps lib/server.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "secrets:generate": "node dist/tools/generate-secrets.js",
-    "security:selftest": "node dist/tools/security-selftest.js",
-    "db:migrate": "node dist/tools/migrate.js",
-    "db:seed": "node dist/tools/seed.js",
-    "db:verify": "node dist/tools/verify-db.js"
+    "secrets:generate": "node lib/tools/generate-secrets.js",
+    "security:selftest": "node lib/tools/security-selftest.js",
+    "db:migrate": "node lib/tools/migrate.js",
+    "db:seed": "node lib/tools/seed.js",
+    "db:verify": "node lib/tools/verify-db.js"
   },
   "dependencies": {
     "@fastify/cookie": "^11.0.2",
