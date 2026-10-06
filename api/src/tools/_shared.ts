@@ -11,14 +11,13 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { Pool } from 'pg';
 
 /* ==========================================================================
  *  Localisation des ressources
  * ========================================================================== */
 
-const HERE = path.dirname(fileURLToPath(import.meta.url));
+const HERE = __dirname;
 
 /** Remonte l'arborescence jusqu'au dossier qui contient `db/sql`. */
 export function findRepoRoot(startDir: string = HERE): string {

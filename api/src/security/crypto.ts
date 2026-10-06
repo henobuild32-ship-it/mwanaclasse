@@ -43,10 +43,10 @@ import {
 import { promisify } from 'node:util';
 import { createRequire } from 'node:module';
 
-// Le module est un module ECMAScript (« type »: « module ») : `require` n'y
-// existe pas. createRequire permet de charger paresseusement les modules
-// natifs (argon2, bcrypt) sans que leur absence ne casse le démarrage.
-const requireNative = createRequire(import.meta.url);
+// Sortie CommonJS : createRequire(__filename) permet de charger paresseusement
+// les modules natifs (argon2, bcrypt) sans que leur absence ne casse le
+// démarrage.
+const requireNative = createRequire(__filename);
 
 const pbkdf2 = promisify(pbkdf2Cb) as (
   password: string | Buffer,

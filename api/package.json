@@ -2,7 +2,7 @@
   "name": "mwana-classe-api",
   "version": "1.0.0",
   "private": true,
-  "type": "module",
+  "type": "commonjs",
   "description": "API sécurisée MwanaClasse — gestion scolaire et suivi parent-enfant",
   "engines": {
     "node": ">=20.11"
