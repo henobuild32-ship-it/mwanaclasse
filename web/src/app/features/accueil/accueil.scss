@@ -26,7 +26,7 @@
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  font-weight: 800;
+  font-weight: 600;
   font-size: 1.02rem;
   letter-spacing: 0.01em;
   color: var(--mc-texte);
@@ -97,7 +97,7 @@
   background: rgb(255 255 255 / 0.14);
   border: 1px solid rgb(255 255 255 / 0.28);
   font-size: 0.76rem;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0.02em;
   margin-bottom: 18px;
   backdrop-filter: blur(6px);
@@ -106,7 +106,7 @@
 .hero h1 {
   font-size: clamp(1.85rem, 5.4vw, 2.9rem);
   line-height: 1.15;
-  font-weight: 800;
+  font-weight: 600;
   letter-spacing: -0.01em;
   margin-bottom: 14px;
 }
@@ -196,7 +196,7 @@
   border-radius: 8px;
   transition: background 0.15s, color 0.15s;
 }
-.choix__secondaire strong { color: var(--mc-primaire); font-weight: 800; }
+.choix__secondaire strong { color: var(--mc-primaire); font-weight: 600; }
 .choix__secondaire:hover { background: var(--mc-primaire-10); color: var(--mc-primaire); }
 
 .choix__icone {
@@ -214,7 +214,7 @@
 .choix__contenu { flex: 1; min-width: 0; display: block; }
 .choix__titre {
   display: block;
-  font-weight: 800;
+  font-weight: 600;
   font-size: 1rem;
   margin-bottom: 2px;
 }
@@ -236,7 +236,7 @@
   place-items: center;
   background: var(--mc-fond);
   color: var(--mc-primaire);
-  font-weight: 700;
+  font-weight: 600;
   transition: background 0.15s, color 0.15s, transform 0.15s;
 }
 .choix:hover .choix__fleche {
@@ -286,7 +286,7 @@
 .mock__titre {
   margin-left: 8px;
   font-size: 0.82rem;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--mc-texte-2);
 }
 
@@ -305,7 +305,7 @@
 .mock__stat strong {
   display: block;
   font-size: 1.2rem;
-  font-weight: 800;
+  font-weight: 600;
   color: var(--mc-succes);
 }
 .mock__stat span { font-size: 0.68rem; color: var(--mc-texte-2); font-weight: 600; }
@@ -342,7 +342,7 @@
 
 .mock__tag {
   font-size: 0.68rem;
-  font-weight: 700;
+  font-weight: 600;
   padding: 4px 9px;
   border-radius: 999px;
   flex: 0 0 auto;
@@ -377,7 +377,7 @@
   border-radius: 999px;
   padding: 9px 14px;
   font-size: 0.78rem;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--mc-texte);
   box-shadow: 0 16px 34px rgb(15 23 42 / 0.28);
   white-space: nowrap;
@@ -420,7 +420,7 @@
   margin-bottom: 12px;
 }
 
-.atout__titre { font-size: 1rem; font-weight: 800; margin-bottom: 6px; }
+.atout__titre { font-size: 1rem; font-weight: 600; margin-bottom: 6px; }
 .atout__texte {
   margin: 0;
   font-size: 0.87rem;

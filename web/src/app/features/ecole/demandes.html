@@ -38,7 +38,7 @@
               @if (d.classe) { · {{ d.classe }} }
               @if (d.kind) { · {{ d.kind }} }
               @if (d.absence_date) { · absence {{ d.absence_date | slice: 0:10 }} }
-              · {{ d.created_at | slice: 0:16 }}
+              · {{ dateHeureFr(d.created_at) }}
             </div>
             @if (d.message) {
               <div class="texte-doux" style="margin-top: 4px; white-space: pre-wrap">{{ d.message }}</div>

@@ -202,7 +202,8 @@ export class PresencesEcole {
       await this.export.genererPDF(donnees);
       this.toasts.succes('PDF généré avec succès.');
     } catch (err) {
-      this.toasts.erreur('Échec de la génération du PDF.');
+      const e = toApiError(err);
+      this.toasts.erreur(e.horsLigne ? 'Hors ligne : export impossible.' : `Échec de la génération du PDF. ${e.message}`);
     } finally {
       this.exportEnCours.set(false);
     }
@@ -220,7 +221,8 @@ export class PresencesEcole {
       await this.export.genererDOCX(donnees);
       this.toasts.succes('DOCX généré avec succès.');
     } catch (err) {
-      this.toasts.erreur('Échec de la génération du DOCX.');
+      const e = toApiError(err);
+      this.toasts.erreur(e.horsLigne ? 'Hors ligne : export impossible.' : `Échec de la génération du DOCX. ${e.message}`);
     } finally {
       this.exportEnCours.set(false);
     }

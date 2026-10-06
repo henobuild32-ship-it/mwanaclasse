@@ -1,6 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ApiService, toApiError } from '../../core/api.service';
+import { dateFr, dateHeureFr } from '../../core/format';
 import { Eleve, ParentEcole } from '../../core/models';
 import { ToastService } from '../../core/toast.service';
 import { Chargement, EtatVide, Etiquette, etiquetteStatut } from '../../shared/ui';
@@ -37,6 +38,8 @@ export class FicheEleve {
   private readonly router = inject(Router);
   private readonly toasts = inject(ToastService);
   protected readonly etiquetteStatut = etiquetteStatut;
+  protected readonly dateFr = dateFr;
+  protected readonly dateHeureFr = dateHeureFr;
 
   protected readonly chargement = signal(true);
   protected readonly erreur = signal('');

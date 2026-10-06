@@ -2,6 +2,7 @@ import { SlicePipe } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService, toApiError } from '../../core/api.service';
+import { dateHeureFr } from '../../core/format';
 import { Demande } from '../../core/models';
 import { ToastService } from '../../core/toast.service';
 import { Chargement, EtatVide, Etiquette, etiquetteStatut } from '../../shared/ui';
@@ -27,6 +28,7 @@ export class DemandesEcole {
   private readonly api = inject(ApiService);
   private readonly toasts = inject(ToastService);
   protected readonly etiquetteStatut = etiquetteStatut;
+  protected readonly dateHeureFr = dateHeureFr;
 
   protected readonly filtre = signal<Filtre>('tous');
   protected readonly filtres: Filtre[] = ['tous', 'en_attente', 'en_cours', 'repondu', 'cloture'];

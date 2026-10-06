@@ -36,7 +36,7 @@
               <div class="texte-doux" style="margin-top: 4px; white-space: pre-wrap">{{ n.body }}</div>
             }
             <div class="ligne-liste__sous">
-              {{ n.kind ?? 'info' }} · {{ n.created_at | slice: 0:16 }}
+              {{ n.kind ?? 'info' }} · {{ dateHeureFr(n.created_at) }}
               @if (n.entity_type) { · {{ n.entity_type }} }
             </div>
           </div>

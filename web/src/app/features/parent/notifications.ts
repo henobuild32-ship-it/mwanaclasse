@@ -1,7 +1,7 @@
-import { SlicePipe } from '@angular/common';
 import { Component, effect, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { ApiService, toApiError } from '../../core/api.service';
+import { dateHeureFr } from '../../core/format';
 import { EnfantActifService } from '../../core/enfant-actif.service';
 import { ToastService } from '../../core/toast.service';
 import { Chargement, EtatVide, Etiquette } from '../../shared/ui';
@@ -21,7 +21,7 @@ interface Notification {
 /** Centre de notifications du parent (spec §6). */
 @Component({
   selector: 'app-notifications-parent',
-  imports: [SlicePipe, Chargement, EtatVide],
+  imports: [Chargement, EtatVide],
   templateUrl: './notifications.html',
   styleUrl: './pages.scss',
 })
@@ -30,6 +30,7 @@ export class NotificationsParent {
   private readonly toasts = inject(ToastService);
   private readonly router = inject(Router);
   protected readonly selection = inject(EnfantActifService);
+  protected readonly dateHeureFr = dateHeureFr;
 
   protected readonly notifications = signal<Notification[]>([]);
   protected readonly nonLues = signal(0);

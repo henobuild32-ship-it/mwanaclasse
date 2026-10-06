@@ -79,7 +79,7 @@
               <li class="ligne-liste">
                 <div class="ligne-liste__principal">
                   <div class="ligne-liste__titre">{{ ev.title }}</div>
-                  <div class="ligne-liste__sous">{{ ev.starts_on }}{{ ev.location ? ' · ' + ev.location : '' }}</div>
+                  <div class="ligne-liste__sous">{{ dateFr(ev.starts_on) }}{{ ev.location ? ' · ' + ev.location : '' }}</div>
                 </div>
               </li>
             }
@@ -100,7 +100,7 @@
               <li class="ligne-liste">
                 <div class="ligne-liste__principal">
                   <div class="ligne-liste__titre">{{ d.subject ?? d.reference }}</div>
-                  <div class="ligne-liste__sous">{{ d.created_at }}</div>
+                  <div class="ligne-liste__sous">{{ dateHeureFr(d.created_at) }}</div>
                 </div>
                 <app-etiquette
                   [texte]="etiquetteStatut(d.status).texte"

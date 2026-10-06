@@ -133,7 +133,7 @@
             <div class="ligne-liste__principal">
               <div class="ligne-liste__titre">{{ a.label }}</div>
               <div class="ligne-liste__sous">
-                {{ a.starts_on ?? '—' }} → {{ a.ends_on ?? '—' }}
+                {{ dateFr(a.starts_on) }} → {{ dateFr(a.ends_on) }}
               </div>
             </div>
             <div class="ligne-liste__fin">

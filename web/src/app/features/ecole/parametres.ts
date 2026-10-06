@@ -2,6 +2,7 @@ import { SlicePipe } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService, toApiError } from '../../core/api.service';
+import { dateFr } from '../../core/format';
 import { TYPES_ECOLE, inclutCollege } from '../../core/types-ecole';
 import { ToastService } from '../../core/toast.service';
 import { Chargement, ChoixMultiples, EtatVide, Etiquette, etiquetteStatut } from '../../shared/ui';
@@ -72,6 +73,7 @@ export class ParametresEcole {
   private readonly api = inject(ApiService);
   private readonly toasts = inject(ToastService);
   protected readonly etiquetteStatut = etiquetteStatut;
+  protected readonly dateFr = dateFr;
   protected readonly typesDisponibles = TYPES_ECOLE;
 
   protected readonly chargement = signal(true);

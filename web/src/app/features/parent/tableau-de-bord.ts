@@ -2,6 +2,7 @@ import { Component, effect, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ApiService, toApiError } from '../../core/api.service';
 import { EnfantActifService } from '../../core/enfant-actif.service';
+import { dateFr, dateHeureFr } from '../../core/format';
 import { Demande, Enfant, TableauBordParent as TableauBordParentDTO } from '../../core/models';
 import { SessionService } from '../../core/session.service';
 import { Chargement, EtatVide, Etiquette, etiquetteStatut } from '../../shared/ui';
@@ -18,6 +19,8 @@ export class PageTableauBordParent {
   protected readonly session = inject(SessionService);
   protected readonly selection = inject(EnfantActifService);
   protected readonly etiquetteStatut = etiquetteStatut;
+  protected readonly dateFr = dateFr;
+  protected readonly dateHeureFr = dateHeureFr;
 
   protected readonly chargement = signal(true);
   protected readonly erreur = signal('');

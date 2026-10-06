@@ -448,6 +448,41 @@ export async function registerSchoolRoutes(deps: AppDependencies): Promise<void>
     return noStore(reply).send({ classes: rows });
   });
 
+  /** Détail d'une classe : nécessaire à l'export PDF/DOCX de la feuille. */
+  app.get('/api/ecole/classes/:id', { preHandler: guard }, async (req, reply) => {
+    const schoolId = requireSchool(req);
+    const classId = String((req.params as any).id);
+
+    const rows = await db.withIdentity(dbIdentityFrom(req), async (client) => {
+      const { rows } = await client.query(
+        `SELECT o.class_id AS id, o.class_name AS name, o.level, o.max_capacity, o.effectif,
+                o.places_disponibles, o.etat_capacite, o.taux_occupation, o.is_active,
+                cl.room, cl.notes, cl.level_order,
+                ay.id AS academic_year_id, ay.label AS annee_scolaire, ay.is_current,
+                (SELECT coalesce(json_agg(json_build_object(
+                          'id', s.id, 'name', s.name, 'shortCode', s.short_code,
+                          'maxCapacity', s.max_capacity,
+                          'effectif', (SELECT count(*) FROM app.students st
+                                        WHERE st.section_id = s.id AND st.status = 'actif')
+                        ) ORDER BY s.name), '[]'::json)
+                   FROM app.sections s WHERE s.class_id = cl.id AND s.is_active) AS sections_detail
+           FROM app.classes cl
+           JOIN app.v_class_occupancy o ON o.class_id = cl.id
+           JOIN app.academic_years ay ON ay.id = cl.academic_year_id
+          WHERE cl.school_id = $1 AND cl.id = $2
+          LIMIT 1`,
+        [schoolId, classId],
+      );
+      return rows;
+    });
+
+    if (!rows[0]) {
+      return sendError(reply, 404, 'CLASSE_INTROUVABLE', 'Classe introuvable.');
+    }
+
+    return noStore(reply).send({ classe: rows[0] });
+  });
+
   app.post(
     '/api/ecole/classes',
     { preHandler: [...guard, requirePermission('classes.gerer')] },

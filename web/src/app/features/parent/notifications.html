@@ -36,7 +36,7 @@
               <div class="texte-doux" style="margin-top: 4px; white-space: pre-wrap">{{ n.body }}</div>
             }
             <div class="ligne-liste__sous">
-              {{ n.kind ?? 'info' }} · {{ n.created_at | slice: 0:16 }}
+              {{ n.kind ?? 'info' }} · {{ dateHeureFr(n.created_at) }}
             </div>
           </div>
           <div class="ligne-liste__fin">

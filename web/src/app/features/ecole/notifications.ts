@@ -1,6 +1,6 @@
-import { SlicePipe } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { ApiService, toApiError } from '../../core/api.service';
+import { dateHeureFr } from '../../core/format';
 import { ToastService } from '../../core/toast.service';
 import { Chargement, EtatVide, Etiquette, etiquetteStatut } from '../../shared/ui';
 
@@ -20,7 +20,7 @@ interface Notification {
 /** Notifications d'administration de l'école. */
 @Component({
   selector: 'app-notifications-ecole',
-  imports: [SlicePipe, Chargement, EtatVide, Etiquette],
+  imports: [Chargement, EtatVide, Etiquette],
   templateUrl: './notifications.html',
   styleUrl: './pages.scss',
 })
@@ -28,6 +28,7 @@ export class NotificationsEcole {
   private readonly api = inject(ApiService);
   private readonly toasts = inject(ToastService);
   protected readonly etiquetteStatut = etiquetteStatut;
+  protected readonly dateHeureFr = dateHeureFr;
 
   protected readonly notifications = signal<Notification[]>([]);
   protected readonly nonLues = signal(0);

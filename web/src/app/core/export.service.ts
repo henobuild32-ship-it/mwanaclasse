@@ -26,7 +26,7 @@ export interface PresenceExportData {
     presents: number;
     absents: number;
     retards: number;
-    depants: number;
+    departs: number;
   };
 }
 
@@ -42,7 +42,7 @@ export class ExportService {
     let y = marge;
 
     // En-tête école
-    const primaryColor = this.session.ecole()?.couleur ?? '#1d4ed8';
+    const primaryColor = this.couleurHex();
     pdf.setFillColor(primaryColor);
     pdf.rect(0, 0, 210, 25, 'F');
     pdf.setTextColor(255, 255, 255);
@@ -76,7 +76,7 @@ export class ExportService {
       { label: 'Présents', val: stats.presents, x: 55 },
       { label: 'Absents', val: stats.absents, x: 95 },
       { label: 'Retards', val: stats.retards, x: 135 },
-      { label: 'Dép. ant.', val: stats.depants, x: 170 },
+      { label: 'Dép. ant.', val: stats.departs, x: 170 },
     ];
     for (const c of cols) {
       pdf.setFont('helvetica', 'normal');
@@ -142,13 +142,13 @@ export class ExportService {
       pdf.text(`Page ${i} / ${pageCount}`, 185, 290, { align: 'right' });
     }
 
-    const nomFichier = `presence_${donnees.classe}_${donnees.date.replace(/-/g, '')}.pdf`;
+    const nomFichier = this.nomFichier(`presence_${donnees.classe}_${donnees.date.replace(/-/g, '')}`, 'pdf');
     pdf.save(nomFichier);
   }
 
   /** Génère un DOCX de la liste de présence */
   async genererDOCX(donnees: PresenceExportData): Promise<void> {
-    const primaryColor = this.session.ecole()?.couleur?.replace('#', '') ?? '1d4ed8';
+    const primaryColor = this.couleurHex().replace('#', '');
     const hexToRgb = (hex: string) => {
       const c = hex.replace('#', '');
       return { r: parseInt(c.slice(0,2),16), g: parseInt(c.slice(2,4),16), b: parseInt(c.slice(4,6),16) };
@@ -213,7 +213,7 @@ export class ExportService {
           }),
           new Paragraph({
             children: [
-              new TextRun({ text: `Total: ${donnees.stats.total}  •  Présents: ${donnees.stats.presents}  •  Absents: ${donnees.stats.absents}  •  Retards: ${donnees.stats.retards}  •  Départs anticipés: ${donnees.stats.depants}`, size: 18 }),
+              new TextRun({ text: `Total: ${donnees.stats.total}  •  Présents: ${donnees.stats.presents}  •  Absents: ${donnees.stats.absents}  •  Retards: ${donnees.stats.retards}  •  Départs anticipés: ${donnees.stats.departs}`, size: 18 }),
             ],
           }),
           new Paragraph({ text: '', spacing: { after: 400 } }),
@@ -227,7 +227,7 @@ export class ExportService {
     });
 
     const blob = await Packer.toBlob(doc);
-    saveAs(blob, `presence_${donnees.classe}_${donnees.date.replace(/-/g, '')}.docx`);
+    saveAs(blob, this.nomFichier(`presence_${donnees.classe}_${donnees.date.replace(/-/g, '')}`, 'docx'));
   }
 
   /** Récupère les données de présence via l'API et les formate pour l'export */
@@ -235,13 +235,13 @@ export class ExportService {
     const schoolId = this.session.ecole()?.id;
     if (!schoolId) throw new Error('Aucune école connectée');
 
-    const [presence, classe, ecole] = await Promise.all([
+    const [presence, reponseClasse, ecole] = await Promise.all([
       this.api.lire<{ eleves: any[]; recap: any }>(`ecole/presences?date=${date}&classeId=${classeId}${sectionId ? '&sectionId=' + sectionId : ''}`),
-      this.api.lire<any>(`ecole/classes/${classeId}`),
-      this.api.lire<any>(`ecole/parametres`),
+      this.api.lire<{ classe?: any } | any>(`ecole/classes/${classeId}`),
+      this.api.lire<{ ecole?: any }>(`ecole/parametres`),
     ]);
 
-    const eleves = presence.eleves.map((e: any) => ({
+    const eleves = (presence.eleves ?? []).map((e: any) => ({
       id: e.student_id,
       publicCode: e.public_code,
       nom: e.full_name,
@@ -252,22 +252,49 @@ export class ExportService {
       motif: e.reason,
     }));
 
-    const stats = presence.recap;
+    const stats = presence.recap ?? {};
+    const classe = reponseClasse?.classe ?? reponseClasse ?? {};
+    const lignes = presence.eleves ?? [];
+    const sectionsVue = [...new Set(lignes.map((e: any) => e.section).filter(Boolean))] as string[];
+    const sectionsClasse = Array.isArray(classe.sections_detail) ? classe.sections_detail : [];
+    const section =
+      sectionsVue.length === 1
+        ? String(sectionsVue[0])
+        : sectionsVue.length === 0 && sectionsClasse.length === 1
+          ? String(sectionsClasse[0]?.name ?? '')
+          : undefined;
 
     return {
       date,
-      classe: classe.name,
-      section: classe.section?.name,
+      classe: classe.name ?? lignes[0]?.classe ?? 'Classe',
+      section: section || undefined,
       ecole: ecole.ecole?.official_name ?? 'École',
       eleves,
       stats: {
-        total: stats.total,
-        presents: stats.presents,
-        absents: stats.absents,
-        retards: stats.retards,
-        depants: stats.depants,
+        total: stats.total ?? eleves.length,
+        presents: stats.presents ?? 0,
+        absents: stats.absents ?? 0,
+        retards: stats.retards ?? 0,
+        departs: stats.departs ?? 0,
       },
     };
+  }
+
+  /** Couleur primaire au format #rrggbb (jamais vide : jsPDF lèverait une erreur). */
+  private couleurHex(): string {
+    const brut = (this.session.ecole()?.couleur ?? '').trim();
+    const sansDiese = brut.startsWith('#') ? brut.slice(1) : brut;
+    return /^[0-9a-f]{6}$/i.test(sansDiese) ? `#${sansDiese.toLowerCase()}` : '#1d4ed8';
+  }
+
+  /** Nom de fichier utilisable sur tous les systèmes. */
+  private nomFichier(base: string, extension: string): string {
+    const propre = base
+      .replace(/[\\/:*?"<>|]/g, '-')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 80);
+    return `${propre || 'presence'}.${extension}`;
   }
 
   private statutLabel(s: string): string {
