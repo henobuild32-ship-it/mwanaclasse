@@ -407,12 +407,28 @@ export async function shutdown(deps: AppDependencies, reason: string): Promise<v
 
 let serverlessApp: FastifyInstance | null = null;
 
-export default async function handler(req: any, res: any): Promise<void> {
-  if (!serverlessApp) {
-    const deps = await buildApp();
-    await deps.app.ready();
-    serverlessApp = deps.app;
+export async function handler(req: any, res: any): Promise<void> {
+  try {
+    if (!serverlessApp) {
+      const deps = await buildApp();
+      await deps.app.ready();
+      serverlessApp = deps.app;
+    }
+    serverlessApp.server.emit('request', req, res);
+  } catch (err) {
+    const message = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+    console.error('[serverless] échec de la requête :', err);
+    try {
+      if (!res.headersSent) {
+        res.statusCode = 500;
+        res.setHeader('content-type', 'application/json; charset=utf-8');
+      }
+      res.end(JSON.stringify({ error: { code: '500', message } }));
+    } catch {
+      /* la réponse est déjà terminée */
+    }
   }
-  serverlessApp.server.emit('request', req, res);
 }
+
+export default handler;
 
