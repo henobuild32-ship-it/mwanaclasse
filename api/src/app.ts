@@ -174,7 +174,10 @@ export async function buildApp(overrides: Record<string, string | undefined> = {
       // Requête sans en-tête Origin (application mobile, curl) : autorisée.
       if (!origin) return callback(null, true);
       if (config.corsOrigins.includes(origin)) return callback(null, true);
-      return callback(new Error('Origine non autorisée par la politique CORS.'), false);
+      // Origine refusée : on renvoie `false` (aucun en-tête CORS) et surtout
+      // JAMAIS une Error — elle serait traitée comme une erreur serveur (500)
+      // alors que la requête est parfaitement légitime côté HTTP.
+      return callback(null, false);
     },
     credentials: true,
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
