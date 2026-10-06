@@ -1,7 +1,8 @@
 import { SlicePipe } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import { Component, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService, toApiError } from '../../core/api.service';
+import { EnfantActifService } from '../../core/enfant-actif.service';
 import { ToastService } from '../../core/toast.service';
 import { Chargement, EtatVide, Etiquette } from '../../shared/ui';
 
@@ -34,6 +35,7 @@ interface Communique {
 export class CommuniquesParent {
   private readonly api = inject(ApiService);
   private readonly toasts = inject(ToastService);
+  protected readonly selection = inject(EnfantActifService);
 
   protected readonly communiques = signal<Communique[]>([]);
   protected readonly nonLus = signal(0);
@@ -42,7 +44,21 @@ export class CommuniquesParent {
   protected readonly enCours = signal(false);
   protected readonly ouvert = signal('');
 
+  private premier = true;
+
   constructor() {
+    // Changer d'enfant change d'école : on recharge les communiqués.
+    effect(
+      () => {
+        this.selection.ecoleId();
+        if (this.premier) {
+          this.premier = false;
+          return;
+        }
+        void this.charger();
+      },
+      { allowSignalWrites: true },
+    );
     void this.charger();
   }
 
@@ -50,7 +66,11 @@ export class CommuniquesParent {
     this.chargement.set(true);
     this.erreur.set('');
     try {
-      const r = await this.api.lire<{ communiques: Communique[]; nonLus: number }>('parent/communiques');
+      await this.selection.charger();
+      const r = await this.api.lire<{ communiques: Communique[]; nonLus: number }>(
+        'parent/communiques',
+        this.selection.params,
+      );
       this.communiques.set(r.communiques ?? []);
       this.nonLus.set(r.nonLus ?? 0);
     } catch (err) {
@@ -68,7 +88,11 @@ export class CommuniquesParent {
   protected async marquerLus(): Promise<void> {
     this.enCours.set(true);
     try {
-      const r = await this.api.envoyer<{ message: string }>('parent/communiques/lus', {});
+      const r = await this.api.envoyer<{ message: string }>(
+        'parent/communiques/lus',
+        {},
+        this.selection.params,
+      );
       this.toasts.succes(r?.message ?? 'Communiqués marqués comme lus.');
       await this.charger();
     } catch (err) {

@@ -18,7 +18,6 @@ export class ConnexionEcole {
 
   email = '';
   motDePasse = '';
-  codeEcole = '';
 
   protected readonly enCours = signal(false);
   protected readonly erreur = signal('');
@@ -36,7 +35,6 @@ export class ConnexionEcole {
       await this.session.connecterEcole({
         email: this.email.trim(),
         password: this.motDePasse,
-        schoolCode: this.codeEcole.trim() || undefined,
       });
       const retour = this.route.snapshot.queryParamMap.get('retour') ?? '/ecole';
       this.router.navigateByUrl(retour.startsWith('/parent') ? '/ecole' : retour);

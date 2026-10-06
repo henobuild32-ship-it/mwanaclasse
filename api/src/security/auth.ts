@@ -56,7 +56,8 @@ export interface StaffProfile {
   id: string;
   schoolId: string;
   schoolName: string;
-  schoolCode: string;
+  /** Types d'enseignement proposés (sélection multiple). */
+  types: string[];
   fullName: string;
   jobTitle: string | null;
   email: string;
@@ -107,7 +108,7 @@ export class AuthService {
 
   async loginStaff(
     client: PoolClient,
-    input: { email: string; password: string; schoolCode?: string | null; totpCode?: string | null },
+    input: { email: string; password: string; totpCode?: string | null },
     ctx: AuthRequestContext,
   ): Promise<LoginOutcome> {
     const identifier = input.email.trim().toLowerCase();
@@ -145,7 +146,7 @@ export class AuthService {
       totp_last_used_step: string | null;
       locked_until: string | null;
       school_name: string;
-      school_code: string;
+      types: string[];
       primary_color: string;
       school_link_mode: string;
     }>(
@@ -153,14 +154,13 @@ export class AuthService {
               u.password_hash, u.password_algo, u.is_active, u.is_owner,
               u.must_change_password, u.totp_enabled, u.totp_secret_enc,
               u.totp_last_used_step, u.locked_until,
-              s.official_name AS school_name, s.public_code AS school_code,
-              s.primary_color, s.parent_link_mode AS school_link_mode
+              s.official_name AS school_name,
+              s.types, s.primary_color, s.parent_link_mode AS school_link_mode
          FROM sec.staff_users u
          JOIN app.schools s ON s.id = u.school_id
         WHERE u.email = $1
-          AND ($2::text IS NULL OR s.public_code = $2)
         LIMIT 1`,
-      [identifier, input.schoolCode?.trim().toUpperCase() ?? null],
+      [identifier],
     );
 
     const user = rows[0];
@@ -440,7 +440,7 @@ export class AuthService {
         id: user.id,
         schoolId: user.school_id,
         schoolName: user.school_name,
-        schoolCode: user.school_code,
+        types: user.types ?? [],
         fullName: user.full_name,
         jobTitle: user.job_title,
         email: user.email,
@@ -930,6 +930,10 @@ export class AuthService {
     input: {
       officialName: string;
       type: string;
+      /** Sélection multiple : cycles réellement proposés. */
+      types?: string[];
+      /** Précision « mixte / non mixte » (notamment pour le collège). */
+      isMixed?: boolean | null;
       city?: string | null;
       commune?: string | null;
       addressLine?: string | null;
@@ -977,19 +981,24 @@ export class AuthService {
     // (2) Identifiant de connexion : prenom.nom ou nom + suffixe
     const slug = await this.uniqueSlug(client, input.officialName);
 
-    // (3) École
+    // (3) École — sélection multiple des cycles, type principal = le premier.
+    const types = (input.types && input.types.length > 0 ? input.types : [input.type]).slice(0, 8);
+    const typePrincipal = input.type || types[0] || 'autre';
+    const isMixed = input.isMixed ?? types.includes('mixte');
     const school = await client.query<{ id: string; official_name: string }>(
       `INSERT INTO app.schools
-         (public_code, slug, official_name, type, city, commune, address_line,
+         (public_code, slug, official_name, type, types, is_mixed, city, commune, address_line,
           phones, email, description, opening_hours, primary_color,
           parent_link_mode, current_year_label, onboarded_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14, now())
+       VALUES ($1,$2,$3,$4,$5::app.school_type[],$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17, now())
        RETURNING id, official_name`,
       [
         schoolCode,
         slug,
         input.officialName.trim(),
-        input.type,
+        typePrincipal,
+        types,
+        isMixed,
         input.city ?? null,
         input.commune ?? null,
         input.addressLine ?? null,

@@ -25,7 +25,8 @@ export interface ProfilConnexion {
   school_id?: string | null;
   schoolName?: string;
   official_name?: string;
-  schoolCode?: string;
+  /** Types d'enseignement proposés par l'établissement (sélection multiple). */
+  types?: string[] | null;
   public_code?: string;
   primaryColor?: string;
   primary_color?: string;
@@ -345,7 +346,6 @@ export interface Enfant {
   section?: string | null;
   section_id?: string;
   ecole?: string | null;
-  code_ecole?: string | null;
   primary_color?: string | null;
   lien_statut?: string;
   lien_id?: string;

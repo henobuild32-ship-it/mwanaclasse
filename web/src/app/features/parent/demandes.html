@@ -9,12 +9,14 @@
 </div>
 
 @if (formulaireOuvert()) {
-  <div class="carte" style="margin-bottom: 16px">
-    <div class="carte__titre">
-      <span>Nouvelle demande</span>
-      <button class="btn btn--discret" type="button" (click)="fermerFormulaire()">Fermer</button>
-    </div>
-
+  <app-overlay
+    titre="Nouvelle demande"
+    validerTexte="Envoyer"
+    texteAnnuler="Annuler"
+    [enCours]="enCours()"
+    (fermetureDemandee)="fermerFormulaire()"
+    (validerDemande)="envoyer()"
+  >
     @if (!enLigne) {
       <div class="formulaire-erreur" style="background: #fffbeb; border-color: #fde68a; color: var(--mc-alerte)">
         Vous êtes hors ligne : la demande sera envoyée au retour de la connexion.
@@ -60,11 +62,7 @@
         <input id="motif" name="absenceReason" type="text" maxlength="1000" [(ngModel)]="absenceReason" />
       </div>
     </div>
-
-    <button class="btn btn--primaire btn--large" type="button" (click)="envoyer()" [disabled]="enCours()">
-      {{ enCours() ? 'Envoi…' : 'Envoyer la demande' }}
-    </button>
-  </div>
+  </app-overlay>
 }
 
 @if (chargement()) {

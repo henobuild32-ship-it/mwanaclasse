@@ -6,7 +6,7 @@
 </div>
 
 <div class="escalier">
-  @for (d of destinations; track d.chemin) {
+  @for (d of destinations(); track d.chemin) {
     <a class="lien-carte" [routerLink]="d.chemin">
       <span class="lien-carte__icone">{{ d.icone }}</span>
       <span class="lien-carte__texte">

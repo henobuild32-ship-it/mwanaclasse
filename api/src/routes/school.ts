@@ -1216,7 +1216,7 @@ export async function registerSchoolRoutes(deps: AppDependencies): Promise<void>
           const { rows } = await c.query(
             `SELECT s.full_name, s.public_code, s.gender, s.date_of_birth,
                     cl.name AS classe, sec.name AS section,
-                    sch.official_name AS ecole, sch.public_code AS code_ecole,
+                    sch.official_name AS ecole,
                     sch.logo_url, sch.primary_color, sch.address_line, sch.city, sch.phone_contact
                FROM app.students s
                JOIN app.classes cl ON cl.id = s.class_id
@@ -1232,10 +1232,9 @@ export async function registerSchoolRoutes(deps: AppDependencies): Promise<void>
             throw err;
           }
 
-          // QR code contenant les deux codes : le parent scanne au lieu de taper.
+          // QR code du code unique de l'élève : le parent scanne au lieu de taper.
           const QRCode = (await import('qrcode')).default;
           const payload = JSON.stringify({
-            e: rows[0].code_ecole,
             l: rows[0].public_code,
             n: rows[0].full_name,
           });
@@ -2482,7 +2481,7 @@ export async function registerSchoolRoutes(deps: AppDependencies): Promise<void>
     const schoolId = requireSchool(req);
     const data = await db.withIdentity(dbIdentityFrom(req), async (client) => {
       const school = await client.query(
-        `SELECT id, public_code, slug, official_name, short_name, type, logo_url,
+        `SELECT id, slug, official_name, short_name, type, types, is_mixed, logo_url,
                 primary_color, secondary_color, address_line, commune, city, province, country,
                 phones, email, website, description, opening_hours, extra_info,
                 current_year_label, parent_link_mode, settings, signature_name, signature_title,
@@ -2542,6 +2541,19 @@ export async function registerSchoolRoutes(deps: AppDependencies): Promise<void>
           type: z
             .enum(['maternelle', 'primaire', 'secondaire', 'humanites', 'technique', 'professionnel', 'mixte', 'autre'])
             .optional(),
+          // Sélection multiple des cycles proposés.
+          types: z
+            .array(
+              z.enum([
+                'maternelle', 'primaire', 'secondaire', 'humanites',
+                'technique', 'professionnel', 'mixte', 'autre',
+              ]),
+            )
+            .min(1)
+            .max(8)
+            .optional(),
+          // Précision « mixte / non mixte » (notamment pour le collège).
+          isMixed: z.boolean().optional(),
           logoUrl: optionalText(500),
           primaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
           secondaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
@@ -2598,14 +2610,16 @@ export async function registerSchoolRoutes(deps: AppDependencies): Promise<void>
                  parent_link_mode = coalesce($17, parent_link_mode),
                  signature_name = coalesce($18, signature_name),
                  signature_title = coalesce($19, signature_title),
-                 settings = coalesce($20::jsonb, settings)
+                 settings = coalesce($20::jsonb, settings),
+                 types = coalesce($21::app.school_type[], types),
+                 is_mixed = coalesce($22, is_mixed)
                WHERE id = $1
-               RETURNING id, public_code, official_name, primary_color, parent_link_mode, settings`,
+               RETURNING id, official_name, primary_color, parent_link_mode, settings`,
               [
                 schoolId,
                 input.officialName ?? null,
                 input.shortName ?? null,
-                input.type ?? null,
+                input.type ?? input.types?.[0] ?? null,
                 input.logoUrl ?? null,
                 input.primaryColor ?? null,
                 input.secondaryColor ?? null,
@@ -2622,6 +2636,8 @@ export async function registerSchoolRoutes(deps: AppDependencies): Promise<void>
                 input.signatureName ?? null,
                 input.signatureTitle ?? null,
                 input.settings ? JSON.stringify(input.settings) : null,
+                input.types ?? null,
+                input.isMixed ?? null,
               ],
             );
             return rows[0];
@@ -2631,49 +2647,6 @@ export async function registerSchoolRoutes(deps: AppDependencies): Promise<void>
       return noStore(reply).send({ message: 'Paramètres de l’établissement enregistrés.', ecole: updated });
     },
   );
-
-  /** Code école affichable, imprimable, partageable (avec QR). */
-  app.get('/api/ecole/code', { preHandler: guard }, async (req, reply) => {
-    const schoolId = requireSchool(req);
-
-    const data = await runAudited(
-      { db, audit },
-      req,
-        { action: AUDIT_ACTIONS.SCHOOL_CODE_VIEWED, entityType: 'school', entityId: () => schoolId },
-        async (_req: FastifyRequest, c: QueryableClient) => {
-          const { rows } = await c.query(
-            `SELECT official_name, public_code, logo_url, primary_color, city, address_line, phones
-               FROM app.schools WHERE id = $1`,
-            [schoolId],
-          );
-          const school = rows[0];
-          if (!school) {
-            const err = new Error('Établissement introuvable.') as Error & { statusCode?: number; code?: string };
-            err.statusCode = 404;
-            err.code = 'ECOLE_INTROUVABLE';
-            throw err;
-          }
-
-          const QRCode = (await import('qrcode')).default;
-          const qrDataUrl = await QRCode.toDataURL(
-            JSON.stringify({ e: school.public_code, n: school.official_name }),
-            { errorCorrectionLevel: 'M', margin: 1, width: 360 },
-          );
-
-          return { ...school, qrCode: qrDataUrl };
-        },
-    );
-
-    return noStore(reply).send({
-      code: data.public_code,
-      ecole: data.official_name,
-      qrCode: data.qrCode,
-      consigne:
-        'Communiquez ce code aux parents. Ils le saisissent dans l’application, ' +
-        'puis ajoutent le code unique de leur enfant.',
-      partage: `Rejoignez ${data.official_name} sur MwanaClasse. Code école : ${data.public_code}`,
-    });
-  });
 
   /* ====================================================================== */
   /*  NOTIFICATIONS ÉCOLE                                                   */

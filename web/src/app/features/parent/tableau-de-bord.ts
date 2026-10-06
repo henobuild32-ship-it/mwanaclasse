@@ -1,6 +1,7 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, effect, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ApiService, toApiError } from '../../core/api.service';
+import { EnfantActifService } from '../../core/enfant-actif.service';
 import { Demande, Enfant, TableauBordParent as TableauBordParentDTO } from '../../core/models';
 import { SessionService } from '../../core/session.service';
 import { Chargement, EtatVide, Etiquette, etiquetteStatut } from '../../shared/ui';
@@ -15,13 +16,28 @@ import { Chargement, EtatVide, Etiquette, etiquetteStatut } from '../../shared/u
 export class PageTableauBordParent {
   private readonly api = inject(ApiService);
   protected readonly session = inject(SessionService);
+  protected readonly selection = inject(EnfantActifService);
   protected readonly etiquetteStatut = etiquetteStatut;
 
   protected readonly chargement = signal(true);
   protected readonly erreur = signal('');
   protected readonly donnees = signal<TableauBordParentDTO | null>(null);
 
+  private premier = true;
+
   constructor() {
+    // Changer d'enfant change d'école : on recharge le tableau de bord.
+    effect(
+      () => {
+        this.selection.ecoleId();
+        if (this.premier) {
+          this.premier = false;
+          return;
+        }
+        void this.charger();
+      },
+      { allowSignalWrites: true },
+    );
     void this.charger();
   }
 
@@ -46,7 +62,14 @@ export class PageTableauBordParent {
     this.chargement.set(true);
     this.erreur.set('');
     try {
-      this.donnees.set(await this.api.lire<TableauBordParentDTO>('parent/tableau-de-bord'));
+      // Attend la liste des enfants pour filtrer sur l'école active.
+      await this.selection.charger();
+      this.donnees.set(
+        await this.api.lire<TableauBordParentDTO>(
+          'parent/tableau-de-bord',
+          this.selection.params,
+        ),
+      );
     } catch (err) {
       const e = toApiError(err);
       this.erreur.set(

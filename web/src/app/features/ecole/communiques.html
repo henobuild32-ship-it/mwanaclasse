@@ -3,14 +3,19 @@
     <h1>Communiqués</h1>
     <p>Informations envoyées aux parents de l'école.</p>
   </div>
-  <button class="btn btn--primaire btn--ligne" type="button" (click)="formulaire.set(!formulaire())">
+  <button class="btn btn--primaire btn--ligne" type="button" (click)="ouvrirFormulaire()">
     + Nouveau communiqué
   </button>
 </div>
 
 @if (formulaire()) {
-  <div class="carte" style="margin-bottom: 14px">
-    <div class="carte__titre"><span>Nouveau communiqué</span></div>
+  <app-overlay
+    titre="Nouveau communiqué"
+    validerTexte="Enregistrer"
+    [enCours]="enCours()"
+    (fermetureDemandee)="fermerFormulaire()"
+    (validerDemande)="creer()"
+  >
     <div class="champ">
       <label for="titre-com">Titre *</label>
       <input id="titre-com" name="titre" maxlength="200" [(ngModel)]="titre" />
@@ -44,7 +49,9 @@
           <option value="toute_ecole">Toute l'école</option>
           <option value="niveau">Niveau</option>
           <option value="classe">Classe</option>
-          <option value="section">Section</option>
+          @if (sectionsVisibles()) {
+            <option value="section">Section</option>
+          }
         </select>
       </div>
       <div class="champ">
@@ -66,13 +73,7 @@
       <input type="checkbox" name="urgent" [(ngModel)]="urgent" />
       <span>Marquer comme urgent</span>
     </label>
-    <div class="btn-groupe">
-      <button class="btn btn--primaire btn--ligne" type="button" (click)="creer()" [disabled]="enCours()">
-        {{ enCours() ? 'Envoi…' : 'Enregistrer' }}
-      </button>
-      <button class="btn btn--discret" type="button" (click)="formulaire.set(false)">Annuler</button>
-    </div>
-  </div>
+  </app-overlay>
 }
 
 <div class="barre-outils" role="tablist">

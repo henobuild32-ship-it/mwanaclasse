@@ -9,12 +9,12 @@
     <h1>Votre école en ligne en deux étapes.</h1>
     <p class="marque-panneau__texte">
       Renseignez l'établissement puis son responsable : vos parents pourront
-      ensuite rejoindre l'école avec un simple code.
+      ensuite rattacher leurs enfants avec le code de l'élève.
     </p>
 
     <ul class="marque-panneau__avantages">
       <li>Gratuit, sans carte bancaire</li>
-      <li>Code école généré automatiquement pour les parents</li>
+      <li>Aucun code d'école à diffuser : seul le code élève compte</li>
       <li>Fonctionne dès la première seconde, même hors ligne</li>
     </ul>
 
@@ -50,14 +50,34 @@
           <input id="nom-ecole" name="officialName" required [(ngModel)]="officialName" maxlength="180" />
         </div>
 
-        <div class="champ">
-          <label for="type-ecole">Type d'établissement *</label>
-          <select id="type-ecole" name="type" [(ngModel)]="type">
-            @for (t of types; track t.valeur) {
-              <option [value]="t.valeur">{{ t.libelle }}</option>
-            }
-          </select>
+        <div class="champ" [class.champ--erreur]="champEnErreur('types')">
+          <label>Type d'établissement *</label>
+          <app-choix-multiples
+            [options]="typesDisponibles"
+            libelle="Type d'établissement"
+            [(selection)]="types"
+          />
+          @if (types.length === 0) {
+            <span class="champ__erreur">Sélectionnez au moins un type d'établissement.</span>
+          }
         </div>
+
+        @if (college) {
+          <div class="champ" [class.champ--erreur]="champEnErreur('isMixed')">
+            <label>Collège — établissement mixte ? *</label>
+            <div class="choix-multiples" role="radiogroup" aria-label="Établissement mixte">
+              <label class="choix-multiple" [class.choix-multiple--actif]="isMixed === true">
+                <input type="radio" name="isMixed" [(ngModel)]="isMixed" [value]="true" />
+                <span>Oui, mixte (garçons et filles)</span>
+              </label>
+              <label class="choix-multiple" [class.choix-multiple--actif]="isMixed === false">
+                <input type="radio" name="isMixed" [(ngModel)]="isMixed" [value]="false" />
+                <span>Non, uniquement l'un des deux</span>
+              </label>
+            </div>
+            <span class="champ__aide">Précision attendue dès qu'un cycle de collège est proposé.</span>
+          </div>
+        }
 
         <div class="grille-2">
           <div class="champ">

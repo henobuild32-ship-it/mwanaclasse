@@ -1,5 +1,5 @@
 <div class="coquille" [class.coquille--publique]="pagePublique()">
-  @if (!pagePublique()) {
+  @if (!pagePublique() && !dansInterface()) {
     <header class="bandeau-haut">
       <div class="bandeau-haut__interieur">
         <a class="marque" routerLink="/">
@@ -35,9 +35,11 @@
     </header>
   }
 
-  <main [class.contenu]="!pagePublique()" [class.encadre-navigation]="!pagePublique()">
+  <main [class.contenu]="!pagePublique()" [class.encadre-navigation]="!pagePublique() && !dansInterface()">
     <router-outlet />
   </main>
 
   <app-toast-container />
 </div>
+
+<app-confirmation />

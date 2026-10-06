@@ -39,6 +39,51 @@
   </div>
 </header>
 
+@if (selection.enfants().length > 0) {
+  <div class="bascule-enfants">
+    <div class="bascule-enfants__interieur">
+      <span class="bascule-enfants__etiquette">
+        @if (selection.ecoleNom()) {
+          {{ selection.ecoleNom() }}
+        } @else {
+          Toutes vos écoles
+        }
+      </span>
+
+      <div class="bascule-enfants__liste" role="tablist" aria-label="Choisir un enfant">
+        <button
+          type="button"
+          role="tab"
+          class="bascule-enfant"
+          [class.bascule-enfant--actif]="selection.modeTous()"
+          [attr.aria-selected]="selection.modeTous()"
+          (click)="choisir(null)"
+        >
+          Tous
+        </button>
+
+        @for (e of selection.enfants(); track e.id) {
+          <button
+            type="button"
+            role="tab"
+            class="bascule-enfant"
+            [class.bascule-enfant--actif]="selection.enfantActif()?.id === e.id"
+            [attr.aria-selected]="selection.enfantActif()?.id === e.id"
+            (click)="choisir(e.id)"
+          >
+            <span
+              class="bascule-enfant__pastille"
+              [style.background]="e.primary_color ?? 'var(--mc-primaire)'"
+            ></span>
+            {{ e.full_name }}
+            <span class="bascule-enfant__ecole">{{ e.ecole }}</span>
+          </button>
+        }
+      </div>
+    </div>
+  </div>
+}
+
 <nav class="navigation" aria-label="Navigation espace parent">
   @for (o of onglets; track o.chemin) {
     <a

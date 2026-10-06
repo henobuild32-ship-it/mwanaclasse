@@ -1,12 +1,14 @@
 import { SlicePipe } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import { Component, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService, toApiError } from '../../core/api.service';
+import { ConfirmationService } from '../../core/confirmation.service';
 import { Demande, Enfant } from '../../core/models';
 import { ConnectiviteService } from '../../core/connectivite.service';
+import { EnfantActifService } from '../../core/enfant-actif.service';
 import { SyncService } from '../../core/sync.service';
 import { ToastService } from '../../core/toast.service';
-import { Chargement, EtatVide, Etiquette, etiquetteStatut } from '../../shared/ui';
+import { Chargement, EtatVide, Etiquette, etiquetteStatut, OverlayFormulaire } from '../../shared/ui';
 
 const KINDS = [
   { valeur: 'reclamation', libelle: 'Réclamation' },
@@ -21,7 +23,7 @@ const KINDS = [
 /** Demandes / réclamations du parent (spec §6). */
 @Component({
   selector: 'app-demandes-parent',
-  imports: [FormsModule, SlicePipe, Chargement, EtatVide, Etiquette],
+  imports: [FormsModule, SlicePipe, Chargement, EtatVide, Etiquette, OverlayFormulaire],
   templateUrl: './demandes.html',
   styleUrl: './pages.scss',
 })
@@ -30,6 +32,8 @@ export class DemandesParent {
   private readonly sync = inject(SyncService);
   private readonly connectivite = inject(ConnectiviteService);
   private readonly toasts = inject(ToastService);
+  protected readonly confirmation = inject(ConfirmationService);
+  protected readonly selection = inject(EnfantActifService);
   protected readonly etiquetteStatut = etiquetteStatut;
   protected readonly kinds = KINDS;
 
@@ -47,7 +51,24 @@ export class DemandesParent {
   absenceDate = '';
   absenceReason = '';
 
+  /** Saisie relevée à l'ouverture, pour détecter une fermeture avec modifications. */
+  private depart = '';
+
+  private premier = true;
+
   constructor() {
+    // Changer d'enfant change d'école : on recharge les demandes.
+    effect(
+      () => {
+        this.selection.ecoleId();
+        if (this.premier) {
+          this.premier = false;
+          return;
+        }
+        void this.charger();
+      },
+      { allowSignalWrites: true },
+    );
     void this.charger();
     void this.chargerEnfants();
   }
@@ -65,9 +86,10 @@ export class DemandesParent {
     this.chargement.set(true);
     this.erreur.set('');
     try {
+      await this.selection.charger();
       const r = await this.sync.lire(
         'demandes',
-        () => this.api.lire<{ demandes: Demande[] }>('parent/demandes'),
+        () => this.api.lire<{ demandes: Demande[] }>('parent/demandes', this.selection.params),
         (rep) => rep.demandes ?? [],
       );
       this.demandes.set((r.demandes ?? []) as unknown as Demande[]);
@@ -89,11 +111,41 @@ export class DemandesParent {
   }
 
   protected ouvrirFormulaire(): void {
+    if (this.formulaireOuvert()) {
+      void this.fermerFormulaire();
+      return;
+    }
+    this.depart = this.etat();
     this.formulaireOuvert.set(true);
   }
 
   protected fermerFormulaire(): void {
+    void this.fermerFormulaireAsync();
+  }
+
+  private async fermerFormulaireAsync(): Promise<void> {
+    if (this.formulaireOuvert() && this.etat() !== this.depart) {
+      const choix = await this.confirmation.demander({
+        message: "Votre demande n'a pas encore été envoyée.",
+      });
+      if (choix === 'reprendre') return;
+      if (choix === 'enregistrer') {
+        await this.envoyer();
+        return;
+      }
+    }
     this.formulaireOuvert.set(false);
+  }
+
+  private etat(): string {
+    return JSON.stringify([
+      this.kind,
+      this.studentId,
+      this.sujet,
+      this.message,
+      this.absenceDate,
+      this.absenceReason,
+    ]);
   }
 
   protected async envoyer(): Promise<void> {
@@ -129,6 +181,7 @@ export class DemandesParent {
       this.absenceDate = '';
       this.absenceReason = '';
       this.formulaireOuvert.set(false);
+      this.depart = this.etat();
       await this.charger();
     } catch (err) {
       const e = toApiError(err);

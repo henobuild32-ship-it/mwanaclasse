@@ -60,18 +60,6 @@
           />
         </div>
 
-        <div class="champ">
-          <label for="code-ecole">Code de l'école <span class="texte-petit">(facultatif)</span></label>
-          <input
-            id="code-ecole"
-            name="schoolCode"
-            type="text"
-            autocomplete="organization"
-            [(ngModel)]="codeEcole"
-            placeholder="MC-ECOLE-DEMO01"
-          />
-        </div>
-
         <button class="btn btn--primaire btn--large" type="submit" [disabled]="enCours()">
           {{ enCours() ? 'Connexion…' : 'Se connecter' }}
         </button>

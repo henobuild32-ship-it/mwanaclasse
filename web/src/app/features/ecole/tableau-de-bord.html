@@ -1,7 +1,7 @@
 <div class="page-entete">
   <div>
     <h1>Bonjour, {{ session.nomAffiche() }}</h1>
-    <p>{{ session.ecole()?.nom }} — code {{ session.ecole()?.code }}</p>
+    <p>{{ session.ecole()?.nom }}</p>
   </div>
   <a class="btn btn--primaire btn--ligne" routerLink="/ecole/presences">Faire l'appel</a>
 </div>
@@ -44,7 +44,9 @@
         </div>
         <div class="grille-stats">
           <app-carte-stat [valeur]="d.classes.total" libelle="Classes" />
-          <app-carte-stat [valeur]="d.classes.sections" libelle="Sections" />
+          @if (session.sectionsVisibles()) {
+            <app-carte-stat [valeur]="d.classes.sections" libelle="Sections" />
+          }
         </div>
         <p class="texte-doux" style="margin-top: 12px">
           Occupation moyenne : {{ d.classes.occupation }} %

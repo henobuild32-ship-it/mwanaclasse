@@ -2,16 +2,18 @@ import { SlicePipe } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService, toApiError } from '../../core/api.service';
+import { TYPES_ECOLE, inclutCollege } from '../../core/types-ecole';
 import { ToastService } from '../../core/toast.service';
-import { Chargement, EtatVide, Etiquette, etiquetteStatut } from '../../shared/ui';
+import { Chargement, ChoixMultiples, EtatVide, Etiquette, etiquetteStatut } from '../../shared/ui';
 
 interface Ecole {
   id: string;
-  public_code?: string;
   slug?: string | null;
   official_name: string;
   short_name?: string | null;
   type?: string | null;
+  types?: string[] | null;
+  is_mixed?: boolean | null;
   logo_url?: string | null;
   primary_color?: string | null;
   secondary_color?: string | null;
@@ -62,7 +64,7 @@ interface Parametres {
 /** Paramètres de l'établissement (identité école, années, personnel). */
 @Component({
   selector: 'app-parametres-ecole',
-  imports: [SlicePipe, FormsModule, Chargement, EtatVide, Etiquette],
+  imports: [ChoixMultiples, SlicePipe, FormsModule, Chargement, EtatVide, Etiquette],
   templateUrl: './parametres.html',
   styleUrl: './pages.scss',
 })
@@ -70,6 +72,7 @@ export class ParametresEcole {
   private readonly api = inject(ApiService);
   private readonly toasts = inject(ToastService);
   protected readonly etiquetteStatut = etiquetteStatut;
+  protected readonly typesDisponibles = TYPES_ECOLE;
 
   protected readonly chargement = signal(true);
   protected readonly erreur = signal('');
@@ -78,6 +81,10 @@ export class ParametresEcole {
 
   officialName = '';
   shortName = '';
+  /** Sélection multiple des cycles proposés. */
+  types: string[] = [];
+  /** Précision « mixte / non mixte », demandée pour le collège. */
+  isMixed: boolean | null = null;
   addressLine = '';
   commune = '';
   city = '';
@@ -92,6 +99,11 @@ export class ParametresEcole {
   signatureName = '';
   signatureTitle = '';
 
+  /** Vrai si un cycle de collège est coché : la précision mixte/non s'affiche. */
+  protected get college(): boolean {
+    return inclutCollege(this.types);
+  }
+
   constructor() {
     void this.charger();
   }
@@ -105,6 +117,12 @@ export class ParametresEcole {
       const e = r.ecole;
       this.officialName = e.official_name ?? '';
       this.shortName = e.short_name ?? '';
+      this.types = e.types?.length
+        ? [...e.types]
+        : e.type
+          ? [e.type]
+          : [];
+      this.isMixed = e.is_mixed ?? null;
       this.addressLine = e.address_line ?? '';
       this.commune = e.commune ?? '';
       this.city = e.city ?? '';
@@ -131,11 +149,21 @@ export class ParametresEcole {
       this.toasts.erreur('Le nom officiel doit contenir au moins 3 caractères.');
       return;
     }
+    if (this.types.length === 0) {
+      this.toasts.erreur('Sélectionnez au moins un type d’établissement.');
+      return;
+    }
+    if (this.college && this.isMixed === null) {
+      this.toasts.erreur('Précisez si votre collège est mixte ou non.');
+      return;
+    }
     this.enCours.set(true);
     try {
       await this.api.modifier('ecole/parametres', {
         officialName: this.officialName.trim(),
         shortName: this.shortName.trim() || null,
+        types: [...this.types],
+        ...(this.college ? { isMixed: this.isMixed } : {}),
         addressLine: this.addressLine.trim() || null,
         commune: this.commune.trim() || null,
         city: this.city.trim() || null,

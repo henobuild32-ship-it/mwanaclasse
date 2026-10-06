@@ -11,7 +11,6 @@ export interface PresenceExportData {
   classe: string;
   section?: string;
   ecole: string;
-  codeEcole: string;
   eleves: {
     id: string;
     publicCode: string;
@@ -50,8 +49,6 @@ export class ExportService {
     pdf.setFontSize(18);
     pdf.setFont('helvetica', 'bold');
     pdf.text(donnees.ecole, 15, 16);
-    pdf.setFontSize(10);
-    pdf.text(`Code: ${donnees.codeEcole}`, 15, 22);
 
     // Titre du document
     y = 32;
@@ -190,7 +187,6 @@ export class ExportService {
           new Paragraph({
             children: [
               new TextRun({ text: donnees.ecole, bold: true, size: 32, color: primaryColor }),
-              new TextRun({ text: `  Code: ${donnees.codeEcole}`, size: 20, color: '666666' }),
             ],
           }),
           new Paragraph({ text: '', spacing: { after: 120 } }),
@@ -263,7 +259,6 @@ export class ExportService {
       classe: classe.name,
       section: classe.section?.name,
       ecole: ecole.ecole?.official_name ?? 'École',
-      codeEcole: ecole.ecole?.public_code ?? '',
       eleves,
       stats: {
         total: stats.total,

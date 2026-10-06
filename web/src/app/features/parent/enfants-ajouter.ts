@@ -1,6 +1,5 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
 import { ApiService, toApiError } from '../../core/api.service';
 import { ToastService } from '../../core/toast.service';
 
@@ -8,41 +7,64 @@ const RELATIONS = [
   'pere', 'mere', 'tuteur', 'oncle', 'tante', 'grand_parent', 'frere', 'soeur', 'parent', 'autre',
 ];
 
-/** Ajout d'un enfant par codes école + enfant (spec §6). */
+/**
+ * Formulaire « Ajouter un enfant » par son code unique (spec §6).
+ *
+ * Rendu à l'intérieur d'un `<app-overlay>` ouvert depuis la liste des enfants :
+ * il ne possède ni en-tête de page, ni boutons d'action.
+ */
 @Component({
   selector: 'app-ajouter-enfant',
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule],
   templateUrl: './enfants-ajouter.html',
   styleUrl: './pages.scss',
 })
 export class AjouterEnfant {
   private readonly api = inject(ApiService);
-  private readonly router = inject(Router);
   private readonly toasts = inject(ToastService);
   protected readonly relations = RELATIONS;
 
-  protected readonly enCours = signal(false);
+  /** Enfant rattaché : la liste parente referme l'overlay et recharge. */
+  readonly enregistre = output<void>();
+
+  readonly enCours = signal(false);
   protected readonly erreur = signal('');
 
-  codeEcole = '';
   codeEnfant = '';
   relation = 'parent';
 
-  protected async ajouter(): Promise<void> {
+  /** Saisie relevée à l'ouverture, pour détecter une fermeture avec modifications. */
+  private depart = '';
+
+  constructor() {
+    this.depart = this.etat();
+  }
+
+  /** Vrai si le parent a commencé à remplir le formulaire. */
+  modifie(): boolean {
+    return this.etat() !== this.depart;
+  }
+
+  private etat(): string {
+    return JSON.stringify([this.codeEnfant, this.relation]);
+  }
+
+  /** Validation + enregistrement (appelée par le pied de l'overlay). */
+  async ajouter(): Promise<void> {
     this.erreur.set('');
-    if (this.codeEcole.trim().length < 6 || this.codeEnfant.trim().length < 6) {
-      this.erreur.set('Le code école et le code enfant doivent contenir au moins 6 caractères.');
+    if (this.codeEnfant.trim().length < 6) {
+      this.erreur.set('Le code enfant doit contenir au moins 6 caractères.');
       return;
     }
+    if (this.enCours()) return;
     this.enCours.set(true);
     try {
       const r = await this.api.envoyer<{ message?: string }>('parent/enfants', {
-        codeEcole: this.codeEcole.trim(),
         codeEnfant: this.codeEnfant.trim(),
         relation: this.relation,
       });
-      this.toasts.succes(r?.message ?? 'Demande d\'ajout envoyée.');
-      void this.router.navigate(['/parent/enfants']);
+      this.toasts.succes(r?.message ?? "Demande d'ajout envoyée.");
+      this.enregistre.emit();
     } catch (err) {
       const e = toApiError(err);
       this.erreur.set(e.horsLigne ? 'Hors ligne : action impossible pour le moment.' : e.message);

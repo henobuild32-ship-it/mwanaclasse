@@ -27,7 +27,7 @@
           <div class="dropdown__menu" role="menu">
             <div class="dropdown__item" role="menuitem">
               <strong>{{ session.profil()?.fullName ?? '' }}</strong>
-              <span style="font-size:0.75rem;color:var(--mc-texte-2);margin-left:auto;">{{ session.ecole()?.code }}</span>
+              <span style="font-size:0.75rem;color:var(--mc-texte-2);margin-left:auto;">{{ session.profil()?.jobTitle ?? '' }}</span>
             </div>
             <div class="dropdown__separateur"></div>
             <button class="dropdown__item" role="menuitem" (click)="router.navigate(['/ecole/profil'])">

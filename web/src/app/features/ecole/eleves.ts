@@ -1,10 +1,12 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, ViewChild, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ApiService, toApiError } from '../../core/api.service';
+import { ConfirmationService } from '../../core/confirmation.service';
 import { Classe, Eleve } from '../../core/models';
 import { SyncService } from '../../core/sync.service';
-import { Chargement, EtatVide, Etiquette, etiquetteStatut } from '../../shared/ui';
+import { Chargement, EtatVide, Etiquette, etiquetteStatut, OverlayFormulaire } from '../../shared/ui';
+import { NouvelEleve } from './eleves-nouveau';
 
 interface ReponseEleves {
   eleves: Eleve[];
@@ -16,13 +18,15 @@ interface ReponseEleves {
 /** Liste des élèves de l'école (spec §5 — gestion des élèves). */
 @Component({
   selector: 'app-eleves-ecole',
-  imports: [FormsModule, RouterLink, Chargement, EtatVide, Etiquette],
+  imports: [FormsModule, RouterLink, Chargement, EtatVide, Etiquette, OverlayFormulaire, NouvelEleve],
   templateUrl: './eleves.html',
   styleUrl: './pages.scss',
 })
 export class ElevesEcole {
   private readonly api = inject(ApiService);
   private readonly sync = inject(SyncService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly confirmation = inject(ConfirmationService);
   protected readonly etiquetteStatut = etiquetteStatut;
 
   protected readonly recherche = signal('');
@@ -34,12 +38,62 @@ export class ElevesEcole {
   protected readonly page = signal(0);
   protected readonly chargement = signal(true);
   protected readonly erreur = signal('');
+  protected readonly nouveau = signal(false);
 
   protected readonly parPage = 50;
 
+  @ViewChild(NouvelEleve) private formNouveau?: NouvelEleve;
+
   constructor() {
+    // Liens « Inscrire » déjà positionnés sur /ecole/eleves/nouveau.
+    if (this.route.snapshot.data['ouvrirNouveau']) this.nouveau.set(true);
     void this.chargerClasses();
     void this.charger();
+  }
+
+  /* ---------------------------------------------------------------- */
+  /*  Overlay « Inscrire un élève »                                     */
+  /* ---------------------------------------------------------------- */
+
+  protected ouvrirNouveau(): void {
+    this.nouveau.set(true);
+  }
+
+  protected fermerNouveau(): void {
+    void this.fermerNouveauAsync();
+  }
+
+  protected onEleveEnregistre(): void {
+    this.nouveau.set(false);
+    void this.charger();
+  }
+
+  /** En-cours du formulaire embarqué (pied de l'overlay). */
+  protected enCoursNouveau(): boolean {
+    return this.formNouveau?.enCours() ?? false;
+  }
+
+  /** Déclenche l'enregistrement du formulaire embarqué (pied de l'overlay). */
+  protected enregistrerNouveau(): void {
+    void this.formNouveau?.enregistrer();
+  }
+
+  private async fermerNouveauAsync(): Promise<void> {
+    if (this.formNouveau?.modifie()) {
+      const choix = await this.confirmation.demander({
+        message: "L'élève n'a pas encore été inscrit.",
+        texteEnregistrer: "Inscrire l'élève",
+        texteAbandonner: 'Abandonner',
+      });
+      if (choix === 'reprendre') return;
+      if (choix === 'enregistrer') {
+        await this.formNouveau.enregistrer();
+        // En cas d'échec de validation le formulaire reste ouvert.
+        if (this.nouveau()) return;
+        return;
+      }
+    }
+    this.nouveau.set(false);
   }
 
   protected async chargerClasses(): Promise<void> {

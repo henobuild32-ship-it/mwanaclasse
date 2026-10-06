@@ -1,7 +1,8 @@
 import { SlicePipe } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import { Component, effect, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { ApiService, toApiError } from '../../core/api.service';
+import { EnfantActifService } from '../../core/enfant-actif.service';
 import { ToastService } from '../../core/toast.service';
 import { Chargement, EtatVide, Etiquette } from '../../shared/ui';
 
@@ -28,6 +29,7 @@ export class NotificationsParent {
   private readonly api = inject(ApiService);
   private readonly toasts = inject(ToastService);
   private readonly router = inject(Router);
+  protected readonly selection = inject(EnfantActifService);
 
   protected readonly notifications = signal<Notification[]>([]);
   protected readonly nonLues = signal(0);
@@ -35,7 +37,21 @@ export class NotificationsParent {
   protected readonly erreur = signal('');
   protected readonly enCours = signal(false);
 
+  private premier = true;
+
   constructor() {
+    // Changer d'enfant change d'école : on recharge les notifications.
+    effect(
+      () => {
+        this.selection.ecoleId();
+        if (this.premier) {
+          this.premier = false;
+          return;
+        }
+        void this.charger();
+      },
+      { allowSignalWrites: true },
+    );
     void this.charger();
   }
 
@@ -43,8 +59,10 @@ export class NotificationsParent {
     this.chargement.set(true);
     this.erreur.set('');
     try {
+      await this.selection.charger();
       const r = await this.api.lire<{ notifications: Notification[]; nonLues: number }>(
         'parent/notifications',
+        this.selection.params,
       );
       this.notifications.set(r.notifications ?? []);
       this.nonLues.set(r.nonLues ?? 0);
@@ -65,7 +83,11 @@ export class NotificationsParent {
   protected async marquerLues(): Promise<void> {
     this.enCours.set(true);
     try {
-      const r = await this.api.envoyer<{ message: string }>('parent/notifications/lues', {});
+      const r = await this.api.envoyer<{ message: string }>(
+        'parent/notifications/lues',
+        {},
+        this.selection.params,
+      );
       this.toasts.succes(r?.message ?? 'Notifications marquées comme lues.');
       await this.charger();
     } catch (err) {

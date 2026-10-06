@@ -16,7 +16,6 @@ interface SuiviEnfant {
     classe?: string | null;
     section?: string | null;
     ecole?: string | null;
-    code_ecole?: string | null;
     phone_contact?: string | null;
     email_ecole?: string | null;
     annee_scolaire?: string | null;

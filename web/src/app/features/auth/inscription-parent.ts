@@ -23,7 +23,7 @@ interface DetailErreur {
 }
 
 /**
- * Création d'un compte parent (spec §3) : identité, contact, code école
+ * Création d'un compte parent (spec §3) : identité, contact, code élève
  * obligatoire puis mot de passe.
  */
 @Component({
@@ -46,7 +46,7 @@ export class InscriptionParent {
   fullName = '';
   email = '';
   phone = '';
-  codeEcole = '';
+  codeEleve = '';
   relationship = 'parent';
   password = '';
   confirmation = '';
@@ -82,8 +82,8 @@ export class InscriptionParent {
       this.erreur.set('Indiquez au moins une adresse e-mail ou un numéro de téléphone.');
       return;
     }
-    if (!this.codeEcole.trim()) {
-      this.erreur.set('Le code de l’école est obligatoire : demandez-le à l’établissement.');
+    if (!this.codeEleve.trim()) {
+      this.erreur.set('Le code de l’enfant est obligatoire : demandez-le à l’établissement.');
       return;
     }
     if (this.password !== this.confirmation) {
@@ -100,7 +100,7 @@ export class InscriptionParent {
         fullName: this.fullName.trim(),
         email: this.email.trim() || null,
         phone: this.phone.trim() || null,
-        codeEcole: this.codeEcole.trim(),
+        codeEleve: this.codeEleve.trim(),
         relationship: this.relationship,
         password: this.password,
         acceptTerms: true,

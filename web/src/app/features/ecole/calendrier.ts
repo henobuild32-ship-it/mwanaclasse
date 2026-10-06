@@ -2,8 +2,9 @@ import { SlicePipe } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService, toApiError } from '../../core/api.service';
+import { ConfirmationService } from '../../core/confirmation.service';
 import { ToastService } from '../../core/toast.service';
-import { Chargement, EtatVide, Etiquette, etiquetteStatut } from '../../shared/ui';
+import { Chargement, EtatVide, Etiquette, etiquetteStatut, OverlayFormulaire } from '../../shared/ui';
 
 interface Evenement {
   id: string;
@@ -29,13 +30,14 @@ const TYPES = [
 /** Calendrier scolaire de l'école. */
 @Component({
   selector: 'app-calendrier-ecole',
-  imports: [SlicePipe, FormsModule, Chargement, EtatVide, Etiquette],
+  imports: [SlicePipe, FormsModule, Chargement, EtatVide, Etiquette, OverlayFormulaire],
   templateUrl: './calendrier.html',
   styleUrl: './pages.scss',
 })
 export class CalendrierEcole {
   private readonly api = inject(ApiService);
   private readonly toasts = inject(ToastService);
+  protected readonly confirmation = inject(ConfirmationService);
   protected readonly etiquetteStatut = etiquetteStatut;
   protected readonly types = TYPES;
 
@@ -56,8 +58,53 @@ export class CalendrierEcole {
   lieu = '';
   audience = 'toute_ecole';
 
+  /** Saisie relevée à l'ouverture, pour détecter une fermeture avec modifications. */
+  private depart = '';
+
   constructor() {
     void this.charger();
+  }
+
+  protected ouvrirFormulaire(): void {
+    if (this.formulaire()) {
+      void this.fermerFormulaire();
+      return;
+    }
+    this.depart = this.etat();
+    this.formulaire.set(true);
+  }
+
+  protected fermerFormulaire(): void {
+    void this.fermerFormulaireAsync();
+  }
+
+  private async fermerFormulaireAsync(): Promise<void> {
+    if (this.etat() !== this.depart) {
+      const choix = await this.confirmation.demander({
+        message: "L'événement n'a pas encore été ajouté au calendrier.",
+      });
+      if (choix === 'reprendre') return;
+      if (choix === 'enregistrer') {
+        await this.creer();
+        return;
+      }
+    }
+    this.formulaire.set(false);
+  }
+
+  private etat(): string {
+    return JSON.stringify([
+      this.titre,
+      this.description,
+      this.type,
+      this.debut,
+      this.fin,
+      this.heureDebut,
+      this.heureFin,
+      this.toutLaJournee,
+      this.lieu,
+      this.audience,
+    ]);
   }
 
   protected async charger(): Promise<void> {
@@ -98,6 +145,7 @@ export class CalendrierEcole {
       this.formulaire.set(false);
       this.titre = this.description = this.lieu = '';
       this.debut = this.fin = '';
+      this.depart = this.etat();
       await this.charger();
     } catch (err) {
       this.toasts.erreur(toApiError(err).message);

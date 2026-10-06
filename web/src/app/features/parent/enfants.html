@@ -3,7 +3,7 @@
     <h1>Mes enfants</h1>
     <p>{{ enfants().length }} enfant(s) rattaché(s) à votre compte</p>
   </div>
-  <a class="btn btn--primaire btn--ligne" routerLink="/parent/enfants/ajouter">+ Ajouter</a>
+  <button class="btn btn--primaire btn--ligne" type="button" (click)="ouvrirAjout()">+ Ajouter</button>
 </div>
 
 @if (chargement()) {
@@ -11,12 +11,9 @@
 } @else if (erreur()) {
   <app-etat-vide texte="{{ erreur() }}" icone="📡" />
 } @else if (enfants().length === 0) {
-  <app-etat-vide
-    texte="Aucun enfant rattaché. Ajoutez-le avec le code de l'école et son code élève."
-    icone="➕"
-    actionTexte="Ajouter un enfant"
-    [actionLien]="['/parent/enfants/ajouter']"
-  />
+  <app-etat-vide texte="Aucun enfant rattaché. Ajoutez-le avec le code unique de l'élève." icone="➕">
+    <button class="btn btn--primaire" type="button" (click)="ouvrirAjout()">Ajouter un enfant</button>
+  </app-etat-vide>
 } @else {
   <div class="escalier">
     @for (e of enfants(); track e.id) {
@@ -52,4 +49,17 @@
       </div>
     }
   </div>
+}
+
+@if (ajout()) {
+  <app-overlay
+    titre="Ajouter un enfant"
+    validerTexte="Ajouter cet enfant"
+    texteAnnuler="Annuler"
+    [enCours]="enCoursAjout()"
+    (fermetureDemandee)="fermerAjout()"
+    (validerDemande)="ajouterEnfant()"
+  >
+    <app-ajouter-enfant (enregistre)="onEnfantAjoute()" />
+  </app-overlay>
 }

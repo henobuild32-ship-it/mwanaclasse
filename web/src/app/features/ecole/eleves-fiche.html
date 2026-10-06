@@ -20,7 +20,7 @@
   </div>
 
   <section class="escalier">
-    <div class="grille-stats">
+    <div class="grille-fiche">
       <div class="carte">
         <div class="carte__titre"><span>Présence du mois</span></div>
         <div class="grille-stats">
@@ -34,20 +34,21 @@
       <div class="carte">
         <div class="carte__titre"><span>Identité</span></div>
         <ul class="liste">
-          <li class="ligne-liste"><span class="ligne-liste__principal">Né(e) le</span><span>{{ e.date_of_birth ?? '—' }}</span></li>
-          <li class="ligne-liste"><span class="ligne-liste__principal">Lieu de naissance</span><span>{{ e.place_of_birth ?? '—' }}</span></li>
-          <li class="ligne-liste"><span class="ligne-liste__principal">Genre</span><span>{{ e.gender === 'F' ? 'Féminin' : e.gender === 'M' ? 'Masculin' : '—' }}</span></li>
-          <li class="ligne-liste"><span class="ligne-liste__principal">N° interne</span><span>{{ e.internal_number ?? '—' }}</span></li>
-          <li class="ligne-liste"><span class="ligne-liste__principal">Inscrit le</span><span>{{ e.enrolled_on ?? '—' }}</span></li>
+          <li class="ligne-liste"><span class="ligne-liste__libelle">Né(e) le</span><span class="ligne-liste__valeur">{{ e.date_of_birth ?? '—' }}</span></li>
+          <li class="ligne-liste"><span class="ligne-liste__libelle">Lieu de naissance</span><span class="ligne-liste__valeur">{{ e.place_of_birth ?? '—' }}</span></li>
+          <li class="ligne-liste"><span class="ligne-liste__libelle">Genre</span><span class="ligne-liste__valeur">{{ e.gender === 'F' ? 'Féminin' : e.gender === 'M' ? 'Masculin' : '—' }}</span></li>
+          <li class="ligne-liste"><span class="ligne-liste__libelle">N° interne</span><span class="ligne-liste__valeur">{{ e.internal_number ?? '—' }}</span></li>
+          <li class="ligne-liste"><span class="ligne-liste__libelle">Code élève</span><span class="ligne-liste__valeur">{{ e.public_code ?? '—' }}</span></li>
+          <li class="ligne-liste"><span class="ligne-liste__libelle">Inscrit le</span><span class="ligne-liste__valeur">{{ e.enrolled_on ?? '—' }}</span></li>
         </ul>
       </div>
 
       <div class="carte">
         <div class="carte__titre"><span>Contact &amp; santé</span></div>
         <ul class="liste">
-          <li class="ligne-liste"><span class="ligne-liste__principal">Téléphone du tuteur</span><span>{{ e.telephoneTuteur ?? '—' }}</span></li>
-          <li class="ligne-liste"><span class="ligne-liste__principal">Adresse</span><span>{{ e.adresse ?? '—' }}</span></li>
-          <li class="ligne-liste"><span class="ligne-liste__principal">Notes médicales</span><span>{{ e.notesMedicales ?? '—' }}</span></li>
+          <li class="ligne-liste"><span class="ligne-liste__libelle">Téléphone du tuteur</span><span class="ligne-liste__valeur">{{ e.telephoneTuteur ?? '—' }}</span></li>
+          <li class="ligne-liste"><span class="ligne-liste__libelle">Adresse</span><span class="ligne-liste__valeur">{{ e.adresse ?? '—' }}</span></li>
+          <li class="ligne-liste"><span class="ligne-liste__libelle">Notes médicales</span><span class="ligne-liste__valeur">{{ e.notesMedicales ?? '—' }}</span></li>
         </ul>
       </div>
     </div>

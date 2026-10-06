@@ -2,9 +2,9 @@
  * ============================================================================
  *  MWANA CLASSE — Interface Parent
  * ============================================================================
- *  Le parent ne configure RIEN : il saisit le code de l'école puis le code
- *  unique de son enfant, et le système récupère automatiquement le nom
- *  complet, la classe, la section et l'établissement.
+ *  Le parent ne configure RIEN : il saisit le code unique de son enfant, et
+ *  le système récupère automatiquement le nom complet, la classe, la section
+ *  et l'établissement.
  *
  *  Chaque route vérifie que le parent est bien rattaché à l'enfant concerné
  *  (liaison « actif ») avant de renvoyer la moindre donnée.
@@ -69,12 +69,24 @@ export async function registerParentRoutes(deps: AppDependencies): Promise<void>
     return row;
   }
 
+  /**
+   * École sélectionnée dans l'interface parent (`?ecoleId=`).
+   * `null` = toutes les écoles rattachées au compte.
+   */
+  function ecoleIdCourante(req: FastifyRequest): string | null {
+    const raw = (req.query as any)?.ecoleId;
+    if (typeof raw !== 'string' || raw.trim() === '') return null;
+    const parsed = uuid.safeParse(raw.trim());
+    return parsed.success ? parsed.data : null;
+  }
+
   /* ====================================================================== */
   /*  TABLEAU DE BORD PARENT                                                */
   /* ====================================================================== */
 
   app.get('/api/parent/tableau-de-bord', { preHandler: guardHooks }, async (req, reply) => {
     const parentId = req.auth!.userId;
+    const ecoleId = ecoleIdCourante(req);
 
     const data = await db.withIdentity(dbIdentityFrom(req), async (client) => {
       // Mes enfants avec leur présence du jour
@@ -82,7 +94,7 @@ export async function registerParentRoutes(deps: AppDependencies): Promise<void>
         `SELECT s.id, s.full_name, s.public_code, s.gender, s.date_of_birth, s.photo_url,
                 cl.name AS classe, cl.id AS class_id,
                 sec.name AS section, sec.id AS section_id,
-                sch.id AS school_id, sch.official_name AS ecole, sch.public_code AS code_ecole,
+                sch.id AS school_id, sch.official_name AS ecole,
                 sch.primary_color, sch.logo_url,
                 l.id AS lien_id, l.status AS lien_statut, l.is_primary,
                 coalesce(a.status::text, 'non_enregistre') AS presence,
@@ -94,11 +106,12 @@ export async function registerParentRoutes(deps: AppDependencies): Promise<void>
            JOIN app.schools sch ON sch.id = s.school_id
            LEFT JOIN app.attendance a ON a.student_id = s.id AND a.attendance_date = CURRENT_DATE
           WHERE l.parent_id = $1
+            AND ($2::uuid IS NULL OR sch.id = $2)
           ORDER BY l.status = 'actif' DESC, sch.official_name, s.full_name`,
-        [parentId],
+        [parentId, ecoleId],
       );
 
-      // Derniers communiqués non lus (toutes écoles confondues)
+      // Derniers communiqués non lus
       const announcements = await client.query(
         `SELECT a.id, a.title, a.subject, a.summary, a.kind, a.is_urgent, a.published_at,
                 r.read_at, sch.official_name AS ecole, s.full_name AS eleve
@@ -108,17 +121,19 @@ export async function registerParentRoutes(deps: AppDependencies): Promise<void>
            LEFT JOIN app.students s ON s.id = r.student_id
           WHERE r.parent_id = $1 AND a.status = 'publie'
             AND (a.expires_at IS NULL OR a.expires_at > now())
+            AND ($2::uuid IS NULL OR a.school_id = $2)
           ORDER BY r.read_at NULLS FIRST, a.published_at DESC
           LIMIT 10`,
-        [parentId],
+        [parentId, ecoleId],
       );
 
       const unread = await client.query<{ n: number }>(
         `SELECT count(*)::int AS n
            FROM app.announcement_recipients r
            JOIN app.announcements a ON a.id = r.announcement_id
-          WHERE r.parent_id = $1 AND r.read_at IS NULL AND a.status = 'publie'`,
-        [parentId],
+          WHERE r.parent_id = $1 AND r.read_at IS NULL AND a.status = 'publie'
+            AND ($2::uuid IS NULL OR a.school_id = $2)`,
+        [parentId, ecoleId],
       );
 
       // Prochains événements du calendrier des écoles concernées
@@ -131,10 +146,11 @@ export async function registerParentRoutes(deps: AppDependencies): Promise<void>
             AND e.school_id IN (
               SELECT DISTINCT l.school_id FROM app.parent_student_links l
                WHERE l.parent_id = $1 AND l.status = 'actif')
+            AND ($2::uuid IS NULL OR e.school_id = $2)
             AND coalesce(e.ends_on, e.starts_on) >= CURRENT_DATE
           ORDER BY e.starts_on
           LIMIT 8`,
-        [parentId],
+        [parentId, ecoleId],
       );
 
       // Demandes en cours
@@ -144,16 +160,18 @@ export async function registerParentRoutes(deps: AppDependencies): Promise<void>
                   WHERE m.request_id = r.id AND m.author_type = 'ecole')::int AS reponses
            FROM app.requests r
           WHERE r.parent_id = $1 AND r.status NOT IN ('cloture','annule')
+            AND ($2::uuid IS NULL OR r.school_id = $2)
           ORDER BY r.created_at DESC LIMIT 5`,
-        [parentId],
+        [parentId, ecoleId],
       );
 
       const notifications = await client.query(
         `SELECT id, kind, title, body, severity, entity_type, entity_id, action_url, read_at, created_at
            FROM app.notifications
           WHERE parent_id = $1 AND audience = 'parent'
+            AND ($2::uuid IS NULL OR school_id = $2)
           ORDER BY created_at DESC LIMIT 20`,
-        [parentId],
+        [parentId, ecoleId],
       );
 
       // Résumé de présence du mois en cours, par enfant
@@ -165,9 +183,10 @@ export async function registerParentRoutes(deps: AppDependencies): Promise<void>
            FROM app.attendance a
            JOIN app.parent_student_links l ON l.student_id = a.student_id
           WHERE l.parent_id = $1 AND l.status = 'actif'
+            AND ($2::uuid IS NULL OR l.school_id = $2)
             AND a.attendance_date >= date_trunc('month', CURRENT_DATE)
           GROUP BY a.student_id`,
-        [parentId],
+        [parentId, ecoleId],
       );
 
       const summaryByStudent = new Map(
@@ -220,114 +239,13 @@ export async function registerParentRoutes(deps: AppDependencies): Promise<void>
   });
 
   /* ====================================================================== */
-  /*  AJOUTER UNE ÉCOLE (par code)                                          */
-  /* ====================================================================== */
-
-  app.post('/api/parent/ecoles', { preHandler: guardHooks }, async (req, reply) => {
-    const parentId = req.auth!.userId;
-    const parsed = z
-      .object({ codeEcole: z.string().trim().min(6).max(32) })
-      .safeParse(req.body);
-
-    if (!parsed.success) {
-      return sendError(reply, 400, 'DONNEES_INVALIDES', 'Code école invalide.');
-    }
-
-    const ip = clientIp(req);
-    const code = parsed.data.codeEcole.toUpperCase().replace(/[^A-Z0-9]/g, '');
-    const formatted = code.startsWith('MCECOLE')
-      ? `MC-ECOLE-${code.slice(7)}`
-      : code;
-
-    const result = await db.withIdentity(dbIdentityFrom(req), async (client) => {
-      // Anti-énumération : la recherche de code est limitée en débit.
-      const quota = await guard.consume(client, 'code_lookup', {
-        kind: 'parent',
-        key: parentId,
-      });
-      if (!quota.allowed) {
-        const err = new Error(
-          'Trop de recherches de code. Patientez avant de réessayer.',
-        ) as Error & { statusCode?: number; code?: string };
-        err.statusCode = 429;
-        err.code = 'TROP_DE_RECHERCHES';
-        throw err;
-      }
-
-      const found = await client.query<{
-        id: string;
-        official_name: string;
-        public_code: string;
-        city: string | null;
-        logo_url: string | null;
-        primary_color: string;
-        parent_link_mode: string;
-        type: string;
-      }>(
-        `SELECT id, official_name, public_code, city, logo_url, primary_color,
-                parent_link_mode, type
-           FROM app.schools
-          WHERE public_code = $1 AND is_active`,
-        [formatted],
-      );
-
-      const school = found.rows[0];
-
-      await audit.write(client, {
-        actorKind: 'parent',
-        actorId: parentId,
-        actorLabel: req.auth!.displayName,
-        actorIp: ip,
-        schoolId: school?.id ?? null,
-      }, {
-        action: AUDIT_ACTIONS.STUDENT_CODE_LOOKUP,
-        severity: school ? 'info' : 'notice',
-        result: school ? 'succes' : 'echec',
-        entityType: 'school',
-        entityId: school?.id ?? null,
-        payload: { code_recherche: formatted, trouve: Boolean(school), etape: 'ecole' },
-      });
-
-      if (!school) {
-        const err = new Error(
-          'Aucun établissement ne correspond à ce code. Vérifiez auprès de l’école.',
-        ) as Error & { statusCode?: number; code?: string };
-        err.statusCode = 404;
-        err.code = 'ECOLE_INTROUVABLE';
-        throw err;
-      }
-
-      return school;
-    });
-
-    return noStore(reply).send({
-      message: `Établissement reconnu : ${result.official_name}.`,
-      ecole: {
-        id: result.id,
-        nom: result.official_name,
-        code: result.public_code,
-        ville: result.city,
-        logo: result.logo_url,
-        couleur: result.primary_color,
-        type: result.type,
-        modeValidation: result.parent_link_mode,
-      },
-      prochaineEtape:
-        result.parent_link_mode === 'automatique'
-          ? 'Saisissez maintenant le code unique de votre enfant : l’accès sera immédiat.'
-          : 'Saisissez maintenant le code unique de votre enfant ; l’école devra valider votre accès.',
-    });
-  });
-
-  /* ====================================================================== */
-  /*  AJOUTER UN ENFANT (par code unique, école + enfant)                   */
+  /*  AJOUTER UN ENFANT (par code unique)                                   */
   /* ====================================================================== */
 
   app.post('/api/parent/enfants', { preHandler: guardHooks }, async (req, reply) => {
     const parentId = req.auth!.userId;
     const parsed = z
       .object({
-        codeEcole: z.string().trim().min(6).max(32),
         codeEnfant: z.string().trim().min(6).max(32),
         relation: z
           .enum(['pere', 'mere', 'tuteur', 'oncle', 'tante', 'grand_parent', 'frere', 'soeur', 'parent', 'autre'])
@@ -337,7 +255,7 @@ export async function registerParentRoutes(deps: AppDependencies): Promise<void>
       .safeParse(req.body);
 
     if (!parsed.success) {
-      return sendError(reply, 400, 'DONNEES_INVALIDES', 'Codes école et enfant obligatoires.');
+      return sendError(reply, 400, 'DONNEES_INVALIDES', 'Le code de l’enfant est obligatoire.');
     }
 
     const normalize = (raw: string, prefix: string): string => {
@@ -345,7 +263,6 @@ export async function registerParentRoutes(deps: AppDependencies): Promise<void>
       return c.startsWith(prefix) ? `MC-${prefix}-${c.slice(prefix.length)}` : c;
     };
 
-    const schoolCode = normalize(parsed.data.codeEcole, 'ECOLE');
     const studentCode = normalize(parsed.data.codeEnfant, 'ELV');
     const ip = clientIp(req);
 
@@ -361,8 +278,8 @@ export async function registerParentRoutes(deps: AppDependencies): Promise<void>
         throw err;
       }
 
-      // Le code école ET le code enfant doivent correspondre : les deux sont
-      // nécessaires pour retrouver un élève, ce qui complique l'énumération.
+      // Le code élève est suffisant pour retrouver l'enfant, quel que soit
+      // l'établissement : un même parent peut rattacher plusieurs écoles.
       const { rows } = await client.query<{
         student_id: string;
         full_name: string;
@@ -376,7 +293,6 @@ export async function registerParentRoutes(deps: AppDependencies): Promise<void>
         section_id: string | null;
         school_id: string;
         ecole: string;
-        code_ecole: string;
         parent_link_mode: string;
         logo_url: string | null;
         primary_color: string;
@@ -387,7 +303,7 @@ export async function registerParentRoutes(deps: AppDependencies): Promise<void>
         `SELECT s.id AS student_id, s.full_name, s.first_name, s.gender, s.date_of_birth,
                 s.public_code, s.class_id, cl.name AS classe,
                 sec.name AS section, sec.id AS section_id,
-                sch.id AS school_id, sch.official_name AS ecole, sch.public_code AS code_ecole,
+                sch.id AS school_id, sch.official_name AS ecole,
                 sch.parent_link_mode, sch.logo_url, sch.primary_color, s.photo_url,
                 l.id AS existing_link_id, l.status::text AS existing_status
            FROM app.students s
@@ -396,8 +312,8 @@ export async function registerParentRoutes(deps: AppDependencies): Promise<void>
            JOIN app.schools sch ON sch.id = s.school_id
            LEFT JOIN app.parent_student_links l
                   ON l.student_id = s.id AND l.parent_id = $1
-          WHERE sch.public_code = $2 AND s.public_code = $3 AND sch.is_active`,
-        [parentId, schoolCode, studentCode],
+          WHERE s.public_code = $2 AND sch.is_active`,
+        [parentId, studentCode],
       );
 
       const student = rows[0];
@@ -416,7 +332,6 @@ export async function registerParentRoutes(deps: AppDependencies): Promise<void>
         entityType: 'student',
         entityId: student?.student_id ?? null,
         payload: {
-          code_ecole: schoolCode,
           code_enfant: studentCode,
           trouve: Boolean(student),
           etape: 'enfant',
@@ -425,8 +340,8 @@ export async function registerParentRoutes(deps: AppDependencies): Promise<void>
 
       if (!student) {
         const err = new Error(
-          'Aucun élève ne correspond à ces codes. Vérifiez le code de l’école et le code unique ' +
-            'de votre enfant tels qu’ils figurent sur la fiche remise par l’établissement.',
+          'Aucun élève ne correspond à ce code. Vérifiez le code unique de votre enfant ' +
+            'tel qu’il figure sur la fiche remise par l’établissement.',
         ) as Error & { statusCode?: number; code?: string };
         err.statusCode = 404;
         err.code = 'ELEVE_INTROUVABLE';
@@ -533,7 +448,6 @@ export async function registerParentRoutes(deps: AppDependencies): Promise<void>
         classe: s.classe,
         section: s.section,
         ecole: s.ecole,
-        codeEcole: s.code_ecole,
         sexe: s.gender,
         dateNaissance: s.date_of_birth,
         photo: s.photo_url,
@@ -560,7 +474,8 @@ export async function registerParentRoutes(deps: AppDependencies): Promise<void>
         `SELECT s.id, s.full_name, s.public_code, s.gender, s.date_of_birth, s.photo_url,
                 cl.name AS classe, cl.id AS class_id,
                 sec.name AS section, sec.id AS section_id,
-                sch.official_name AS ecole, sch.public_code AS code_ecole, sch.primary_color,
+                sch.id AS school_id,
+                sch.official_name AS ecole, sch.primary_color, sch.logo_url,
                 l.status AS lien_statut, l.relationship, l.is_primary, l.requested_at,
                 coalesce(a.status::text,'non_enregistre') AS presence_aujourdhui,
                 a.arrival_time
@@ -594,7 +509,7 @@ export async function registerParentRoutes(deps: AppDependencies): Promise<void>
       const info = await client.query(
         `SELECT s.id, s.full_name, s.public_code, s.gender, s.date_of_birth, s.photo_url,
                 cl.name AS classe, sec.name AS section,
-                sch.official_name AS ecole, sch.public_code AS code_ecole, sch.primary_color,
+                sch.official_name AS ecole, sch.primary_color,
                 sch.logo_url, sch.phone_contact, sch.email AS email_ecole,
                 ay.label AS annee_scolaire,
                 l.relationship, l.is_primary, l.status AS lien_statut,
@@ -718,12 +633,13 @@ export async function registerParentRoutes(deps: AppDependencies): Promise<void>
   app.get('/api/parent/communiques', { preHandler: guardHooks }, async (req, reply) => {
     const parentId = req.auth!.userId;
     const onlyUnread = (req.query as any)?.nonLus === 'true';
+    const ecoleId = ecoleIdCourante(req);
 
     const rows = await db.withIdentity(dbIdentityFrom(req), async (client) => {
       const { rows } = await client.query(
         `SELECT a.id, a.reference, a.title, a.subject, a.summary, a.body_html, a.kind,
                 a.is_urgent, a.published_at, a.attachment_name, a.pdf_url,
-                sch.official_name AS ecole, sch.primary_color,
+                a.school_id, sch.official_name AS ecole, sch.primary_color,
                 r.read_at, r.delivered_at, r.student_id,
                 s.full_name AS eleve, cl.name AS classe, sec.name AS section
            FROM app.announcement_recipients r
@@ -736,9 +652,10 @@ export async function registerParentRoutes(deps: AppDependencies): Promise<void>
             AND a.status = 'publie'
             AND (a.expires_at IS NULL OR a.expires_at > now())
             AND ($2::boolean = false OR r.read_at IS NULL)
+            AND ($3::uuid IS NULL OR a.school_id = $3)
           ORDER BY r.read_at NULLS FIRST, a.is_urgent DESC, a.published_at DESC
           LIMIT 200`,
-        [parentId, onlyUnread],
+        [parentId, onlyUnread, ecoleId],
       );
       return rows;
     });
@@ -806,14 +723,22 @@ export async function registerParentRoutes(deps: AppDependencies): Promise<void>
 
   app.post('/api/parent/communiques/lus', { preHandler: guardHooks }, async (req, reply) => {
     const parentId = req.auth!.userId;
+    const ecoleId = ecoleIdCourante(req);
     const parsed = z.object({ ids: z.array(uuid).max(500).optional() }).safeParse(req.body ?? {});
 
     const count = await db.withIdentity(dbIdentityFrom(req), async (client) => {
       const res = await client.query(
-        `UPDATE app.announcement_recipients SET read_at = now()
-          WHERE parent_id = $1 AND read_at IS NULL
-            AND ($2::uuid[] IS NULL OR announcement_id = ANY($2))`,
-        [parentId, parsed.success && parsed.data.ids?.length ? parsed.data.ids : null],
+        `UPDATE app.announcement_recipients r SET read_at = now()
+           FROM app.announcements a
+          WHERE a.id = r.announcement_id
+            AND r.parent_id = $1 AND r.read_at IS NULL
+            AND ($2::uuid[] IS NULL OR r.announcement_id = ANY($2))
+            AND ($3::uuid IS NULL OR a.school_id = $3)`,
+        [
+          parentId,
+          parsed.success && parsed.data.ids?.length ? parsed.data.ids : null,
+          ecoleId,
+        ],
       );
       return res.rowCount ?? 0;
     });
@@ -827,12 +752,13 @@ export async function registerParentRoutes(deps: AppDependencies): Promise<void>
 
   app.get('/api/parent/calendrier', { preHandler: guardHooks }, async (req, reply) => {
     const parentId = req.auth!.userId;
+    const ecoleId = ecoleIdCourante(req);
 
     const rows = await db.withIdentity(dbIdentityFrom(req), async (client) => {
       const { rows } = await client.query(
         `SELECT DISTINCT e.id, e.kind, e.title, e.description, e.starts_on, e.ends_on,
                 e.start_time, e.end_time, e.all_day, e.location,
-                sch.official_name AS ecole,
+                e.school_id, sch.official_name AS ecole,
                 CASE
                   WHEN e.audience_kind = 'toute_ecole' THEN 'Toute l’école'
                   WHEN e.audience_kind = 'classe' THEN 'Classe concernée'
@@ -853,10 +779,11 @@ export async function registerParentRoutes(deps: AppDependencies): Promise<void>
           WHERE e.is_published
             AND e.school_id IN (SELECT DISTINCT school_id FROM app.parent_student_links
                                  WHERE parent_id = $1 AND status = 'actif')
+            AND ($2::uuid IS NULL OR e.school_id = $2)
             AND coalesce(e.ends_on, e.starts_on) >= CURRENT_DATE - INTERVAL '7 days'
           ORDER BY e.starts_on
           LIMIT 200`,
-        [parentId],
+        [parentId, ecoleId],
       );
       return rows;
     });
@@ -880,20 +807,22 @@ export async function registerParentRoutes(deps: AppDependencies): Promise<void>
 
   app.get('/api/parent/documents', { preHandler: guardHooks }, async (req, reply) => {
     const parentId = req.auth!.userId;
+    const ecoleId = ecoleIdCourante(req);
 
     const rows = await db.withIdentity(dbIdentityFrom(req), async (client) => {
       const { rows } = await client.query(
         `SELECT d.id, d.category, d.title, d.description, d.file_url, d.file_name,
                 d.mime_type, d.file_size, d.created_at,
-                sch.official_name AS ecole
+                d.school_id, sch.official_name AS ecole
            FROM app.school_documents d
            JOIN app.schools sch ON sch.id = d.school_id
           WHERE d.is_active
             AND d.visibility = 'parents'
             AND d.school_id IN (SELECT DISTINCT school_id FROM app.parent_student_links
                                  WHERE parent_id = $1 AND status = 'actif')
+            AND ($2::uuid IS NULL OR d.school_id = $2)
           ORDER BY d.category, d.created_at DESC`,
-        [parentId],
+        [parentId, ecoleId],
       );
       return rows;
     });
@@ -907,12 +836,13 @@ export async function registerParentRoutes(deps: AppDependencies): Promise<void>
 
   app.get('/api/parent/demandes', { preHandler: guardHooks }, async (req, reply) => {
     const parentId = req.auth!.userId;
+    const ecoleId = ecoleIdCourante(req);
 
     const rows = await db.withIdentity(dbIdentityFrom(req), async (client) => {
       const { rows } = await client.query(
         `SELECT r.id, r.reference, r.kind, r.subject, r.message, r.status, r.priority,
                 r.absence_date, r.absence_reason, r.justification_decision,
-                r.created_at, r.handled_at, r.closed_at,
+                r.created_at, r.handled_at, r.closed_at, r.school_id,
                 s.full_name AS eleve, cl.name AS classe,
                 (SELECT coalesce(json_agg(json_build_object(
                           'auteur', m.author_type, 'nom', m.author_name,
@@ -924,8 +854,9 @@ export async function registerParentRoutes(deps: AppDependencies): Promise<void>
            LEFT JOIN app.students s ON s.id = r.student_id
            LEFT JOIN app.classes cl ON cl.id = s.class_id
           WHERE r.parent_id = $1
+            AND ($2::uuid IS NULL OR r.school_id = $2)
           ORDER BY r.created_at DESC LIMIT 100`,
-        [parentId],
+        [parentId, ecoleId],
       );
       return rows;
     });
@@ -1135,15 +1066,17 @@ export async function registerParentRoutes(deps: AppDependencies): Promise<void>
 
   app.get('/api/parent/notifications', { preHandler: guardHooks }, async (req, reply) => {
     const parentId = req.auth!.userId;
+    const ecoleId = ecoleIdCourante(req);
 
     const rows = await db.withIdentity(dbIdentityFrom(req), async (client) => {
       const { rows } = await client.query(
         `SELECT id, kind, title, body, severity, entity_type, entity_id, action_url, read_at, created_at
            FROM app.notifications
           WHERE parent_id = $1 AND audience = 'parent'
+            AND ($2::uuid IS NULL OR school_id = $2)
           ORDER BY read_at NULLS FIRST, created_at DESC
           LIMIT 100`,
-        [parentId],
+        [parentId, ecoleId],
       );
       return rows;
     });
@@ -1156,11 +1089,13 @@ export async function registerParentRoutes(deps: AppDependencies): Promise<void>
 
   app.post('/api/parent/notifications/lues', { preHandler: guardHooks }, async (req, reply) => {
     const parentId = req.auth!.userId;
+    const ecoleId = ecoleIdCourante(req);
     const count = await db.withIdentity(dbIdentityFrom(req), async (client) => {
       const res = await client.query(
         `UPDATE app.notifications SET read_at = now()
-          WHERE parent_id = $1 AND audience = 'parent' AND read_at IS NULL`,
-        [parentId],
+          WHERE parent_id = $1 AND audience = 'parent' AND read_at IS NULL
+            AND ($2::uuid IS NULL OR school_id = $2)`,
+        [parentId, ecoleId],
       );
       return res.rowCount ?? 0;
     });

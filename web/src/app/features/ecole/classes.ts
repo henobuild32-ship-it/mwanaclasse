@@ -1,22 +1,27 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService, toApiError } from '../../core/api.service';
+import { ConfirmationService } from '../../core/confirmation.service';
 import { Classe, Section } from '../../core/models';
+import { SessionService } from '../../core/session.service';
 import { ToastService } from '../../core/toast.service';
-import { Chargement, EtatVide, Etiquette } from '../../shared/ui';
+import { Chargement, EtatVide, Etiquette, OverlayFormulaire } from '../../shared/ui';
 
 type Onglet = 'classes' | 'sections';
 
 /** Classes et sections de l'établissement (spec §5). */
 @Component({
   selector: 'app-classes-ecole',
-  imports: [FormsModule, Chargement, EtatVide, Etiquette],
+  imports: [FormsModule, Chargement, EtatVide, Etiquette, OverlayFormulaire],
   templateUrl: './classes.html',
   styleUrl: './pages.scss',
 })
 export class ClassesEcole {
   private readonly api = inject(ApiService);
   private readonly toasts = inject(ToastService);
+  protected readonly confirmation = inject(ConfirmationService);
+  /** Sections masquées pour un établissement maternelle/primaire seul. */
+  protected readonly sectionsVisibles = inject(SessionService).sectionsVisibles;
 
   protected readonly chargement = signal(true);
   protected readonly erreur = signal('');
@@ -36,6 +41,10 @@ export class ClassesEcole {
   nomSection = '';
   codeSection = '';
   capaciteSection = 30;
+
+  /** Saisie relevée à l'ouverture, pour détecter une fermeture avec modifications. */
+  private departClasse = '';
+  private departSection = '';
 
   constructor() {
     void this.charger();
@@ -72,8 +81,85 @@ export class ClassesEcole {
     }
   }
 
+  /* ---------------------------------------------------------------- */
+  /*  Ouverture / fermeture avec confirmation                          */
+  /* ---------------------------------------------------------------- */
+
+  protected basculerClasse(): void {
+    if (this.formulaireClasse()) {
+      void this.fermerClasse();
+      return;
+    }
+    this.formulaireSection.set(false);
+    this.departClasse = this.etatClasse();
+    this.formulaireClasse.set(true);
+  }
+
+  protected basculerSection(): void {
+    if (!this.sectionsVisibles()) return;
+    if (this.formulaireSection()) {
+      void this.fermerSection();
+      return;
+    }
+    this.formulaireClasse.set(false);
+    this.departSection = this.etatSection();
+    this.formulaireSection.set(true);
+  }
+
+  protected fermerClasse(): void {
+    void this.fermerClasseAsync();
+  }
+
+  protected fermerSection(): void {
+    void this.fermerSectionAsync();
+  }
+
+  private async fermerClasseAsync(): Promise<void> {
+    if (this.etatClasse() !== this.departClasse) {
+      const choix = await this.confirmation.demander({
+        message: 'La nouvelle classe n\'a pas encore été créée.',
+      });
+      if (choix === 'reprendre') return;
+      if (choix === 'enregistrer') {
+        await this.creerClasse();
+        return;
+      }
+    }
+    this.formulaireClasse.set(false);
+  }
+
+  private async fermerSectionAsync(): Promise<void> {
+    if (this.etatSection() !== this.departSection) {
+      const choix = await this.confirmation.demander({
+        message: 'La nouvelle section n\'a pas encore été créée.',
+      });
+      if (choix === 'reprendre') return;
+      if (choix === 'enregistrer') {
+        await this.creerSection();
+        return;
+      }
+    }
+    this.formulaireSection.set(false);
+  }
+
+  private etatClasse(): string {
+    return JSON.stringify([this.nomClasse, this.niveau, this.capacite, this.salle, this.notes]);
+  }
+
+  private etatSection(): string {
+    return JSON.stringify([this.classId, this.nomSection, this.codeSection, this.capaciteSection]);
+  }
+
+  /* ---------------------------------------------------------------- */
+  /*  Enregistrement                                                   */
+  /* ---------------------------------------------------------------- */
+
   protected async creerClasse(): Promise<void> {
-    if (!this.nomClasse.trim()) return;
+    if (!this.nomClasse.trim()) {
+      this.toasts.erreur('Le nom de la classe est obligatoire.');
+      return;
+    }
+    if (this.enCours()) return;
     this.enCours.set(true);
     try {
       await this.api.envoyer('ecole/classes', {
@@ -89,6 +175,7 @@ export class ClassesEcole {
       this.niveau = '';
       this.salle = '';
       this.notes = '';
+      this.departClasse = this.etatClasse();
       this.formulaireClasse.set(false);
       await this.charger();
     } catch (err) {
@@ -99,7 +186,11 @@ export class ClassesEcole {
   }
 
   protected async creerSection(): Promise<void> {
-    if (!this.nomSection.trim() || !this.classId) return;
+    if (!this.nomSection.trim() || !this.classId) {
+      this.toasts.erreur('Choisissez une classe et donnez un nom à la section.');
+      return;
+    }
+    if (this.enCours()) return;
     this.enCours.set(true);
     try {
       await this.api.envoyer('ecole/sections', {
@@ -111,6 +202,8 @@ export class ClassesEcole {
       this.toasts.succes('Section créée.');
       this.nomSection = '';
       this.codeSection = '';
+      this.classId = '';
+      this.departSection = this.etatSection();
       this.formulaireSection.set(false);
       await this.charger();
     } catch (err) {

@@ -1,6 +1,7 @@
 import { SlicePipe } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import { Component, effect, inject, signal } from '@angular/core';
 import { ApiService, toApiError } from '../../core/api.service';
+import { EnfantActifService } from '../../core/enfant-actif.service';
 import { Chargement, EtatVide } from '../../shared/ui';
 
 interface Document {
@@ -25,12 +26,27 @@ interface Document {
 })
 export class DocumentsParent {
   private readonly api = inject(ApiService);
+  protected readonly selection = inject(EnfantActifService);
 
   protected readonly documents = signal<Document[]>([]);
   protected readonly chargement = signal(true);
   protected readonly erreur = signal('');
 
+  private premier = true;
+
   constructor() {
+    // Changer d'enfant change d'école : on recharge les documents.
+    effect(
+      () => {
+        this.selection.ecoleId();
+        if (this.premier) {
+          this.premier = false;
+          return;
+        }
+        void this.charger();
+      },
+      { allowSignalWrites: true },
+    );
     void this.charger();
   }
 
@@ -38,7 +54,11 @@ export class DocumentsParent {
     this.chargement.set(true);
     this.erreur.set('');
     try {
-      const r = await this.api.lire<{ documents: Document[] }>('parent/documents');
+      await this.selection.charger();
+      const r = await this.api.lire<{ documents: Document[] }>(
+        'parent/documents',
+        this.selection.params,
+      );
       this.documents.set(r.documents ?? []);
     } catch (err) {
       const e = toApiError(err);

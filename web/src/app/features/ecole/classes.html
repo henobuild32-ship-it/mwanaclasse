@@ -1,21 +1,31 @@
 <div class="page-entete">
   <div>
-    <h1>Classes &amp; sections</h1>
-    <p>{{ classes().length }} classe(s) · {{ sections().length }} section(s)</p>
+    <h1>{{ sectionsVisibles() ? 'Classes & sections' : 'Classes' }}</h1>
+    <p>
+      {{ classes().length }} classe(s)
+      @if (sectionsVisibles()) { · {{ sections().length }} section(s) }
+    </p>
   </div>
   <div class="barre-outils" style="margin: 0">
-    <button class="btn btn--primaire btn--ligne" type="button" (click)="formulaireClasse.set(!formulaireClasse()); formulaireSection.set(false)">
+    <button class="btn btn--primaire btn--ligne" type="button" (click)="basculerClasse()">
       + Classe
     </button>
-    <button class="btn btn--contour btn--ligne" type="button" (click)="formulaireSection.set(!formulaireSection()); formulaireClasse.set(false)">
-      + Section
-    </button>
+    @if (sectionsVisibles()) {
+      <button class="btn btn--contour btn--ligne" type="button" (click)="basculerSection()">
+        + Section
+      </button>
+    }
   </div>
 </div>
 
 @if (formulaireClasse()) {
-  <div class="carte" style="margin-bottom: 14px">
-    <div class="carte__titre"><span>Nouvelle classe</span></div>
+  <app-overlay
+    titre="Nouvelle classe"
+    validerTexte="Créer la classe"
+    [enCours]="enCours()"
+    (fermetureDemandee)="fermerClasse()"
+    (validerDemande)="creerClasse()"
+  >
     <div class="grille-2">
       <div class="champ">
         <label for="nom-classe">Nom *</label>
@@ -40,15 +50,17 @@
       <label for="notes-classe">Notes</label>
       <input id="notes-classe" name="notes" [(ngModel)]="notes" />
     </div>
-    <button class="btn btn--primaire btn--ligne" type="button" (click)="creerClasse()" [disabled]="enCours()">
-      Créer la classe
-    </button>
-  </div>
+  </app-overlay>
 }
 
-@if (formulaireSection()) {
-  <div class="carte" style="margin-bottom: 14px">
-    <div class="carte__titre"><span>Nouvelle section</span></div>
+@if (sectionsVisibles() && formulaireSection()) {
+  <app-overlay
+    titre="Nouvelle section"
+    validerTexte="Créer la section"
+    [enCours]="enCours()"
+    (fermetureDemandee)="fermerSection()"
+    (validerDemande)="creerSection()"
+  >
     <div class="champ">
       <label for="classe-parente">Classe *</label>
       <select id="classe-parente" name="classId" required [(ngModel)]="classId">
@@ -68,10 +80,7 @@
         <input id="code-section" name="codeSection" [(ngModel)]="codeSection" maxlength="12" />
       </div>
     </div>
-    <button class="btn btn--primaire btn--ligne" type="button" (click)="creerSection()" [disabled]="enCours()">
-      Créer la section
-    </button>
-  </div>
+  </app-overlay>
 }
 
 @if (chargement()) {
@@ -90,7 +99,8 @@
           <div class="ligne-liste__principal">
             <div class="ligne-liste__titre">{{ c.name }}</div>
             <div class="ligne-liste__sous">
-              {{ c.level ?? '—' }}@if (c.room) { · {{ c.room }}} · {{ c.sections_detail?.length ?? 0 }} section(s)
+              {{ c.level ?? '—' }}@if (c.room) { · {{ c.room }}}
+              @if (sectionsVisibles()) { · {{ c.sections_detail?.length ?? 0 }} section(s) }
             </div>
             <div class="jauge" style="margin-top: 6px">
               <div
@@ -113,22 +123,24 @@
     </ul>
   </div>
 
-  <div class="carte">
-    <div class="carte__titre"><span>Sections</span></div>
-    @if (sections().length === 0) {
-      <p class="texte-doux">Aucune section enregistrée.</p>
-    } @else {
-      <ul class="liste">
-        @for (s of sections(); track s.id) {
-          <li class="ligne-liste">
-            <div class="ligne-liste__principal">
-              <div class="ligne-liste__titre">{{ s.name }}</div>
-              <div class="ligne-liste__sous">{{ nomDeClasse(s.class_id ?? '') }}</div>
-            </div>
-            <div class="ligne-liste__fin">{{ s.effectif ?? 0 }} élève(s)</div>
-          </li>
-        }
-      </ul>
-    }
-  </div>
+  @if (sectionsVisibles()) {
+    <div class="carte">
+      <div class="carte__titre"><span>Sections</span></div>
+      @if (sections().length === 0) {
+        <p class="texte-doux">Aucune section enregistrée.</p>
+      } @else {
+        <ul class="liste">
+          @for (s of sections(); track s.id) {
+            <li class="ligne-liste">
+              <div class="ligne-liste__principal">
+                <div class="ligne-liste__titre">{{ s.name }}</div>
+                <div class="ligne-liste__sous">{{ nomDeClasse(s.class_id ?? '') }}</div>
+              </div>
+              <div class="ligne-liste__fin">{{ s.effectif ?? 0 }} élève(s)</div>
+            </li>
+          }
+        </ul>
+      }
+    </div>
+  }
 }

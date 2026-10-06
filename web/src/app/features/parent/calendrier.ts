@@ -1,6 +1,7 @@
 import { SlicePipe } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import { Component, effect, inject, signal } from '@angular/core';
 import { ApiService, toApiError } from '../../core/api.service';
+import { EnfantActifService } from '../../core/enfant-actif.service';
 import { Chargement, EtatVide, Etiquette } from '../../shared/ui';
 
 interface Evenement {
@@ -34,12 +35,27 @@ interface DonneesCalendrier {
 })
 export class CalendrierParent {
   private readonly api = inject(ApiService);
+  protected readonly selection = inject(EnfantActifService);
 
   protected readonly donnees = signal<DonneesCalendrier | null>(null);
   protected readonly chargement = signal(true);
   protected readonly erreur = signal('');
 
+  private premier = true;
+
   constructor() {
+    // Changer d'enfant change d'école : on recharge le calendrier.
+    effect(
+      () => {
+        this.selection.ecoleId();
+        if (this.premier) {
+          this.premier = false;
+          return;
+        }
+        void this.charger();
+      },
+      { allowSignalWrites: true },
+    );
     void this.charger();
   }
 
@@ -56,7 +72,10 @@ export class CalendrierParent {
     this.chargement.set(true);
     this.erreur.set('');
     try {
-      this.donnees.set(await this.api.lire<DonneesCalendrier>('parent/calendrier'));
+      await this.selection.charger();
+      this.donnees.set(
+        await this.api.lire<DonneesCalendrier>('parent/calendrier', this.selection.params),
+      );
     } catch (err) {
       const e = toApiError(err);
       this.erreur.set(e.horsLigne ? 'Hors ligne : calendrier indisponible.' : e.message);

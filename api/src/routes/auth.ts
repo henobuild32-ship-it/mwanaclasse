@@ -27,7 +27,6 @@ const PasswordSchema = z
 const LoginStaffSchema = z.object({
   email: z.string().email('Adresse e-mail invalide.'),
   password: z.string().min(1, 'Mot de passe obligatoire.'),
-  schoolCode: z.string().trim().max(32).optional().nullable(),
   totpCode: z.string().trim().regex(/^\d{6}$/, 'Code à 6 chiffres attendu.').optional().nullable(),
   deviceId: z.string().trim().max(120).optional().nullable(),
 });
@@ -39,12 +38,21 @@ const LoginParentSchema = z.object({
   deviceId: z.string().trim().max(120).optional().nullable(),
 });
 
+const TYPES_ECOLE = [
+  'maternelle', 'primaire', 'secondaire', 'humanites',
+  'technique', 'professionnel', 'mixte', 'autre',
+] as const;
+
+const SchoolTypeSchema = z.enum(TYPES_ECOLE);
+
 const RegisterSchoolSchema = z.object({
   officialName: z.string().trim().min(3).max(180),
-  type: z.enum([
-    'maternelle', 'primaire', 'secondaire', 'humanites',
-    'technique', 'professionnel', 'mixte', 'autre',
-  ]),
+  // Type principal (ancien champ mono, encore accepté pour compatibilité).
+  type: SchoolTypeSchema.optional(),
+  // Sélection multiple : les cycles réellement proposés.
+  types: z.array(SchoolTypeSchema).min(1).max(TYPES_ECOLE.length).optional(),
+  // Précision « mixte / non mixte », demandée notamment pour le collège.
+  isMixed: z.boolean().optional().nullable(),
   city: z.string().trim().max(120).optional().nullable(),
   commune: z.string().trim().max(120).optional().nullable(),
   addressLine: z.string().trim().max(240).optional().nullable(),
@@ -69,9 +77,9 @@ const RegisterParentSchema = z.object({
   phone: z.string().trim().max(32).optional().nullable(),
   password: PasswordSchema,
   relationship: z.string().trim().max(40).optional(),
-  // Le code de l'école est obligatoire : il rattache le compte à
-  // l'établissement dès l'inscription (et évite les comptes orphelins).
-  codeEcole: z.string().trim().min(6, 'Code école obligatoire.').max(32),
+  // Le code de l'élève suffit : il rattache le compte au compte à
+  // l'établissement de l'enfant, sans jamais saisir de code école.
+  codeEleve: z.string().trim().min(6, 'Code élève obligatoire.').max(32),
   acceptTerms: z.literal(true, { message: 'Vous devez accepter les conditions d’utilisation.' }),
 });
 
@@ -113,6 +121,16 @@ export async function registerAuthRoutes(deps: AppDependencies): Promise<void> {
       });
     }
 
+    // Sélection multiple : au moins un cycle doit être coché.
+    const types = parsed.data.types ?? (parsed.data.type ? [parsed.data.type] : []);
+    if (types.length === 0) {
+      return sendError(reply, 400, 'DONNEES_INVALIDES', 'Formulaire incomplet ou incorrect.', {
+        details: [
+          { champ: 'types', message: 'Sélectionnez au moins un type d’établissement.' },
+        ],
+      });
+    }
+
     const ip = clientIp(req);
     const ctx = {
       ip,
@@ -151,6 +169,9 @@ export async function registerAuthRoutes(deps: AppDependencies): Promise<void> {
         client,
         {
           ...parsed.data,
+          type: types[0]!,
+          types,
+          isMixed: parsed.data.isMixed ?? null,
           parentLinkMode: parsed.data.parentLinkMode ?? 'validation',
         },
         ctx,
@@ -158,12 +179,9 @@ export async function registerAuthRoutes(deps: AppDependencies): Promise<void> {
     });
 
     return noStore(reply).code(201).send({
-      message:
-        'Votre établissement a été créé. Conservez précieusement votre code école : ' +
-        'il permet aux parents de retrouver votre établissement.',
+      message: 'Votre établissement a été créé.',
       ecole: {
         id: result.schoolId,
-        code: result.schoolCode,
         anneeScolaire: result.yearLabel,
       },
       compte: { email: parsed.data.directorEmail },
@@ -215,32 +233,43 @@ export async function registerAuthRoutes(deps: AppDependencies): Promise<void> {
         }
       }
 
-      // Code école obligatoire : l'établissement doit exister et être actif.
-      const normalizedCode = parsed.data.codeEcole
+      // Code élève obligatoire : il identifie l'enfant ET son établissement,
+      // ce qui évite tout code école à retenir ou à diffuser.
+      const normalizedCode = parsed.data.codeEleve
         .toUpperCase()
         .replace(/[^A-Z0-9]/g, '');
-      const schoolCode = normalizedCode.startsWith('MCECOLE')
-        ? `MC-ECOLE-${normalizedCode.slice(7)}`
+      const studentCode = normalizedCode.startsWith('MCELV')
+        ? `MC-ELV-${normalizedCode.slice(4)}`
         : normalizedCode;
 
-      const school = await client.query<{ id: string; official_name: string; public_code: string }>(
-        `SELECT id, official_name, public_code
-           FROM app.schools
-          WHERE public_code = $1 AND is_active
+      const student = await client.query<{
+        student_id: string;
+        full_name: string;
+        class_name: string | null;
+        school_id: string;
+        official_name: string;
+        parent_link_mode: string;
+      }>(
+        `SELECT s.id AS student_id, s.full_name, cl.name AS class_name,
+                sch.id AS school_id, sch.official_name, sch.parent_link_mode
+           FROM app.students s
+           JOIN app.schools sch ON sch.id = s.school_id
+           LEFT JOIN app.classes cl ON cl.id = s.class_id
+          WHERE s.public_code = $1 AND sch.is_active
           LIMIT 1`,
-        [schoolCode],
+        [studentCode],
       );
 
-      if ((school.rowCount ?? 0) === 0) {
+      if ((student.rowCount ?? 0) === 0) {
         const err = new Error(
-          'Aucun établissement ne correspond à ce code. Vérifiez le code remis par votre école.',
+          'Aucun élève ne correspond à ce code. Vérifiez le code unique remis par l’établissement.',
         ) as Error & { statusCode?: number; code?: string };
         err.statusCode = 404;
-        err.code = 'ECOLE_INTROUVABLE';
+        err.code = 'ELEVE_INTROUVABLE';
         throw err;
       }
 
-      const ecole = school.rows[0]!;
+      const enfant = student.rows[0]!;
 
       const result = await authService.registerParent(
         client,
@@ -255,21 +284,41 @@ export async function registerAuthRoutes(deps: AppDependencies): Promise<void> {
         ctx,
       );
 
-      return { parent: result, ecole };
+      // Rattachement immédiat à l'enfant (et donc à son établissement) :
+      // le compte n'est jamais créé orphelin.
+      const autoApprove = enfant.parent_link_mode === 'automatique';
+      await client.query(
+        `INSERT INTO app.parent_student_links
+           (school_id, parent_id, student_id, relationship, status, is_primary,
+            requested_method, decided_at, decision_note)
+         VALUES ($1,$2,$3,$4,$5::app.link_status,true,'code_enfant',
+                 CASE WHEN $5 = 'actif' THEN now() ELSE NULL END,
+                 CASE WHEN $5 = 'actif' THEN 'Validation automatique (configuration de l''école)' ELSE NULL END)
+         ON CONFLICT (parent_id, student_id) DO NOTHING`,
+        [
+          enfant.school_id,
+          result.parentId,
+          enfant.student_id,
+          parsed.data.relationship ?? 'parent',
+          autoApprove ? 'actif' : 'en_attente',
+        ],
+      );
+
+      return { parent: result, eleve: enfant, autoApprove };
     });
 
     return noStore(reply).code(201).send({
-      message:
-        `Votre compte parent a été créé pour ${result.ecole.official_name}. ` +
-        'Connectez-vous pour ajouter vos enfants.',
+      message: result.autoApprove
+        ? `Votre compte parent a été créé : ${result.eleve.full_name} est déjà rattaché(e).`
+        : `Votre compte parent a été créé. Une validation de ${result.eleve.official_name} est requise pour accéder au suivi de ${result.eleve.full_name}.`,
       parent: { id: result.parent.parentId, code: result.parent.publicCode },
-      ecole: {
-        id: result.ecole.id,
-        nom: result.ecole.official_name,
-        code: result.ecole.public_code,
+      eleve: {
+        nom: result.eleve.full_name,
+        classe: result.eleve.class_name,
       },
+      ecole: { nom: result.eleve.official_name },
       prochaineEtape:
-        'Après connexion, saisissez le code unique de votre enfant pour le rattacher à cette école.',
+        'Connectez-vous : vos présences, demandes et communiqués sont déjà disponibles.',
     });
   });
 
@@ -452,12 +501,12 @@ export async function registerAuthRoutes(deps: AppDependencies): Promise<void> {
           totp_secret_enc: Buffer | null;
           totp_last_used_step: string | null;
           school_name: string;
-          school_code: string;
+          types: string[];
           primary_color: string;
         }>(
           `SELECT u.school_id, u.full_name, u.email, u.is_owner, u.job_title,
                   u.totp_secret_enc, u.totp_last_used_step,
-                  s.official_name AS school_name, s.public_code AS school_code, s.primary_color
+                  s.official_name AS school_name, s.types, s.primary_color
              FROM sec.staff_users u JOIN app.schools s ON s.id = u.school_id
             WHERE u.id = $1`,
           [challenge.subjectId],
@@ -534,7 +583,7 @@ export async function registerAuthRoutes(deps: AppDependencies): Promise<void> {
             id: challenge.subjectId,
             schoolId: user.school_id,
             schoolName: user.school_name,
-            schoolCode: user.school_code,
+            types: user.types ?? [],
             fullName: user.full_name,
             jobTitle: user.job_title,
             email: user.email,
@@ -744,7 +793,7 @@ export async function registerAuthRoutes(deps: AppDependencies): Promise<void> {
       const { rows } = await client.query(
         `SELECT u.id, u.full_name, u.email, u.job_title, u.phone, u.is_owner,
                 u.totp_enabled, u.must_change_password, u.last_login_at,
-                s.id AS school_id, s.official_name, s.public_code, s.logo_url,
+                s.id AS school_id, s.official_name, s.logo_url, s.types,
                 s.primary_color, s.secondary_color, s.parent_link_mode,
                 s.current_year_label, s.city, s.settings
            FROM sec.staff_users u

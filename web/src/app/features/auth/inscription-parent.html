@@ -8,12 +8,12 @@
     <span class="marque-panneau__badge">👨‍👩‍👧 Compte parent</span>
     <h1>Créez votre compte parent.</h1>
     <p class="marque-panneau__texte">
-      Munissez-vous du code de votre école : il permet de rattacher votre compte
-      à l'établissement dès l'inscription.
+      Munissez-vous du code de votre enfant : il rattache votre compte à son
+      établissement dès l'inscription.
     </p>
 
     <ul class="marque-panneau__avantages">
-      <li>Code école obligatoire : aucune inscription anonyme</li>
+      <li>Un seul code enfant, aucune donnée d'école à retenir</li>
       <li>Présence de l'enfant visible chaque jour, même hors ligne</li>
       <li>Communiqués, demandes et calendrier au même endroit</li>
     </ul>
@@ -26,7 +26,7 @@
       <div class="page-auth__entete">
         <span class="page-auth__pastille">👨‍👩‍👧</span>
         <h2>Créer un compte parent</h2>
-        <p>Renseignez votre identité et le code de votre école.</p>
+        <p>Renseignez votre identité et le code de votre enfant.</p>
       </div>
 
       @if (erreur()) {
@@ -56,23 +56,23 @@
           />
         </div>
 
-        <div class="champ" [class.champ--erreur]="champEnErreur('codeEcole')">
-          <label for="code-ecole-parent">Code de l'école *</label>
+        <div class="champ" [class.champ--erreur]="champEnErreur('codeEleve')">
+          <label for="code-eleve-parent">Code de l'enfant *</label>
           <input
-            id="code-ecole-parent"
-            name="codeEcole"
+            id="code-eleve-parent"
+            name="codeEleve"
             type="text"
             required
             minlength="6"
             maxlength="32"
-            autocomplete="organization"
-            [(ngModel)]="codeEcole"
-            placeholder="MC-ECOLE-DEMO01"
+            autocomplete="off"
+            [(ngModel)]="codeEleve"
+            placeholder="MC-ELV-XXXXXX"
             class="champ__code"
           />
           <span class="champ__aide">
-            Code remis par l'établissement (ex. <strong>MC-ECOLE-DEMO01</strong>).
-            Obligatoire.
+            Code unique imprimé sur la fiche de l'élève (ex. <strong>MC-ELV-URFDG8</strong>).
+            Il rattache votre compte à son école. Obligatoire.
           </span>
         </div>
 

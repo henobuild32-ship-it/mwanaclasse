@@ -1,60 +1,29 @@
-<div class="page-entete">
-  <div>
-    <h1>Ajouter un enfant</h1>
-    <p>Codes fournis par l'école lors de l'inscription.</p>
+@if (erreur()) {
+  <div class="formulaire-erreur" role="alert">{{ erreur() }}</div>
+}
+
+<form (ngSubmit)="ajouter()">
+  <div class="champ">
+    <label for="code-enfant">Code de l'enfant *</label>
+    <input
+      id="code-enfant"
+      name="codeEnfant"
+      required
+      minlength="6"
+      maxlength="32"
+      placeholder="MC-ELV-XXXXXX"
+      [(ngModel)]="codeEnfant"
+      autocomplete="off"
+    />
+    <span class="champ__aide">Imprimé sur la fiche de rentrée de l'élève.</span>
   </div>
-</div>
 
-<div class="carte">
-  @if (erreur()) {
-    <div class="formulaire-erreur" role="alert">{{ erreur() }}</div>
-  }
-
-  <form (ngSubmit)="ajouter()">
-    <div class="champ">
-      <label for="code-ecole">Code de l'école *</label>
-      <input
-        id="code-ecole"
-        name="codeEcole"
-        required
-        minlength="6"
-        maxlength="32"
-        placeholder="MC-ECOLE-XXXXXX"
-        [(ngModel)]="codeEcole"
-        autocomplete="off"
-      />
-      <span class="champ__aide">Ex. MC-ECOLE-DEMO01</span>
-    </div>
-
-    <div class="champ">
-      <label for="code-enfant">Code de l'enfant *</label>
-      <input
-        id="code-enfant"
-        name="codeEnfant"
-        required
-        minlength="6"
-        maxlength="32"
-        placeholder="MC-ELV-XXXXXX"
-        [(ngModel)]="codeEnfant"
-        autocomplete="off"
-      />
-      <span class="champ__aide">Imprimé sur la fiche de rentrée de l'élève.</span>
-    </div>
-
-    <div class="champ">
-      <label for="relation">Votre relation</label>
-      <select id="relation" name="relation" [(ngModel)]="relation">
-        @for (r of relations; track r) {
-          <option [value]="r">{{ r }}</option>
-        }
-      </select>
-    </div>
-
-    <div class="btn-groupe">
-      <button class="btn btn--primaire btn--ligne" type="submit" [disabled]="enCours()">
-        {{ enCours() ? 'Vérification…' : 'Ajouter cet enfant' }}
-      </button>
-      <a class="btn btn--secondaire btn--ligne" routerLink="/parent/enfants">Annuler</a>
-    </div>
-  </form>
-</div>
+  <div class="champ">
+    <label for="relation">Votre relation</label>
+    <select id="relation" name="relation" [(ngModel)]="relation">
+      @for (r of relations; track r) {
+        <option [value]="r">{{ r }}</option>
+      }
+    </select>
+  </div>
+</form>

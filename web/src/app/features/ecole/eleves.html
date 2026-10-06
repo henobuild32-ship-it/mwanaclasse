@@ -3,7 +3,9 @@
     <h1>Élèves</h1>
     <p>{{ total() }} élève(s) — page {{ page() + 1 }}</p>
   </div>
-  <a class="btn btn--primaire btn--ligne" routerLink="/ecole/eleves/nouveau">+ Inscrire un élève</a>
+  <button class="btn btn--primaire btn--ligne" type="button" (click)="ouvrirNouveau()">
+    + Inscrire un élève
+  </button>
 </div>
 
 <div class="barre-outils">
@@ -76,4 +78,17 @@
       </button>
     </div>
   </div>
+}
+
+@if (nouveau()) {
+  <app-overlay
+    titre="Inscrire un élève"
+    validerTexte="Inscrire l'élève"
+    texteAnnuler="Annuler"
+    [enCours]="enCoursNouveau()"
+    (fermetureDemandee)="fermerNouveau()"
+    (validerDemande)="enregistrerNouveau()"
+  >
+    <app-nouvel-eleve (enregistre)="onEleveEnregistre()" />
+  </app-overlay>
 }

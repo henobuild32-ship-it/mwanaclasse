@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { SessionService } from '../../core/session.service';
 
@@ -19,7 +19,7 @@ interface Destination {
 export class PlusEcole {
   protected readonly session = inject(SessionService);
 
-  protected readonly destinations: Destination[] = [
+  private readonly base: Destination[] = [
     { chemin: '/ecole/classes', icone: '🏫', titre: 'Classes & sections', sous: 'Structure pédagogique' },
     { chemin: '/ecole/parents', icone: '👨‍👩‍👧', titre: 'Parents', sous: 'Comptes et enfants rattachés' },
     { chemin: '/ecole/liaisons', icone: '🔗', titre: 'Demandes de liaison', sous: 'Valider ou refuser les liens' },
@@ -30,4 +30,15 @@ export class PlusEcole {
     { chemin: '/ecole/notifications', icone: '🔔', titre: 'Notifications', sous: 'Centre de notifications' },
     { chemin: '/ecole/parametres', icone: '⚙️', titre: 'Paramètres', sous: 'École, personnel, sécurité' },
   ];
+
+  /** Sans sections (maternelle/primaire), l'entrée s'intitule simplement « Classes ». */
+  protected readonly destinations = computed<Destination[]>(() => {
+    const avecSections = this.session.sectionsVisibles();
+    if (avecSections) return this.base;
+    return this.base.map((d) =>
+      d.chemin === '/ecole/classes'
+        ? { ...d, titre: 'Classes', sous: 'Niveaux et classes' }
+        : d,
+    );
+  });
 }

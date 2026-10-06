@@ -2,7 +2,9 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { Observable, firstValueFrom, from, map } from 'rxjs';
 import { ApiService, ApiError } from './api.service';
+import { EnfantActifService } from './enfant-actif.service';
 import { Interface, ProfilConnexion, ReponseConnexion } from './models';
+import { proposeSections } from './types-ecole';
 
 const CLE_SESSION = 'mwana.session';
 
@@ -22,6 +24,7 @@ interface SessionStockee {
 export class SessionService {
   private readonly api = inject(ApiService);
   private readonly router = inject(Router);
+  private readonly enfantActif = inject(EnfantActifService);
 
   readonly profil = signal<ProfilConnexion | null>(null);
   readonly charge = signal(true);
@@ -41,11 +44,19 @@ export class SessionService {
     return {
       id: p.schoolId ?? p.school_id ?? null,
       nom: p.schoolName ?? p.official_name ?? '',
-      code: p.schoolCode ?? p.public_code ?? null,
       couleur: p.primaryColor ?? p.primary_color ?? null,
     };
   });
   readonly permissions = computed(() => this.profil()?.permissions ?? []);
+  /** Types d'enseignement de l'établissement (sélection multiple). */
+  readonly typesEcole = computed<string[]>(() => {
+    const p = this.profil();
+    if (!p) return [];
+    if (Array.isArray(p.types) && p.types.length > 0) return p.types;
+    return [];
+  });
+  /** Sections visibles : masquées pour un établissement maternelle/primaire seul. */
+  readonly sectionsVisibles = computed(() => proposeSections(this.typesEcole()));
   readonly doitChangerMotDePasse = computed(
     () => this.profil()?.mustChangePassword === true,
   );
@@ -93,7 +104,6 @@ export class SessionService {
   async connecterEcole(body: {
     email: string;
     password: string;
-    schoolCode?: string;
     totpCode?: string;
   }): Promise<ReponseConnexion> {
     const reponse = await firstValueFrom(
@@ -179,6 +189,7 @@ export class SessionService {
     this.jetonActuel = null;
     this.profil.set(null);
     this.interface.set(null);
+    this.enfantActif.reinitialiser();
     localStorage.removeItem(CLE_SESSION);
   }
 }

@@ -2,8 +2,10 @@ import { SlicePipe } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService, toApiError } from '../../core/api.service';
+import { ConfirmationService } from '../../core/confirmation.service';
+import { SessionService } from '../../core/session.service';
 import { ToastService } from '../../core/toast.service';
-import { Chargement, EtatVide, Etiquette, etiquetteStatut } from '../../shared/ui';
+import { Chargement, EtatVide, Etiquette, etiquetteStatut, OverlayFormulaire } from '../../shared/ui';
 
 interface Communique {
   id: string;
@@ -35,13 +37,16 @@ const TYPES = [
 /** Communiqués de l'école (spec §5). */
 @Component({
   selector: 'app-communiques-ecole',
-  imports: [SlicePipe, FormsModule, Chargement, EtatVide, Etiquette],
+  imports: [SlicePipe, FormsModule, Chargement, EtatVide, Etiquette, OverlayFormulaire],
   templateUrl: './communiques.html',
   styleUrl: './pages.scss',
 })
 export class CommuniquesEcole {
   private readonly api = inject(ApiService);
   private readonly toasts = inject(ToastService);
+  protected readonly confirmation = inject(ConfirmationService);
+  /** Sections masquées pour un établissement maternelle/primaire seul. */
+  protected readonly sectionsVisibles = inject(SessionService).sectionsVisibles;
   protected readonly etiquetteStatut = etiquetteStatut;
   protected readonly types = TYPES;
 
@@ -63,8 +68,52 @@ export class CommuniquesEcole {
   action: 'brouillon' | 'publier' | 'programmer' = 'publier';
   dateProgrammation = '';
 
+  /** Saisie relevée à l'ouverture, pour détecter une fermeture avec modifications. */
+  private depart = '';
+
   constructor() {
     void this.charger();
+  }
+
+  protected ouvrirFormulaire(): void {
+    if (this.formulaire()) {
+      void this.fermerFormulaire();
+      return;
+    }
+    this.depart = this.etat();
+    this.formulaire.set(true);
+  }
+
+  protected fermerFormulaire(): void {
+    void this.fermerFormulaireAsync();
+  }
+
+  private async fermerFormulaireAsync(): Promise<void> {
+    if (this.etat() !== this.depart) {
+      const choix = await this.confirmation.demander({
+        message: 'Le communiqué n\'a pas encore été envoyé.',
+      });
+      if (choix === 'reprendre') return;
+      if (choix === 'enregistrer') {
+        await this.creer();
+        return;
+      }
+    }
+    this.formulaire.set(false);
+  }
+
+  private etat(): string {
+    return JSON.stringify([
+      this.titre,
+      this.objet,
+      this.resume,
+      this.corps,
+      this.type,
+      this.urgent,
+      this.audience,
+      this.action,
+      this.dateProgrammation,
+    ]);
   }
 
   protected async charger(): Promise<void> {
@@ -101,7 +150,10 @@ export class CommuniquesEcole {
         bodyHtml: this.corps.trim(),
         kind: this.type,
         isUrgent: this.urgent,
-        audienceKind: this.audience,
+        audienceKind:
+          this.audience === 'section' && !this.sectionsVisibles()
+            ? 'toute_ecole'
+            : this.audience,
         audienceFilter: {},
         action: this.action,
         publishAt:
@@ -115,6 +167,7 @@ export class CommuniquesEcole {
       this.formulaire.set(false);
       this.titre = this.objet = this.resume = this.corps = '';
       this.urgent = false;
+      this.depart = this.etat();
       await this.charger();
     } catch (err) {
       const e = toApiError(err);

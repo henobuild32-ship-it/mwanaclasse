@@ -2,18 +2,9 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { ApiService, toApiError } from '../../core/api.service';
+import { TYPES_ECOLE, inclutCollege } from '../../core/types-ecole';
 import { ToastService } from '../../core/toast.service';
-
-const TYPES_ECOLE = [
-  { valeur: 'primaire', libelle: 'Primaire' },
-  { valeur: 'maternelle', libelle: 'Maternelle' },
-  { valeur: 'secondaire', libelle: 'Secondaire' },
-  { valeur: 'humanites', libelle: 'Humanités' },
-  { valeur: 'technique', libelle: 'Technique' },
-  { valeur: 'professionnel', libelle: 'Professionnel' },
-  { valeur: 'mixte', libelle: 'Mixte' },
-  { valeur: 'autre', libelle: 'Autre' },
-];
+import { ChoixMultiples } from '../../shared/ui';
 
 interface DetailErreur {
   champ: string;
@@ -26,7 +17,7 @@ interface DetailErreur {
  */
 @Component({
   selector: 'app-inscription-ecole',
-  imports: [FormsModule, RouterLink],
+  imports: [ChoixMultiples, FormsModule, RouterLink],
   templateUrl: './inscription-ecole.html',
   styleUrl: './connexion.scss',
 })
@@ -35,7 +26,7 @@ export class InscriptionEcole {
   private readonly router = inject(Router);
   private readonly toasts = inject(ToastService);
 
-  protected readonly types = TYPES_ECOLE;
+  protected readonly typesDisponibles = TYPES_ECOLE;
   protected readonly enCours = signal(false);
   protected readonly erreur = signal('');
   protected readonly details = signal<DetailErreur[]>([]);
@@ -43,7 +34,10 @@ export class InscriptionEcole {
 
   // Établissement
   officialName = '';
-  type = 'primaire';
+  /** Sélection multiple des cycles proposés. */
+  types: string[] = ['primaire'];
+  /** Précision « mixte / non mixte », demandée pour le collège. */
+  isMixed: boolean | null = null;
   city = '';
   commune = '';
   addressLine = '';
@@ -65,6 +59,11 @@ export class InscriptionEcole {
 
   protected champEnErreur(cle: string): boolean {
     return this.details().some((d) => d.champ === cle || d.champ.startsWith(cle + '.'));
+  }
+
+  /** Vrai si un cycle de collège est coché : la précision mixte/non devient obligatoire. */
+  protected get college(): boolean {
+    return inclutCollege(this.types);
   }
 
   /** Vérifie la robustesse du mot de passe côté API (sans le transmettre au serveur de logs). */
@@ -96,11 +95,20 @@ export class InscriptionEcole {
       this.erreur.set('Les deux mots de passe ne correspondent pas.');
       return;
     }
+    if (this.types.length === 0) {
+      this.erreur.set('Sélectionnez au moins un type d’établissement.');
+      return;
+    }
+    if (this.college && this.isMixed === null) {
+      this.erreur.set('Précisez si votre collège est mixte ou non.');
+      return;
+    }
     this.enCours.set(true);
     try {
       await this.api.envoyer('auth/ecole/inscription', {
         officialName: this.officialName.trim(),
-        type: this.type,
+        types: [...this.types],
+        isMixed: this.isMixed,
         city: this.city.trim() || null,
         commune: this.commune.trim() || null,
         addressLine: this.addressLine.trim() || null,

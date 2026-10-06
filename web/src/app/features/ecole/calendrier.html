@@ -3,14 +3,19 @@
     <h1>Calendrier</h1>
     <p>{{ evenements().length }} événement(s) scolaire(s)</p>
   </div>
-  <button class="btn btn--primaire btn--ligne" type="button" (click)="formulaire.set(!formulaire())">
+  <button class="btn btn--primaire btn--ligne" type="button" (click)="ouvrirFormulaire()">
     + Événement
   </button>
 </div>
 
 @if (formulaire()) {
-  <div class="carte" style="margin-bottom: 14px">
-    <div class="carte__titre"><span>Nouvel événement</span></div>
+  <app-overlay
+    titre="Nouvel événement"
+    validerTexte="Ajouter"
+    [enCours]="enCours()"
+    (fermetureDemandee)="fermerFormulaire()"
+    (validerDemande)="creer()"
+  >
     <div class="champ">
       <label for="titre-evt">Titre *</label>
       <input id="titre-evt" name="titre" maxlength="160" [(ngModel)]="titre" />
@@ -59,13 +64,7 @@
       <label for="description-evt">Description</label>
       <textarea id="description-evt" name="description" maxlength="4000" [(ngModel)]="description"></textarea>
     </div>
-    <div class="btn-groupe">
-      <button class="btn btn--primaire btn--ligne" type="button" (click)="creer()" [disabled]="enCours()">
-        {{ enCours() ? 'Enregistrement…' : 'Ajouter' }}
-      </button>
-      <button class="btn btn--discret" type="button" (click)="formulaire.set(false)">Annuler</button>
-    </div>
-  </div>
+  </app-overlay>
 }
 
 @if (chargement()) {

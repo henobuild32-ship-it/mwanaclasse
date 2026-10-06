@@ -19,8 +19,10 @@ export const ECOLE_ROUTES: Routes = [
         loadComponent: () => import('./eleves').then((m) => m.ElevesEcole),
       },
       {
+        // Même liste, mais l'overlay « inscrire » s'ouvre automatiquement.
         path: 'eleves/nouveau',
-        loadComponent: () => import('./eleves-nouveau').then((m) => m.NouvelEleve),
+        loadComponent: () => import('./eleves').then((m) => m.ElevesEcole),
+        data: { ouvrirNouveau: true },
       },
       {
         path: 'eleves/:id',

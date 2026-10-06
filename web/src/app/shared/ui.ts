@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, input } from '@angular/core';
+import { Component, HostListener, inject, input, model, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { ConfirmationService } from '../core/confirmation.service';
 import { ToastService } from '../core/toast.service';
 
 /* ==========================================================================
@@ -150,6 +151,159 @@ export class Chargement {
 export class Etiquette {
   readonly texte = input.required<string>();
   readonly variante = input<'neutre' | 'succes' | 'danger' | 'attention' | 'info'>('neutre');
+}
+
+/* ==========================================================================
+ *  Overlay de formulaire (modal posé au-dessus du module)
+ * ========================================================================== */
+@Component({
+  selector: 'app-overlay',
+  imports: [CommonModule],
+  template: `
+    <div
+      class="overlay"
+      role="dialog"
+      aria-modal="true"
+      [attr.aria-label]="titre()"
+      (click)="fermetureDemandee.emit()"
+    >
+      <div class="overlay__panneau" (click)="$event.stopPropagation()">
+        <header class="overlay__entete">
+          <h2>{{ titre() }}</h2>
+          <button
+            type="button"
+            class="overlay__fermer"
+            (click)="fermetureDemandee.emit()"
+            aria-label="Fermer"
+            title="Fermer"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </header>
+
+        <div class="overlay__corps"><ng-content /></div>
+
+        @if (!sansPied()) {
+          <footer class="overlay__pied">
+            <button type="button" class="btn btn--discret btn--ligne" (click)="fermetureDemandee.emit()">
+              {{ texteAnnuler() }}
+            </button>
+            <button
+              type="button"
+              class="btn btn--primaire btn--ligne"
+              [disabled]="enCours()"
+              (click)="validerDemande.emit()"
+            >
+              {{ enCours() ? '…' : validerTexte() }}
+            </button>
+          </footer>
+        }
+      </div>
+    </div>
+  `,
+  styles: [``],
+})
+export class OverlayFormulaire {
+  readonly titre = input.required<string>();
+  readonly validerTexte = input('Enregistrer');
+  readonly texteAnnuler = input('Annuler');
+  readonly enCours = input(false);
+  readonly sansPied = input(false);
+
+  /** L'utilisateur veut fermer (Échap, croix, clic à côté, bouton Annuler). */
+  readonly fermetureDemandee = output<void>();
+  /** L'utilisateur veut enregistrer. */
+  readonly validerDemande = output<void>();
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    this.fermetureDemandee.emit();
+  }
+}
+
+/* ==========================================================================
+ *  Dialogue de confirmation « modifications non enregistrées »
+ * ========================================================================== */
+@Component({
+  selector: 'app-confirmation',
+  imports: [CommonModule],
+  template: `
+    @if (confirmation.visible()) {
+      <div
+        class="overlay overlay--devant"
+        role="alertdialog"
+        aria-modal="true"
+        [attr.aria-label]="confirmation.titre()"
+        (click)="confirmation.reprendre()"
+      >
+        <div class="overlay__panneau overlay__panneau--etroit" (click)="$event.stopPropagation()">
+          <div class="overlay__corps">
+            <h2 class="overlay__titre-confirm">{{ confirmation.titre() }}</h2>
+            <p class="texte-doux">{{ confirmation.message() }}</p>
+          </div>
+          <footer class="overlay__pied">
+            <button type="button" class="btn btn--discret btn--ligne" (click)="confirmation.reprendre()">
+              Reprendre
+            </button>
+            <button type="button" class="btn btn--secondaire btn--ligne" (click)="confirmation.abandonner()">
+              {{ confirmation.texteAbandonner() }}
+            </button>
+            <button type="button" class="btn btn--primaire btn--ligne" (click)="confirmation.enregistrer()">
+              {{ confirmation.texteEnregistrer() }}
+            </button>
+          </footer>
+        </div>
+      </div>
+    }
+  `,
+  styles: [``],
+})
+export class Confirmation {
+  readonly confirmation = inject(ConfirmationService);
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    if (this.confirmation.visible()) this.confirmation.reprendre();
+  }
+}
+
+/* ==========================================================================
+ *  Sélection multiple (pastilles cochables) — design system
+ * ========================================================================== */
+export interface OptionChoix {
+  valeur: string;
+  libelle: string;
+}
+
+@Component({
+  selector: 'app-choix-multiples',
+  imports: [CommonModule],
+  template: `
+    <div class="choix-multiples" role="group" [attr.aria-label]="libelle()">
+      @for (o of options(); track o.valeur) {
+        <label class="choix-multiple" [class.choix-multiple--actif]="coche(o.valeur)">
+          <input type="checkbox" [checked]="coche(o.valeur)" (change)="basculer(o.valeur)" />
+          <span>{{ o.libelle }}</span>
+        </label>
+      }
+    </div>
+  `,
+  styles: [``],
+})
+export class ChoixMultiples {
+  readonly options = input.required<OptionChoix[]>();
+  readonly libelle = input('Sélection multiple');
+  readonly selection = model<string[]>([]);
+
+  coche(valeur: string): boolean {
+    return this.selection().includes(valeur);
+  }
+
+  basculer(valeur: string): void {
+    this.selection.update((courant) =>
+      courant.includes(valeur) ? courant.filter((v) => v !== valeur) : [...courant, valeur],
+    );
+  }
 }
 
 /** Convertit un statut API en classe badge lisible. */

@@ -1,8 +1,8 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
 import { ApiService, toApiError } from '../../core/api.service';
 import { Classe, Section } from '../../core/models';
+import { SessionService } from '../../core/session.service';
 import { ToastService } from '../../core/toast.service';
 
 interface DetailErreur {
@@ -10,21 +10,31 @@ interface DetailErreur {
   message: string;
 }
 
-/** Inscription d'un élève (spec §5). */
+/**
+ * Formulaire « Inscrire un élève ».
+ *
+ * Rendu à l'intérieur d'un `<app-overlay>` ouvert par la liste des élèves :
+ * il ne possède ni en-tête de page, ni boutons d'action (le pied de l'overlay
+ * gère Annuler / Enregistrer).
+ */
 @Component({
   selector: 'app-nouvel-eleve',
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule],
   templateUrl: './eleves-nouveau.html',
   styleUrl: './pages.scss',
 })
 export class NouvelEleve {
   private readonly api = inject(ApiService);
-  private readonly router = inject(Router);
   private readonly toasts = inject(ToastService);
+  /** Sections masquées pour un établissement maternelle/primaire seul. */
+  protected readonly sectionsVisibles = inject(SessionService).sectionsVisibles;
+
+  /** Élève enregistré : la liste parente referme l'overlay et recharge. */
+  readonly enregistre = output<void>();
 
   protected readonly classes = signal<Classe[]>([]);
   protected readonly sections = signal<Section[]>([]);
-  protected readonly enCours = signal(false);
+  readonly enCours = signal(false);
   protected readonly erreur = signal('');
   protected readonly details = signal<DetailErreur[]>([]);
 
@@ -41,8 +51,34 @@ export class NouvelEleve {
   address = '';
   medicalNotes = '';
 
+  /** Saisie relevée à l'ouverture, pour détecter une fermeture avec modifications. */
+  private depart = '';
+
   constructor() {
+    this.depart = this.etat();
     void this.chargerClasses();
+  }
+
+  /** Vrai si l'élève a commencé à remplir le formulaire. */
+  modifie(): boolean {
+    return this.etat() !== this.depart;
+  }
+
+  private etat(): string {
+    return JSON.stringify([
+      this.lastName,
+      this.middleName,
+      this.firstName,
+      this.gender,
+      this.dateOfBirth,
+      this.placeOfBirth,
+      this.classId,
+      this.sectionId,
+      this.internalNumber,
+      this.guardianPhone,
+      this.address,
+      this.medicalNotes,
+    ]);
   }
 
   private async chargerClasses(): Promise<void> {
@@ -68,13 +104,15 @@ export class NouvelEleve {
     this.sectionId = '';
   }
 
-  protected async enregistrer(): Promise<void> {
+  /** Validation + enregistrement (appelée par le pied de l'overlay). */
+  async enregistrer(): Promise<void> {
     this.erreur.set('');
     this.details.set([]);
     if (!this.lastName.trim() || !this.firstName.trim() || !this.classId) {
       this.erreur.set('Nom, prénom et classe sont obligatoires.');
       return;
     }
+    if (this.enCours()) return;
     this.enCours.set(true);
     try {
       await this.api.envoyer('ecole/eleves', {
@@ -92,7 +130,7 @@ export class NouvelEleve {
         medicalNotes: this.medicalNotes.trim() || null,
       });
       this.toasts.succes('Élève inscrit avec succès.');
-      void this.router.navigate(['/ecole/eleves']);
+      this.enregistre.emit();
     } catch (err) {
       const e = toApiError(err);
       this.erreur.set(e.message);

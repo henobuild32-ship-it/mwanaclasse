@@ -15,8 +15,10 @@ export const PARENT_ROUTES: Routes = [
         loadComponent: () => import('./enfants').then((m) => m.EnfantsParent),
       },
       {
+        // Même liste, mais l'overlay « ajouter » s'ouvre automatiquement.
         path: 'enfants/ajouter',
-        loadComponent: () => import('./enfants-ajouter').then((m) => m.AjouterEnfant),
+        loadComponent: () => import('./enfants').then((m) => m.EnfantsParent),
+        data: { ouvrirAjout: true },
       },
       {
         path: 'enfants/:id',
@@ -37,10 +39,6 @@ export const PARENT_ROUTES: Routes = [
       {
         path: 'notifications',
         loadComponent: () => import('./notifications').then((m) => m.NotificationsParent),
-      },
-      {
-        path: 'ajouter-ecole',
-        loadComponent: () => import('./ajouter-ecole').then((m) => m.AjouterEcole),
       },
       {
         path: 'profil',

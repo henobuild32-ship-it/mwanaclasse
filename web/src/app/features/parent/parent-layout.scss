@@ -1,1 +1,102 @@
 /* Rail de navigation espace parent : styles globaux (.navigation). */
+
+/* ---- Sélecteur d'enfant : recentre toute l'interface sur son école ---- */
+
+.bascule-enfants {
+  background: var(--mc-fond-2);
+  border-bottom: 1px solid var(--mc-trait);
+}
+
+.bascule-enfants::before {
+  content: '';
+  display: block;
+  height: 3px;
+  background: var(--mc-ecole, var(--mc-primaire));
+}
+
+.bascule-enfants__interieur {
+  max-width: var(--mc-largeur);
+  margin: 0 auto;
+  padding: 9px 14px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.bascule-enfants__etiquette {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--mc-ecole, var(--mc-primaire));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bascule-enfants__liste {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+
+.bascule-enfants__liste::-webkit-scrollbar {
+  display: none;
+}
+
+.bascule-enfant {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 7px 14px;
+  border: 1px solid var(--mc-trait);
+  border-radius: 999px;
+  background: var(--mc-fond);
+  color: var(--mc-texte-2);
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.bascule-enfant:hover {
+  border-color: var(--mc-ecole, var(--mc-primaire));
+}
+
+.bascule-enfant__pastille {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+.bascule-enfant__ecole {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--mc-texte-3);
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bascule-enfant--actif {
+  background: color-mix(in srgb, var(--mc-ecole, var(--mc-primaire)) 12%, #fff);
+  border-color: var(--mc-ecole, var(--mc-primaire));
+  color: var(--mc-ecole, var(--mc-primaire));
+}
+
+.bascule-enfant--actif .bascule-enfant__ecole {
+  color: inherit;
+  opacity: 0.75;
+}
+
+/* Navigation teintée par la couleur de l'école active. */
+.navigation__lien--actif {
+  color: var(--mc-ecole, var(--mc-primaire));
+}
