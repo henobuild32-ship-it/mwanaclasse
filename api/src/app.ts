@@ -403,6 +403,11 @@ export async function buildApp(overrides: Record<string, string | undefined> = {
             diagnostic: diagnosticBase(health.error),
             dbUrlHash: createHash('sha256').update(config.DATABASE_URL).digest('hex').slice(0, 16),
             envDiag: process.env.MWANA_DIAG ?? 'absent',
+            envKeys: Object.keys(process.env)
+              .filter((k) => /^(DATABASE|DB_|POSTGRES)/i.test(k))
+              .sort()
+              .join(',')
+              .slice(0, 120),
           }),
     });
   });
