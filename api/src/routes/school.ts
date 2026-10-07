@@ -287,7 +287,12 @@ export async function registerSchoolRoutes(deps: AppDependencies): Promise<void>
             classes: {
               total: stats.classes_total,
               sections: stats.sections_total,
-              occupation: capacity.rows,
+              occupation: capacity.rows.length
+                ? Math.round(
+                    capacity.rows.reduce((sum: number, row: any) => sum + Number(row.taux_occupation ?? 0), 0) /
+                      capacity.rows.length,
+                  )
+                : 0,
               classesProchesCapacite: capacity.rows.filter(
                 (c: any) => c.etat_capacite === 'presque_complete' || c.etat_capacite === 'complete',
               ).length,
@@ -297,7 +302,7 @@ export async function registerSchoolRoutes(deps: AppDependencies): Promise<void>
               absents: stats.absents,
               retards: stats.retards,
               nonEnregistres: stats.non_enregistres,
-              classesSansPresence: unrecorded.rows,
+              classesSansPresence: unrecorded.rows.length,
               tendance30Jours: monthly.rows,
             },
             communiques: {

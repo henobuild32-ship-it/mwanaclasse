@@ -6,10 +6,7 @@
     </a>
 
     <div class="bandeau-actions">
-      <span class="pastille-en-ligne" [class.pastille-hors-ligne]="!connectivite.enLigne()" [class.pastille-file]="sync.statutSync() === 'en_cours'">
-        <span class="pastille__point" [class]="connectivite.enLigne() ? '' : 'hors-ligne'"></span>
-        {{ connectivite.enLigne() ? 'En ligne' : 'Hors ligne' }}
-      </span>
+      <span class="etat-reseau" [class.etat-reseau--faible]="sync.statutSync() === 'en_cours'" [class.etat-reseau--hors-ligne]="!connectivite.enLigne()" aria-label="État de la connexion" title="État de la connexion"></span>
 
       @if (sync.statutSync() === 'en_cours') {
         <span class="pastille pastille-file" aria-live="polite">
@@ -19,9 +16,8 @@
       }
 
       <div class="dropdown">
-        <button class="btn btn--discret btn--ligne" (click)="toggleMenu()" [aria-expanded]="menuOuvert()" aria-haspopup="true">
+        <button class="btn btn--discret btn--ligne profil-bouton" (click)="toggleMenu(); $event.stopPropagation()" [aria-expanded]="menuOuvert()" aria-haspopup="true" aria-label="Ouvrir le menu du profil">
           <span class="avatar" style="width:32px;height:32px;font-size:0.85rem;">{{ session.profil()?.fullName?.charAt(0) ?? 'J' }}</span>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
         @if (menuOuvert()) {
           <div class="dropdown__menu" role="menu">

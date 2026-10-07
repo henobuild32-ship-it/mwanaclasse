@@ -142,7 +142,7 @@ export interface TableauBordEcole {
   classes: {
     total: number;
     sections: number;
-    occupation: number;
+    occupation: number | { taux_occupation?: number | string }[];
     classesProchesCapacite: number;
   };
   presences: {
@@ -151,7 +151,7 @@ export interface TableauBordEcole {
     retards: number;
     nonEnregistres: number;
     classesSansPresence: number;
-    tendance30Jours: { date: string; taux: number }[] | unknown;
+    tendance30Jours: { mois: string; presents: number; absents: number; retards: number }[];
   };
   communiques: {
     publies: number;

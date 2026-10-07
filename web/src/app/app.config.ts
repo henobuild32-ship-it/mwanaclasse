@@ -24,7 +24,7 @@ export const appConfig: ApplicationConfig = {
       ? []
       : [
           provideServiceWorker('ngsw-worker.js', {
-            registrationStrategy: 'registerWhenStable:30000',
+            registrationStrategy: 'registerImmediately',
           }),
         ]),
   ],

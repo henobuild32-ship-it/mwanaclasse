@@ -1,3 +1,5 @@
+.presence__continuer { display: block; margin-top: 4px; color: var(--mc-primaire); font-size: 0.78rem; font-weight: 700; text-decoration: none; }
+.presence__continuer:hover { text-decoration: underline; }
 /* Feuille d'appel mobile-first */
 .ligne-liste--feuille { flex-wrap: wrap; row-gap: 8px; }
 .statuts { display: flex; gap: 6px; flex-wrap: wrap; }

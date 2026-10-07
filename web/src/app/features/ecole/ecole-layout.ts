@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, HostListener, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { ConnectiviteService } from '../../core/connectivite.service';
 import { SessionService } from '../../core/session.service';
@@ -35,6 +35,12 @@ export class EspaceEcoleLayout {
 
   protected toggleMenu(): void {
     this._menuOuvert.update((v) => !v);
+  }
+
+  @HostListener('document:click', ['$event'])
+  protected fermerMenuEnDehors(event: Event): void {
+    const cible = event.target as HTMLElement;
+    if (this._menuOuvert() && !cible.closest('.dropdown')) this._menuOuvert.set(false);
   }
 
   protected async deconnexion(): Promise<void> {

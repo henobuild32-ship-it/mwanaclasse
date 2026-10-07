@@ -27,7 +27,19 @@ export class PageTableauBordEcole {
   protected readonly erreur = signal('');
   protected readonly donnees = signal<TableauBordEcoleDTO | null>(null);
 
+  protected occupation(donnees: TableauBordEcoleDTO): number {
+    const valeur = donnees.classes.occupation;
+    if (typeof valeur === 'number') return Math.max(0, Math.min(100, valeur));
+    if (!Array.isArray(valeur) || valeur.length === 0) return 0;
+    const total = valeur.reduce((somme, ligne) => somme + Number(ligne.taux_occupation ?? 0), 0);
+    return Math.max(0, Math.min(100, Math.round(total / valeur.length)));
+  }
+
   constructor() {
+    void this.charger();
+  }
+
+  protected actualiser(): void {
     void this.charger();
   }
 

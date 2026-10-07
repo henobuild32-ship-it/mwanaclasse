@@ -85,6 +85,7 @@ export class SyncService {
   private ouverture: Promise<IDBDatabase> | null = null;
   private demarrage: Promise<void> | null = null;
   private minuterie: ReturnType<typeof setInterval> | null = null;
+  private derniereTentative = 0;
   private meta: MetadonneesSync = {
     clientId: '',
     terminalEnregistre: false,
@@ -431,6 +432,9 @@ export class SyncService {
 
   async synchroniser(): Promise<void> {
     if (this.enCours() || !this.connectivite.enLigne() || !this.session.connecte()) return;
+    const maintenant = Date.now();
+    if (maintenant - this.derniereTentative < 15_000 && this.operationsEnFile() === 0) return;
+    this.derniereTentative = maintenant;
     this.enCours.set(true);
     try {
       await this.enregistrerTerminal();
@@ -450,6 +454,12 @@ export class SyncService {
     } finally {
       this.enCours.set(false);
       await this.compter();
+    }
+  }
+
+  synchroniserEnArrierePlan(): void {
+    if (!this.enCours() && this.connectivite.enLigne() && this.session.connecte()) {
+      void this.synchroniser();
     }
   }
 

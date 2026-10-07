@@ -26,6 +26,8 @@ export type Params = Record<string, string | number | boolean | null | undefined
 @Injectable({ providedIn: 'root' })
 export class ApiService {
   private readonly http = inject(HttpClient);
+  private readonly cache = new Map<string, { expires: number; value: unknown }>();
+  private readonly cacheTtl = 30_000;
 
   /** Base de l'API : même origine en production, proxy en développement. */
   readonly base = '/api';
@@ -57,19 +59,30 @@ export class ApiService {
   /* ---------------------------------------------------------------- */
 
   async lire<T>(path: string, params?: Params): Promise<T> {
-    return firstValueFrom(this.get<T>(path, params));
+    const key = `${path}?${JSON.stringify(params ?? {})}`;
+    const cached = this.cache.get(key);
+    if (cached && cached.expires > Date.now()) return cached.value as T;
+    const value = await firstValueFrom(this.get<T>(path, params));
+    this.cache.set(key, { value, expires: Date.now() + this.cacheTtl });
+    return value;
   }
 
   async envoyer<T>(path: string, body?: unknown, params?: Params): Promise<T> {
-    return firstValueFrom(this.post<T>(path, body, params));
+    const value = await firstValueFrom(this.post<T>(path, body, params));
+    this.cache.clear();
+    return value;
   }
 
   async modifier<T>(path: string, body?: unknown): Promise<T> {
-    return firstValueFrom(this.patch<T>(path, body));
+    const value = await firstValueFrom(this.patch<T>(path, body));
+    this.cache.clear();
+    return value;
   }
 
   async supprimer<T>(path: string): Promise<T> {
-    return firstValueFrom(this.delete<T>(path));
+    const value = await firstValueFrom(this.delete<T>(path));
+    this.cache.clear();
+    return value;
   }
 
   private toParams(params?: Params): HttpParams | undefined {

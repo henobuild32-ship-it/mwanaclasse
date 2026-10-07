@@ -46,6 +46,14 @@ export class FicheEleve {
   protected readonly donnees = signal<DetailEleve | null>(null);
 
   private id = '';
+  protected readonly continuerPresence = this.route.snapshot.queryParamMap.get('continuerPresence') === '1';
+  protected readonly retourPresence = this.route.snapshot.queryParamMap.get('date')
+    ? { date: this.route.snapshot.queryParamMap.get('date')!, classe: this.route.snapshot.queryParamMap.get('classe') ?? '' }
+    : null;
+
+  protected presenceQuery(): { date: string; classe: string } {
+    return this.retourPresence ?? { date: '', classe: '' };
+  }
 
   constructor() {
     this.id = this.route.snapshot.paramMap.get('id') ?? '';

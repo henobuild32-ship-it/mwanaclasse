@@ -83,7 +83,7 @@ export class TitrePage {
   template: `
     <div class="kpi" [class.kpi--color]="accent()">
       <span class="kpi__label">{{ libelle() }}</span>
-      <span class="kpi__valeur">{{ valeur() }}</span>
+      <strong class="kpi__valeur">{{ nombre(valeur()) }}</strong>
       @if (detail()) { <span class="kpi__sous">{{ detail() }}</span> }
     </div>
   `,
@@ -94,6 +94,11 @@ export class CarteStat {
   readonly libelle = input.required<string>();
   readonly detail = input<string>('');
   readonly accent = input(false);
+
+  protected nombre(valeur: string | number): string {
+    const nombre = Number(valeur);
+    return Number.isFinite(nombre) ? new Intl.NumberFormat('fr-FR').format(nombre) : '0';
+  }
 }
 
 /* ==========================================================================

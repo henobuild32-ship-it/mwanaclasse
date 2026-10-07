@@ -3,7 +3,10 @@
     <h1>Bonjour, {{ session.nomAffiche() }}</h1>
     <p>{{ session.ecole()?.nom }}</p>
   </div>
-  <a class="btn btn--primaire btn--ligne" routerLink="/ecole/presences">Faire l'appel</a>
+  <div class="page-entete__actions">
+    <button class="btn btn--discret btn--ligne" type="button" (click)="actualiser()" [disabled]="chargement()">Actualiser</button>
+    <a class="btn btn--primaire btn--ligne" routerLink="/ecole/presences">Faire l'appel</a>
+  </div>
 </div>
 
 @if (chargement()) {
@@ -12,11 +15,11 @@
   <app-etat-vide texte="{{ erreur() }}" icone="📡" />
 } @else if (donnees(); as d) {
   <section class="escalier">
-    <div class="grille-stats">
+    <div class="grille-stats tableau-kpis">
       <app-carte-stat
         [valeur]="d.eleves.total"
         libelle="Élèves inscrits"
-        detail="année en cours"
+        detail="Année en cours"
         [accent]="true"
       />
       <app-carte-stat
@@ -42,26 +45,26 @@
           <span>Classes</span>
           <a class="lien-action" routerLink="/ecole/plus">Gérer</a>
         </div>
-        <div class="grille-stats">
+        <div class="grille-stats tableau-kpis tableau-kpis--compact">
           <app-carte-stat [valeur]="d.classes.total" libelle="Classes" />
           @if (session.sectionsVisibles()) {
             <app-carte-stat [valeur]="d.classes.sections" libelle="Sections" />
           }
         </div>
         <p class="texte-doux" style="margin-top: 12px">
-          Occupation moyenne : {{ d.classes.occupation }} %
+          Occupation moyenne : <strong>{{ occupation(d) }} %</strong>
           @if (d.classes.classesProchesCapacite > 0) {
             — {{ d.classes.classesProchesCapacite }} classe(s) proche(s) de la capacité.
           }
         </p>
         <div class="jauge" aria-hidden="true">
-          <div class="jauge__remplissage" [style.width.%]="d.classes.occupation"></div>
+          <div class="jauge__remplissage" [style.width.%]="occupation(d)"></div>
         </div>
       </div>
 
       <div class="carte">
         <div class="carte__titre"><span>Présences du jour</span></div>
-        <div class="grille-stats">
+        <div class="grille-stats tableau-kpis tableau-kpis--compact">
           <app-carte-stat [valeur]="d.presences.presents" libelle="Présents" [accent]="true" />
           <app-carte-stat [valeur]="d.presences.absents" libelle="Absents" />
           <app-carte-stat [valeur]="d.presences.retards" libelle="Retards" />
@@ -79,7 +82,7 @@
         <p class="texte-doux">
           {{ d.parents.liaisonsAValider }} demande(s) d'accès en attente de décision.
         </p>
-        <div class="grille-stats" style="margin-top: 10px">
+        <div class="grille-stats tableau-kpis tableau-kpis--compact" style="margin-top: 10px">
           <app-carte-stat [valeur]="d.demandes.enAttente" libelle="Demandes en attente" />
           <app-carte-stat [valeur]="d.demandes.enCours" libelle="Demandes en cours" />
         </div>
@@ -87,7 +90,7 @@
 
       <div class="carte">
         <div class="carte__titre"><span>Communiqués</span></div>
-        <div class="grille-stats">
+        <div class="grille-stats tableau-kpis tableau-kpis--compact">
           <app-carte-stat [valeur]="d.communiques.publies" libelle="Publiés" />
           <app-carte-stat [valeur]="d.communiques.brouillons" libelle="Brouillons" />
           <app-carte-stat [valeur]="d.communiques.programmes" libelle="Programmés" />

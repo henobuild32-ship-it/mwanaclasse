@@ -5,3 +5,7 @@
   --bandeau-couleur: var(--mc-primaire);
 }
 .ecole .bandeau-haut { background: linear-gradient(90deg, var(--mc-fond-2), var(--mc-primaire-10)); }
+.etat-reseau { width: 9px; height: 9px; border-radius: 50%; background: #16a34a; box-shadow: 0 0 0 3px rgb(22 163 74 / 0.16); }
+.etat-reseau--faible { background: #eab308; box-shadow: 0 0 0 3px rgb(234 179 8 / 0.16); }
+.etat-reseau--hors-ligne { background: #dc2626; box-shadow: 0 0 0 3px rgb(220 38 38 / 0.16); }
+.profil-bouton { padding: 3px; border-radius: 50%; }

@@ -79,6 +79,9 @@
           <div class="presence__identite">
             <strong>{{ e.full_name }}</strong>
             <small>{{ e.classe }}@if (e.section) { · {{ e.section }}} · {{ e.public_code }}</small>
+            @if (statutDe(e) === 'non_enregistre') {
+              <a class="presence__continuer" [routerLink]="['/ecole/eleves', e.student_id]" [queryParams]="{ continuerPresence: '1', date: date(), classe: classeId() }">Ouvrir la fiche · continuer l’enregistrement</a>
+            }
             @if (statutDe(e) === 'absent' && brouillon()[e.student_id]?.reason) {
               <small class="presence__detail-resume">{{ raisonLibelle(brouillon()[e.student_id].reason) }} · {{ brouillon()[e.student_id].justified ? 'Justifiée' : 'Non justifiée' }}</small>
             } @else if (statutDe(e) === 'retard' && brouillon()[e.student_id]?.arrivalTime) {

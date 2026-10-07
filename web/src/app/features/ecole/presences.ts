@@ -1,5 +1,6 @@
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { ApiService, toApiError } from '../../core/api.service';
 import { ExportService } from '../../core/export.service';
 import { Classe, PresencesEleve, RecapPresence } from '../../core/models';
@@ -76,7 +77,7 @@ interface ReponsePresences {
 /** Feuille de présence (spec §18 — mode hors ligne) + export PDF/DOCX. */
 @Component({
   selector: 'app-presences-ecole',
-  imports: [FormsModule, Chargement, EtatVide],
+  imports: [FormsModule, RouterLink, Chargement, EtatVide],
   templateUrl: './presences.html',
   styleUrl: './presences.scss',
 })
@@ -247,6 +248,7 @@ export class PresencesEcole {
       return;
     }
     try {
+      if (cache) this.chargementFond.set(true);
       const r = await this.api.lire<ReponsePresences>('ecole/presences', {
         date: this.date(),
         classeId: this.classeId(),

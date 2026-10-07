@@ -1082,15 +1082,16 @@ img {
 /* ------------------------------------------------------------------ */
 
 .kpi {
+  min-width: 0;
   background: var(--mc-fond-2);
   border: 1px solid var(--mc-trait);
   border-radius: var(--mc-rayon);
   padding: 16px;
   box-shadow: var(--mc-ombre);
 }
-.kpi__label { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; color: var(--mc-texte-3); letter-spacing: 0.04em; margin-bottom: 6px; }
-.kpi__valeur { font-size: 1.6rem; font-weight: 800; color: var(--mc-texte); line-height: 1; }
-.kpi__sous { margin-top: 6px; font-size: 0.78rem; color: var(--mc-texte-2); }
+.kpi__label { display: block; min-height: 2.2em; font-size: 0.72rem; font-weight: 600; text-transform: uppercase; color: var(--mc-texte-3); letter-spacing: 0.04em; overflow-wrap: anywhere; }
+.kpi__valeur { display: block; margin: 8px 0; min-height: 1.8rem; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: 1.8rem; font-weight: 800; color: #172033 !important; line-height: 1; opacity: 1 !important; visibility: visible !important; }
+.kpi__sous { display: block; min-height: 1.2em; font-size: 0.78rem; color: var(--mc-texte-2); overflow-wrap: anywhere; }
 .kpi--color { border-left: 4px solid var(--mc-primaire); }
 .kpi--succes { border-left-color: var(--mc-succes); }
 .kpi--danger { border-left-color: var(--mc-danger); }

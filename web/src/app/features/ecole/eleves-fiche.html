@@ -77,6 +77,9 @@
     </div>
 
     <div class="barre-outils">
+      @if (continuerPresence) {
+        <a class="btn btn--primaire btn--ligne" routerLink="/ecole/presences" [queryParams]="presenceQuery()">Continuer l’enregistrement</a>
+      }
       <a class="btn btn--secondaire btn--ligne" routerLink="/ecole/presences">Voir les présences</a>
       @if (e.status === 'archive' || e.status === 'archeve') {
         <button class="btn btn--contour btn--ligne" type="button" (click)="changerEtat(false)">
