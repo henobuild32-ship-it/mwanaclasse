@@ -1,0 +1,231 @@
+<div class="informations">
+  <header class="informations__barre">
+    <a class="informations__marque" routerLink="/" aria-label="MwanaClasse, accueil">
+      <img src="logo-mwana-classe.png" alt="" />
+      <span>MwanaClasse</span>
+    </a>
+    <nav aria-label="Navigation principale">
+      <a routerLink="/inscription/parent">Compte parent</a>
+      <a routerLink="/inscription/ecole">Créer une école</a>
+    </nav>
+  </header>
+
+  <main class="informations__page">
+    <div class="informations__intro">
+      <a class="informations__retour" routerLink="/">← Accueil</a>
+      @switch (page) {
+        @case ('conditions') {
+          <p class="informations__eyebrow">Règles du service</p>
+          <h1>Conditions d’utilisation</h1>
+          <p class="informations__chapeau">Des repères simples pour utiliser MwanaClasse avec les écoles, les familles et les élèves concernés.</p>
+        }
+        @case ('confidentialite') {
+          <p class="informations__eyebrow">Données et protection</p>
+          <h1>Politique de confidentialité</h1>
+          <p class="informations__chapeau">Cette page explique quelles données sont utilisées, pourquoi elles le sont et comment elles sont protégées.</p>
+        }
+        @case ('aide') {
+          <p class="informations__eyebrow">Bien démarrer</p>
+          <h1>Aide</h1>
+          <p class="informations__chapeau">Les réponses essentielles pour créer un compte, retrouver son espace et utiliser MwanaClasse au quotidien.</p>
+        }
+        @case ('apropos') {
+          <p class="informations__eyebrow">La plateforme</p>
+          <h1>À propos de MwanaClasse</h1>
+          <p class="informations__chapeau">Un espace partagé pour faciliter le suivi scolaire et la circulation des informations entre l’école et les familles.</p>
+        }
+      }
+      <p class="informations__mise-a-jour">Dernière mise à jour : 7 octobre 2026</p>
+    </div>
+
+    <div class="informations__corps">
+      <nav class="informations__sommaire" aria-label="Pages d’information">
+        <span>Informations</span>
+        @for (lien of liens; track lien.page) {
+          <a [routerLink]="lien.chemin" [class.informations__lien--actif]="page === lien.page" [attr.aria-current]="page === lien.page ? 'page' : null">{{ lien.libelle }}</a>
+        }
+      </nav>
+
+      <article class="informations__article">
+        @switch (page) {
+          @case ('conditions') {
+            <section id="objet">
+              <h2>1. Objet du service</h2>
+              <p>MwanaClasse est un outil de gestion et de suivi scolaire. Il permet notamment aux établissements de gérer les classes, les élèves, les présences et les communications, et aux parents autorisés de consulter les informations liées à leurs enfants.</p>
+              <p>En créant un compte ou en utilisant un espace, vous acceptez les présentes conditions et la politique de confidentialité. Si vous n’acceptez pas ces règles, ne créez pas de compte et cessez d’utiliser le service.</p>
+            </section>
+            <section id="comptes">
+              <h2>2. Comptes et accès</h2>
+              <ul>
+                <li>Les informations fournies lors de l’inscription doivent être exactes et tenues à jour.</li>
+                <li>Chaque utilisateur protège son mot de passe et ne partage pas ses identifiants.</li>
+                <li>Un compte parent doit être rattaché à un élève au moyen du code communiqué par son établissement. Selon les réglages de l’école, le rattachement est immédiat ou soumis à validation.</li>
+                <li>Un compte école est administré par son établissement. Celui-ci gère les accès de son personnel et les informations scolaires qu’il publie.</li>
+                <li>Les comptes et les droits d’accès sont personnels. Toute utilisation réalisée avec vos identifiants est présumée provenir de votre compte jusqu’au signalement d’un accès non autorisé.</li>
+              </ul>
+            </section>
+            <section id="responsabilites">
+              <h2>3. Rôle des établissements et des familles</h2>
+              <p>L’établissement reste responsable de l’exactitude des informations qu’il saisit, des personnes qu’il autorise et des décisions de validation des rattachements parent-élève. Il doit vérifier que les personnes accédant aux données scolaires disposent d’une autorisation appropriée.</p>
+              <p>Le parent utilise son compte uniquement pour suivre les enfants auxquels il est autorisé à accéder. Il doit signaler à l’établissement toute erreur concernant un élève, une présence ou un rattachement.</p>
+              <p>Les utilisateurs doivent respecter la vie privée des élèves et ne pas copier, publier ou transmettre leurs informations en dehors des usages scolaires autorisés.</p>
+            </section>
+            <section id="usage">
+              <h2>4. Utilisation acceptable</h2>
+              <p>Il est interdit de tenter d’accéder à un compte, à un établissement ou à des données sans autorisation, de contourner les contrôles de sécurité, d’altérer le service ou d’utiliser la plateforme pour intimider, discriminer ou nuire à une personne.</p>
+              <p>Les informations et fichiers transmis doivent être licites, pertinents pour le suivi scolaire et respectueux des personnes concernées. Les données médicales ne doivent contenir que les précisions nécessaires à la prise en charge de l’élève.</p>
+            </section>
+            <section id="hors-ligne">
+              <h2>5. Fonctionnement hors ligne</h2>
+              <p>Pour permettre le travail sans réseau, certaines données peuvent être enregistrées dans le stockage local du navigateur et les modifications peuvent attendre dans une file de synchronisation. Elles sont envoyées au serveur lorsque la connexion revient.</p>
+              <p>La synchronisation peut être retardée ou nécessiter une vérification, notamment si une information a changé sur un autre appareil. Utilisez un appareil protégé, verrouillez-le lorsqu’il n’est pas utilisé et déconnectez-vous sur les appareils partagés.</p>
+            </section>
+            <section id="disponibilite">
+              <h2>6. Disponibilité et évolutions</h2>
+              <p>Le service est conçu pour être disponible en ligne et pour conserver certaines fonctions hors ligne. Une interruption peut néanmoins survenir pour maintenance, incident réseau ou raison de sécurité. Les fonctions hors ligne dépendent aussi du navigateur, de l’espace disponible et de l’état de l’appareil.</p>
+              <p>Les fonctions peuvent évoluer pour améliorer la sécurité et le suivi scolaire. Les informations enregistrées restent soumises aux droits d’accès et aux règles de conservation expliqués dans la politique de confidentialité.</p>
+            </section>
+            <section id="propriete">
+              <h2>7. Contenus et propriété</h2>
+              <p>Les utilisateurs conservent leurs droits sur les informations qu’ils fournissent. Ils autorisent leur traitement uniquement dans la mesure nécessaire à l’affichage, au stockage, à la synchronisation et aux fonctions demandées dans MwanaClasse.</p>
+              <p>Les éléments qui composent l’application ne peuvent être copiés, revendus ou détournés sans autorisation, sauf dans les limites prévues par la loi.</p>
+            </section>
+            <section id="suspension">
+              <h2>8. Sécurité, suspension et fin d’accès</h2>
+              <p>Un accès peut être limité ou suspendu lorsqu’il présente un risque pour les personnes, les données ou le fonctionnement du service, ou lorsqu’il est utilisé en violation des présentes règles. Lorsque cela est possible, l’établissement concerné est invité à vérifier la situation.</p>
+              <p>La fermeture d’un compte ne supprime pas automatiquement les dossiers scolaires que l’établissement doit conserver. Leur archivage ou leur suppression suit les règles de l’établissement et les obligations légales applicables.</p>
+            </section>
+            <section id="responsabilite">
+              <h2>9. Responsabilités et réclamations</h2>
+              <p>Chaque établissement demeure responsable de ses décisions pédagogiques, administratives et de la qualité des données qu’il saisit. MwanaClasse est un outil de suivi et ne remplace pas les dossiers officiels de l’établissement ni les échanges nécessaires à une situation urgente.</p>
+              <p>Aucune disposition de ces conditions ne limite les droits qui ne peuvent être exclus par la loi applicable. Les désaccords concernant une information scolaire doivent d’abord être examinés avec l’établissement qui l’a enregistrée.</p>
+            </section>
+            <section id="modifications">
+              <h2>10. Modifications des conditions</h2>
+              <p>Les conditions peuvent être mises à jour pour refléter une évolution du service ou des règles applicables. La date de mise à jour figure en haut de cette page. En cas de changement important, les utilisateurs en seront informés dans l’application ou lors de leur prochaine utilisation.</p>
+            </section>
+          }
+          @case ('confidentialite') {
+            <section id="responsable">
+              <h2>1. Qui traite les données ?</h2>
+              <p>Pour les dossiers scolaires (élèves, classes, présences et échanges associés), l’établissement qui utilise MwanaClasse détermine les informations nécessaires au suivi et les personnes autorisées à les consulter. MwanaClasse traite ces informations pour fournir les fonctions demandées par l’établissement.</p>
+              <p>Pour la création et la sécurité d’un compte, les informations de compte sont utilisées afin de créer l’accès, vérifier l’identité déclarée et permettre la connexion. Les utilisateurs peuvent demander à l’établissement de corriger les informations scolaires les concernant.</p>
+            </section>
+            <section id="donnees">
+              <h2>2. Données traitées</h2>
+              <ul>
+                <li><strong>Comptes et établissements :</strong> nom, rôle, établissement, identifiant de connexion et coordonnées saisies lors de l’inscription.</li>
+                <li><strong>Élèves :</strong> nom, code élève, classe, section et, selon les besoins de l’établissement, date ou lieu de naissance, genre, photo, adresse, informations du tuteur ou notes médicales.</li>
+                <li><strong>Suivi scolaire :</strong> présences, absences, retards, heures, motifs, notes administratives, demandes, communications, calendrier et rattachements parent-élève.</li>
+                <li><strong>Sécurité et fonctionnement :</strong> informations de session, opérations de synchronisation, appareil utilisé et traces nécessaires à la prévention des accès non autorisés et à l’audit.</li>
+              </ul>
+              <p>Les notes médicales, adresses et coordonnées sensibles des élèves sont des informations particulièrement délicates. Elles ne doivent être renseignées que si elles sont nécessaires au suivi de l’élève.</p>
+            </section>
+            <section id="finalites">
+              <h2>3. Pourquoi ces données sont-elles utilisées ?</h2>
+              <p>Elles servent à créer et sécuriser les comptes, organiser les classes, enregistrer et consulter le suivi des élèves, transmettre les informations de l’établissement aux parents autorisés, synchroniser les changements et produire les documents demandés.</p>
+              <p>Les données techniques servent à maintenir le service, prévenir les abus, résoudre les conflits de synchronisation et conserver une trace des actions sensibles. Les données ne sont pas utilisées pour afficher de la publicité ciblée.</p>
+            </section>
+            <section id="bases">
+              <h2>4. Autorisation et choix</h2>
+              <p>L’établissement doit disposer d’une raison valable et des autorisations nécessaires avant de saisir les données d’un élève. Il informe les familles selon les règles applicables et limite les données aux besoins du suivi scolaire.</p>
+              <p>Lorsqu’un compte est créé, l’utilisateur accepte les conditions et prend connaissance de la présente politique. Cette acceptation ne remplace pas les autorisations que l’établissement doit obtenir pour traiter les données des élèves.</p>
+            </section>
+            <section id="acces">
+              <h2>5. Qui peut consulter les informations ?</h2>
+              <p>Les membres du personnel autorisés accèdent aux données nécessaires à leur rôle dans l’établissement. Un parent ne voit que les informations des enfants auxquels son compte est rattaché et dont l’accès est autorisé par les règles de l’établissement.</p>
+              <p>Les données ne sont pas rendues publiques. Elles peuvent être traitées par l’infrastructure technique nécessaire au fonctionnement, à l’hébergement et au stockage du service, avec des accès limités à ce qui est nécessaire.</p>
+            </section>
+            <section id="securite">
+              <h2>6. Sécurité et stockage local</h2>
+              <p>Le service applique des contrôles d’accès par établissement et par rôle, protège les comptes par mot de passe et journalise certaines actions sensibles. Les champs particulièrement sensibles des dossiers élèves sont stockés chiffrés dans la base de données.</p>
+              <p>Pour le mode hors ligne, des informations peuvent rester dans le stockage local du navigateur, y compris sur un appareil partagé. Les modifications en attente sont conservées jusqu’à leur synchronisation. Protégez l’appareil par un code de verrouillage et déconnectez-vous après usage.</p>
+              <p>Aucun dispositif ne peut garantir un risque nul. En cas de perte d’appareil ou de suspicion d’accès non autorisé, l’établissement doit sécuriser les comptes concernés et vérifier les opérations récentes.</p>
+            </section>
+            <section id="conservation">
+              <h2>7. Durée de conservation</h2>
+              <p>Les informations scolaires sont conservées par l’établissement pendant la durée nécessaire au suivi de l’élève et selon son calendrier d’archivage et les obligations applicables. Un compte est conservé tant qu’il est nécessaire à l’accès au service, puis peut être désactivé ou supprimé selon les règles applicables.</p>
+              <p>Les journaux de sécurité et d’audit peuvent être conservés séparément lorsque cela est nécessaire pour protéger le service et vérifier les opérations. Les copies locales restent sur l’appareil jusqu’à leur suppression par l’application, le navigateur ou l’utilisateur.</p>
+            </section>
+            <section id="droits">
+              <h2>8. Accès, correction et suppression</h2>
+              <p>Un parent ou un élève, selon son âge et les règles applicables, peut demander l’accès ou la correction d’une information scolaire auprès de l’établissement qui la gère. L’établissement vérifie la demande, l’autorisation du demandeur et les éventuelles obligations de conservation avant d’agir.</p>
+              <p>Les demandes portant sur un compte peuvent être examinées par l’établissement administrateur. Une correction ou suppression peut être refusée ou différée lorsque la loi ou la tenue du dossier scolaire l’exige ; la raison doit alors être expliquée selon les règles applicables.</p>
+            </section>
+            <section id="transferts">
+              <h2>9. Transferts et mises à jour</h2>
+              <p>La synchronisation transmet les opérations enregistrées hors ligne au service dès qu’une connexion est disponible. Les transferts nécessaires au fonctionnement sont limités aux données concernées par l’opération.</p>
+              <p>Cette politique est mise à jour lorsque les pratiques ou fonctions évoluent. La date affichée en haut indique la dernière révision publiée.</p>
+            </section>
+          }
+          @case ('aide') {
+            <section id="compte-parent">
+              <h2>Créer un compte parent</h2>
+              <p>Choisissez « Créer un compte parent », saisissez votre nom, le code élève remis par l’établissement et au moins un identifiant de connexion demandé par le formulaire. Créez un mot de passe robuste et acceptez les conditions après les avoir consultées.</p>
+              <p>Selon le réglage de l’école, l’accès aux informations de l’enfant est immédiat ou attend la validation de l’établissement.</p>
+              <a class="informations__action" routerLink="/inscription/parent">Créer un compte parent →</a>
+            </section>
+            <section id="compte-ecole">
+              <h2>Créer un espace école</h2>
+              <p>Renseignez les informations de l’établissement et de son responsable, choisissez les types d’enseignement, puis créez un mot de passe robuste. Après l’inscription, connectez-vous pour configurer les classes et les accès du personnel.</p>
+              <a class="informations__action" routerLink="/inscription/ecole">Créer un espace école →</a>
+            </section>
+            <section id="connexion">
+              <h2>Se connecter ou récupérer l’accès</h2>
+              <p>Choisissez la connexion correspondant à votre rôle. Si vous avez oublié votre mot de passe, utilisez le parcours de récupération et suivez les étapes affichées.</p>
+              <div class="informations__actions">
+                <a class="informations__action" routerLink="/connexion/parent">Connexion parent →</a>
+                <a class="informations__action" routerLink="/connexion/ecole">Connexion école →</a>
+                <a class="informations__action" routerLink="/mot-de-passe-oublie">Mot de passe oublié →</a>
+              </div>
+            </section>
+            <section id="code-eleve">
+              <h2>Le code élève ne fonctionne pas</h2>
+              <p>Recopiez le code exactement comme il apparaît sur le document remis par l’établissement, sans ajouter d’espace. Si le code reste introuvable, demandez à l’établissement de vérifier le code et le dossier de l’élève.</p>
+            </section>
+            <section id="hors-ligne-aide">
+              <h2>Utiliser l’application sans internet</h2>
+              <p>Les données déjà synchronisées restent consultables sur l’appareil. Les présences et certaines modifications peuvent être enregistrées localement puis envoyées au retour du réseau. Un indicateur signale l’état de synchronisation.</p>
+              <p>Ne videz pas les données du navigateur et ne désinstallez pas l’application avant le retour en ligne si des opérations sont encore en attente. Sur un appareil partagé, verrouillez-le et déconnectez-vous après utilisation.</p>
+            </section>
+            <section id="presence-aide">
+              <h2>Une présence ou une information semble incorrecte</h2>
+              <p>Vérifiez la date, la classe et l’état de synchronisation. Les membres du personnel habilités peuvent corriger la feuille de présence. Les familles doivent demander à leur établissement de vérifier ou rectifier une donnée scolaire.</p>
+            </section>
+          }
+          @case ('apropos') {
+            <section id="mission">
+              <h2>Relier l’école et les familles</h2>
+              <p>MwanaClasse rassemble les informations utiles au suivi scolaire dans un espace partagé. Les établissements organisent leurs classes et leurs dossiers ; les parents autorisés suivent la présence et les communications liées à leurs enfants.</p>
+            </section>
+            <section id="fonctions">
+              <h2>Un suivi scolaire au même endroit</h2>
+              <ul>
+                <li>Gestion des classes, sections et dossiers élèves.</li>
+                <li>Feuilles de présence, absences et retards.</li>
+                <li>Communiqués, demandes et calendrier scolaire.</li>
+                <li>Accès parent rattaché à un élève et contrôlé par l’établissement.</li>
+              </ul>
+            </section>
+            <section id="hors-ligne">
+              <h2>Conçu pour les connexions irrégulières</h2>
+              <p>Les données déjà téléchargées peuvent rester disponibles sur l’appareil. Les modifications hors ligne sont mises en attente et synchronisées lorsque le réseau revient. L’état de synchronisation aide à savoir si une opération est locale, envoyée ou à vérifier.</p>
+            </section>
+            <section id="principes">
+              <h2>Des principes de conception</h2>
+              <p>La plateforme privilégie des accès séparés par établissement, des permissions liées au rôle et une collecte orientée vers le suivi scolaire. Les informations d’un élève ne doivent être consultées que par les personnes autorisées.</p>
+              <p>Pour connaître les règles d’utilisation et le traitement des informations, consultez les <a routerLink="/conditions-utilisation">conditions d’utilisation</a> et la <a routerLink="/politique-confidentialite">politique de confidentialité</a>.</p>
+            </section>
+          }
+        }
+      </article>
+    </div>
+  </main>
+
+  <footer class="informations__pied">
+    <span>© {{ annee }} MwanaClasse</span>
+    <nav aria-label="Pages d’information">
+      @for (lien of liens; track lien.page) { <a [routerLink]="lien.chemin">{{ lien.libelle }}</a> }
+    </nav>
+  </footer>
+</div>

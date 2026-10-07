@@ -14,6 +14,26 @@ export const routes: Routes = [
     loadComponent: () => import('./features/accueil/accueil').then((m) => m.Accueil),
   },
   {
+    path: 'conditions-utilisation',
+    loadComponent: () => import('./features/public/informations').then((m) => m.InformationsPubliques),
+    data: { page: 'conditions' },
+  },
+  {
+    path: 'politique-confidentialite',
+    loadComponent: () => import('./features/public/informations').then((m) => m.InformationsPubliques),
+    data: { page: 'confidentialite' },
+  },
+  {
+    path: 'aide',
+    loadComponent: () => import('./features/public/informations').then((m) => m.InformationsPubliques),
+    data: { page: 'aide' },
+  },
+  {
+    path: 'a-propos',
+    loadComponent: () => import('./features/public/informations').then((m) => m.InformationsPubliques),
+    data: { page: 'apropos' },
+  },
+  {
     path: 'connexion/ecole',
     canMatch: [gardeInvite],
     loadComponent: () =>

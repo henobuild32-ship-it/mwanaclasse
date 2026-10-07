@@ -6,14 +6,11 @@ import { provideServiceWorker } from '@angular/service-worker';
 import { routes } from './app.routes';
 import { authInterceptor } from './core/auth.interceptor';
 import { SessionService } from './core/session.service';
-import { SyncService } from './core/sync.service';
 
 /** Reprise de session puis démarrage de la synchronisation hors ligne. */
 async function initialisation(): Promise<void> {
   const session = inject(SessionService);
-  const sync = inject(SyncService);
   await session.restaurer();
-  await sync.demarrer();
 }
 
 export const appConfig: ApplicationConfig = {

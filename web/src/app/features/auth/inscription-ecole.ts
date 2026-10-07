@@ -91,6 +91,10 @@ export class InscriptionEcole {
   protected async creerEcole(): Promise<void> {
     this.erreur.set('');
     this.details.set([]);
+    if (!this.acceptTerms) {
+      this.erreur.set('Veuillez lire et accepter les conditions d’utilisation et la politique de confidentialité.');
+      return;
+    }
     if (this.password !== this.confirmation) {
       this.erreur.set('Les deux mots de passe ne correspondent pas.');
       return;
@@ -123,7 +127,7 @@ export class InscriptionEcole {
         password: this.password,
         yearLabel: this.yearLabel.trim(),
         parentLinkMode: this.parentLinkMode,
-        acceptTerms: true,
+        acceptTerms: this.acceptTerms,
       });
       this.toasts.succes('École créée. Vous pouvez maintenant vous connecter.');
       this.router.navigate(['/connexion/ecole'], {

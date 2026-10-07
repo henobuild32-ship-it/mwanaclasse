@@ -116,6 +116,8 @@ export interface PresencesEleve {
   status: string;
   arrival_time?: string | null;
   departure_time?: string | null;
+  reason?: string | null;
+  admin_note?: string | null;
 }
 
 export interface RecapPresence {

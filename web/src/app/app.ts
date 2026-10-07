@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
 import { ConnectiviteService } from './core/connectivite.service';
@@ -7,7 +7,7 @@ import { SyncService } from './core/sync.service';
 import { Confirmation, ToastContainerComponent } from './shared/ui';
 
 /** Routes publiques : accueil, connexions, inscription, mot de passe oublié. */
-const ROUTES_PUBLIQUES = /^\/(connexion\/|inscription\/|mot-de-passe-oublie$|$)/;
+const ROUTES_PUBLIQUES = /^\/(connexion\/|inscription\/|mot-de-passe-oublie$|conditions-utilisation$|politique-confidentialite$|aide$|a-propos$|$)/;
 
 @Component({
   selector: 'app-root',
@@ -20,6 +20,10 @@ export class App {
   protected readonly connectivite = inject(ConnectiviteService);
   protected readonly sync = inject(SyncService);
   private readonly router = inject(Router);
+  private readonly synchronisationSession = effect(() => {
+    if (this.session.connecte()) void this.sync.demarrer().catch(() => undefined);
+    else this.sync.arreter();
+  });
 
   private readonly urlCourante = signal(this.router.url);
   private readonly navigationSubscription = this.router.events

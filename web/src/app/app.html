@@ -1,4 +1,18 @@
 <div class="coquille" [class.coquille--publique]="pagePublique()">
+  @if (sync.preparationInitiale()) {
+    <section class="preparation" role="status" aria-live="polite">
+      <div class="preparation__contenu">
+        <img src="logo-mwana-classe.png" alt="" />
+        <h1>Préparation de votre espace</h1>
+        <p>Téléchargement des classes, des élèves et des présences récentes…</p>
+        <div class="preparation__progression" role="progressbar" aria-label="Progression du chargement" [attr.aria-valuenow]="sync.progressionPreparation()" aria-valuemin="0" aria-valuemax="100">
+          <span [style.width.%]="sync.progressionPreparation()"></span>
+        </div>
+        <small>{{ sync.progressionPreparation() }} %</small>
+      </div>
+    </section>
+  }
+
   @if (!pagePublique() && !dansInterface()) {
     <header class="bandeau-haut">
       <div class="bandeau-haut__interieur">

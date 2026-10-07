@@ -1,5 +1,17 @@
 /* Coquille d'application — styles globaux ailleurs. */
 
+.preparation {
+  position: fixed; z-index: 1000; inset: 0; display: grid; place-items: center;
+  padding: 24px; background: var(--mc-fond); text-align: center;
+}
+.preparation__contenu { width: min(100%, 420px); }
+.preparation__contenu img { width: 56px; height: 56px; object-fit: contain; }
+.preparation__contenu h1 { margin: 18px 0 8px; font-size: 1.35rem; }
+.preparation__contenu p { margin: 0 0 20px; color: var(--mc-texte-2); font-size: 0.9rem; line-height: 1.5; }
+.preparation__progression { height: 8px; overflow: hidden; border-radius: 999px; background: var(--mc-trait); }
+.preparation__progression span { display: block; height: 100%; border-radius: inherit; background: var(--mc-succes); transition: width 0.25s ease; }
+.preparation__contenu small { display: inline-block; margin-top: 8px; color: var(--mc-texte-2); font-variant-numeric: tabular-nums; }
+
 /* Pages vitrine : pas de contrainte de largeur, hauteur minimale écran. */
 .coquille--publique {
   min-height: 100vh;

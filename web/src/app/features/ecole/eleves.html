@@ -1,84 +1,149 @@
-<div class="page-entete">
-  <div>
-    <h1>Élèves</h1>
-    <p>{{ total() }} élève(s) — page {{ page() + 1 }}</p>
-  </div>
-  <button class="btn btn--primaire btn--ligne" type="button" (click)="ouvrirNouveau()">
-    + Inscrire un élève
-  </button>
-</div>
-
-<div class="barre-outils">
-  <input
-    type="search"
-    placeholder="Rechercher un nom ou un code…"
-    [ngModel]="recherche()"
-    (ngModelChange)="changerRecherche($event)"
-    aria-label="Rechercher un élève"
-  />
-  <select [ngModel]="classeId()" (ngModelChange)="changerClasse($event)" aria-label="Filtrer par classe">
-    <option value="">Toutes les classes</option>
-    @for (c of classes(); track c.id) {
-      <option [value]="c.id">{{ c.name }}</option>
-    }
-  </select>
-  <select [ngModel]="statut()" (ngModelChange)="changerStatut($event)" aria-label="Filtrer par statut">
-    <option value="actif">Actifs</option>
-    <option value="archive">Archivés</option>
-    <option value="tous">Tous</option>
-  </select>
-</div>
-
-@if (chargement()) {
-  <app-chargement texte="Chargement des élèves…" />
-} @else if (erreur()) {
-  <app-etat-vide texte="{{ erreur() }}" icone="📡" />
-} @else if (eleves().length === 0) {
-  <app-etat-vide texte="Aucun élève ne correspond à cette recherche." icone="🔍" />
-} @else {
-  <div class="carte">
-    <ul class="liste">
-      @for (e of eleves(); track e.id) {
-        <li class="ligne-liste">
-          <span class="avatar">{{ initiales(e.full_name) }}</span>
-          <div class="ligne-liste__principal">
-            <div class="ligne-liste__titre">
-              <a [routerLink]="['/ecole/eleves', e.id]">{{ e.full_name }}</a>
-            </div>
-            <div class="ligne-liste__sous">
-              {{ e.classe }}@if (e.section) { · {{ e.section }}} · code {{ e.public_code }}
-            </div>
-          </div>
-          <div class="ligne-liste__fin">
-            @if (e.presence_aujourdhui) {
-              <app-etiquette
-                [texte]="etiquetteStatut(e.presence_aujourdhui).texte"
-                [variante]="etiquetteStatut(e.presence_aujourdhui).variante"
-              />
-            } @else {
-              <span class="texte-petit">aujourd'hui : —</span>
-            }
-          </div>
-        </li>
-      }
-    </ul>
-
-    <div class="barre-outils" style="margin: 14px 0 0">
-      <button class="btn btn--secondaire btn--ligne" type="button" (click)="pagePrecedente()" [disabled]="page() === 0">
-        ← Précédent
-      </button>
-      <span class="texte-doux">Page {{ page() + 1 }}</span>
-      <button
-        class="btn btn--secondaire btn--ligne"
-        type="button"
-        (click)="pageSuivante()"
-        [disabled]="(page() + 1) * parPage >= total()"
-      >
-        Suivant →
-      </button>
+<section class="eleves-page">
+  <header class="page-entete eleves-page__entete">
+    <div>
+      <h1>Élèves</h1>
+      <p>{{ libelleStatut() }} · {{ total() }} résultat(s)</p>
     </div>
+    <button class="btn btn--primaire btn--ligne eleves-page__inscrire" type="button" (click)="ouvrirNouveau()">
+      <span aria-hidden="true">＋</span> Inscrire un élève
+    </button>
+  </header>
+
+  <div class="eleves-page__barre-recherche">
+    <label class="eleves-page__champ-recherche">
+      <span class="eleves-page__loupe" aria-hidden="true">⌕</span>
+      <span class="sr-only">Rechercher par nom, prénom ou code élève</span>
+      <input
+        type="search"
+        placeholder="Nom, prénom ou code élève"
+        [ngModel]="recherche()"
+        (ngModelChange)="changerRecherche($event)"
+        aria-label="Rechercher un élève par nom, prénom ou code"
+      />
+      @if (recherche()) {
+        <button class="eleves-page__effacer-recherche" type="button" (click)="viderRecherche()" aria-label="Effacer la recherche" title="Effacer la recherche">×</button>
+      }
+    </label>
+    <button
+      class="eleves-page__bouton-filtres"
+      [class.eleves-page__bouton-filtres--actif]="filtresOuverts() || filtresActifs() > 0"
+      type="button"
+      (click)="basculerFiltres()"
+      [attr.aria-expanded]="filtresOuverts()"
+      aria-controls="panneau-filtres-eleves"
+    >
+      <span class="eleves-page__icone-filtres" aria-hidden="true">☷</span>
+      <span>Filtres</span>
+      @if (filtresActifs() > 0) { <span class="eleves-page__nombre-filtres">{{ filtresActifs() }}</span> }
+    </button>
+    @if (rechercheEnCours()) {
+      <span class="eleves-page__recherche-en-cours" role="status">Recherche…</span>
+    }
   </div>
-}
+
+  <div class="eleves-page__statuts" role="group" aria-label="Filtrer les élèves par statut">
+    <button type="button" [class.eleves-page__statut--actif]="statut() === 'actif'" [attr.aria-pressed]="statut() === 'actif'" (click)="changerStatut('actif')">
+      <span class="eleves-page__statut-icone eleves-page__statut-icone--actif" aria-hidden="true">●</span>
+      <span>Actifs</span>
+    </button>
+    <button type="button" [class.eleves-page__statut--actif]="statut() === 'archive'" [attr.aria-pressed]="statut() === 'archive'" (click)="changerStatut('archive')">
+      <span class="eleves-page__statut-icone eleves-page__statut-icone--archive" aria-hidden="true">▣</span>
+      <span>Archivés</span>
+    </button>
+    <button type="button" [class.eleves-page__statut--actif]="statut() === 'tous'" [attr.aria-pressed]="statut() === 'tous'" (click)="changerStatut('tous')">
+      <span class="eleves-page__statut-icone" aria-hidden="true">☷</span>
+      <span>Tous</span>
+    </button>
+  </div>
+
+  @if (filtresOuverts()) {
+    <section class="eleves-page__panneau-filtres" id="panneau-filtres-eleves" aria-label="Filtres détaillés">
+      <div class="eleves-page__filtres-entete">
+        <div><strong>Affiner la liste</strong><span>Choisissez une classe ou une section.</span></div>
+        @if (filtresActifs() > 0) {
+          <button type="button" class="eleves-page__reinitialiser" (click)="effacerFiltres()">Tout effacer</button>
+        }
+      </div>
+      <div class="eleves-page__filtres-champs">
+        <label>Classe
+          <select [ngModel]="classeId()" (ngModelChange)="changerClasse($event)" aria-label="Filtrer par classe">
+            <option value="">Toutes les classes</option>
+            @for (c of classes(); track c.id) { <option [value]="c.id">{{ c.name }}</option> }
+          </select>
+        </label>
+        <label>Section
+          <select [ngModel]="sectionId()" (ngModelChange)="changerSection($event)" aria-label="Filtrer par section" [disabled]="!sectionsDisponibles().length">
+            <option value="">Toutes les sections</option>
+            @for (s of sectionsDisponibles(); track s.id) { <option [value]="s.id">{{ s.name }}</option> }
+          </select>
+        </label>
+      </div>
+    </section>
+  }
+
+  <div class="eleves-page__resume">
+    <div><span class="eleves-page__resume-icone" aria-hidden="true">▤</span><span>Élèves affichés</span><strong>{{ total() }}</strong></div>
+    @if (filtresActifs() > 0) {
+      <div class="eleves-page__indicateurs" aria-label="Filtres actifs">
+        @if (recherche().trim()) { <span class="eleves-page__puce">Recherche : {{ recherche().trim() }}</span> }
+        @if (classeId()) { <span class="eleves-page__puce">{{ nomClasseFiltree() }}</span> }
+        @if (sectionId()) { <span class="eleves-page__puce">{{ nomSectionFiltree() }}</span> }
+        @if (statut() !== 'actif') { <span class="eleves-page__puce">{{ statut() === 'archive' ? 'Archivés' : 'Tous les statuts' }}</span> }
+      </div>
+    }
+  </div>
+
+  @if (chargement()) {
+    <app-chargement texte="Chargement des élèves…" />
+  } @else if (erreur()) {
+    <app-etat-vide [texte]="erreur()" icone="📡" />
+  } @else if (eleves().length === 0) {
+    <app-etat-vide texte="Aucun élève ne correspond à ces critères." icone="⌕">
+      @if (filtresActifs() > 0) { <button class="btn btn--secondaire" type="button" (click)="effacerFiltres()">Effacer les filtres</button> }
+    </app-etat-vide>
+  } @else {
+    <section class="eleves-page__liste" aria-label="Liste des élèves">
+      <div class="eleves-page__liste-entete"><strong>{{ libelleStatut() }}</strong><span>{{ debutResultats() }}–{{ finResultats() }} sur {{ total() }}</span></div>
+      <ul>
+        @for (e of eleves(); track e.id) {
+          <li class="eleve-ligne">
+            @if (e.photo_url) {
+              <img class="eleve-ligne__avatar" [src]="e.photo_url" [alt]="''" />
+            } @else {
+              <span class="eleve-ligne__avatar eleve-ligne__avatar--initiales">{{ initiales(e.full_name) }}</span>
+            }
+            <div class="eleve-ligne__identite">
+              <a class="eleve-ligne__nom" [routerLink]="['/ecole/eleves', e.id]">{{ e.full_name }}</a>
+              <div class="eleve-ligne__details">
+                <span class="eleve-ligne__classe">{{ e.classe }}@if (e.section) { · {{ e.section }}}</span>
+                <span class="eleve-ligne__code">{{ e.public_code }}</span>
+                @if (e.parents_connectes) { <span class="eleve-ligne__parents">{{ e.parents_connectes }} parent(s)</span> }
+              </div>
+            </div>
+            <div class="eleve-ligne__etat">
+              @if (e.status === 'archive' || e.status === 'archeve') {
+                <span class="eleve-ligne__archive"><span aria-hidden="true">▣</span> Archivé</span>
+              } @else if (e.presence_aujourdhui) {
+                <app-etiquette [texte]="etiquetteStatut(e.presence_aujourdhui).texte" [variante]="etiquetteStatut(e.presence_aujourdhui).variante" />
+              } @else {
+                <span class="eleve-ligne__absence-statut"><span aria-hidden="true">○</span> Pas encore appelé</span>
+              }
+              <a class="eleve-ligne__ouvrir" [routerLink]="['/ecole/eleves', e.id]" [attr.aria-label]="'Voir la fiche de ' + e.full_name" title="Voir la fiche">›</a>
+            </div>
+          </li>
+        }
+      </ul>
+      <nav class="eleves-page__pagination" aria-label="Pagination des élèves">
+        <span>{{ debutResultats() }}–{{ finResultats() }} sur {{ total() }}</span>
+        <div>
+          <button class="btn btn--secondaire btn--ligne" type="button" (click)="pagePrecedente()" [disabled]="page() === 0" aria-label="Page précédente">← Précédent</button>
+          <span class="eleves-page__page">{{ page() + 1 }} / {{ nombrePages() }}</span>
+          <button class="btn btn--secondaire btn--ligne" type="button" (click)="pageSuivante()" [disabled]="(page() + 1) * parPage >= total()" aria-label="Page suivante">Suivant →</button>
+        </div>
+      </nav>
+    </section>
+  }
+</section>
 
 @if (nouveau()) {
   <app-overlay

@@ -53,35 +53,6 @@
   border-radius: 999px;
 }
 
-/* Feuille de présence */
-.ligne-liste--feuille { flex-wrap: wrap; row-gap: 8px; }
-.statuts { display: flex; gap: 6px; flex-wrap: wrap; }
-.statut {
-  border: 1px solid var(--mc-trait); background: var(--mc-fond-2);
-  color: var(--mc-texte-2); border-radius: 999px;
-  font-size: 0.76rem; font-weight: 650; padding: 7px 12px;
-  min-height: 38px; cursor: pointer;
-  transition: all 0.15s;
-}
-.statut:hover { border-color: var(--mc-primaire-30); }
-.statut--actif[data-variante='succes'] {
-  background: #ecfdf5; color: var(--mc-succes); border-color: #a7f3d0;
-}
-.statut--actif[data-variante='danger'] {
-  background: #fef2f2; color: var(--mc-danger); border-color: #fecaca;
-}
-.statut--actif[data-variante='attention'] {
-  background: #fffbeb; color: var(--mc-alerte); border-color: #fde68a;
-}
-.statut--actif[data-variante='info'] {
-  background: #eff6ff; color: var(--mc-primaire); border-color: #bfdbfe;
-}
-.statut--actif[data-variante='neutre'] {
-  background: var(--mc-fond); color: var(--mc-texte-2); border-color: var(--mc-trait);
-}
-
-@media (min-width: 720px) { .ligne-liste--feuille { flex-wrap: nowrap; } }
-
 /* KPI / Stats */
 .kpi-grid {
   display: grid;

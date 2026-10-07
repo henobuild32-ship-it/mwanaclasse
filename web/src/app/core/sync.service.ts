@@ -1,4 +1,4 @@
-import { Injectable, inject, signal, computed } from '@angular/core';
+import { Injectable, effect, inject, signal, computed } from '@angular/core';
 import { ApiService } from './api.service';
 import { ConnectiviteService } from './connectivite.service';
 import { SessionService } from './session.service';
@@ -23,6 +23,7 @@ export interface OperationFile {
   clientTime: string;
   deviceId?: string | null;
   audience: 'ecole' | 'parent';
+  syncError?: string;
 }
 
 export interface MetadonneesSync {
@@ -64,13 +65,17 @@ export class SyncService {
   private readonly connectivite = inject(ConnectiviteService);
 
   readonly operationsEnFile = signal(0);
+  readonly operationsEnErreur = signal(0);
   readonly enCours = signal(false);
   readonly derniereSynchro = signal<Date | null>(null);
   readonly message = signal<string | null>(null);
+  readonly preparationInitiale = signal(false);
+  readonly progressionPreparation = signal(0);
 
   /** Statut de synchronisation pour l'UI : 'idle' | 'en_cours' | 'erreur' | 'succes' */
   readonly statutSync = computed(() => {
     if (this.enCours()) return 'en_cours';
+    if (this.operationsEnErreur() > 0) return 'erreur';
     if (this.message() && this.message()!.startsWith('Erreur')) return 'erreur';
     if (this.derniereSynchro() && this.operationsEnFile() === 0) return 'succes';
     return 'idle';
@@ -78,6 +83,7 @@ export class SyncService {
 
   private db: IDBDatabase | null = null;
   private ouverture: Promise<IDBDatabase> | null = null;
+  private demarrage: Promise<void> | null = null;
   private minuterie: ReturnType<typeof setInterval> | null = null;
   private meta: MetadonneesSync = {
     clientId: '',
@@ -85,6 +91,12 @@ export class SyncService {
     curseurPull: null,
     derniereSynchro: null,
   };
+
+  private readonly repriseReseau = effect(() => {
+    if (this.connectivite.enLigne() && this.session.connecte() && this.db) {
+      void this.synchroniser();
+    }
+  });
 
   /* ---------------------------------------------------------------- */
   /*  Base locale                                                      */
@@ -159,17 +171,47 @@ export class SyncService {
 
   async demarrer(): Promise<void> {
     if (!this.session.connecte()) return;
-    await this.lireMeta();
-    await this.compter();
-    if (this.connectivite.enLigne()) {
-      await this.enregistrerTerminal();
-      await this.synchroniser();
+    if (this.demarrage) {
+      await this.demarrage;
+      return;
+    }
+    this.demarrage = this.preparerEtDemarrer();
+    try {
+      await this.demarrage;
+    } finally {
+      this.demarrage = null;
+    }
+  }
+
+  private async preparerEtDemarrer(): Promise<void> {
+    const db = await this.ouvrir();
+    const cacheExistant = await this.promettre<number>(
+      db.transaction(STORE_DONNEES, 'readonly').objectStore(STORE_DONNEES).count(),
+    );
+    const preparationNecessaire = cacheExistant === 0 && this.connectivite.enLigne();
+    this.preparationInitiale.set(preparationNecessaire);
+    this.progressionPreparation.set(preparationNecessaire ? 5 : 100);
+    try {
+      await this.lireMeta();
+      await this.compter();
+      this.progressionPreparation.set(18);
+      if (this.connectivite.enLigne()) {
+        await this.enregistrerTerminal();
+        this.progressionPreparation.set(35);
+        await this.synchroniser();
+        this.progressionPreparation.set(95);
+      }
+      this.progressionPreparation.set(100);
+    } finally {
+      if (preparationNecessaire) {
+        setTimeout(() => this.preparationInitiale.set(false), 500);
+      } else {
+        this.preparationInitiale.set(false);
+      }
     }
     if (!this.minuterie) {
       this.minuterie = setInterval(() => {
-        if (this.connectivite.enLigne() && this.session.connecte()) {
-          void this.synchroniser();
-        }
+        if (this.connectivite.enLigne() && this.session.connecte()) void this.synchroniser();
       }, 60_000);
     }
   }
@@ -208,14 +250,21 @@ export class SyncService {
   async pousser(): Promise<boolean> {
     if (!this.session.connecte() || !this.connectivite.enLigne()) return false;
     const db = await this.ouvrir();
-    const operations = await this.promettre<OperationFile[]>(
+    const toutes = await this.promettre<OperationFile[]>(
       db.transaction(STORE_OPERATIONS, 'readonly').objectStore(STORE_OPERATIONS).getAll(),
     );
+    const operations = toutes.filter((operation) => !operation.syncError);
     if (!operations.length) return true;
 
     const lot = operations.slice(0, 500);
     try {
-      await this.api.envoyer('sync/push', {
+      const reponse = await this.api.envoyer<{
+        lot?: {
+          details?: { opUuid: string }[];
+          conflits?: { opUuid: string; message: string }[];
+          refusees?: { opUuid: string; raison: string }[];
+        };
+      }>('sync/push', {
         clientId: this.meta.clientId,
         batchId: crypto.randomUUID(),
         audience: this.session.interface() === 'parent' ? 'parent' : 'ecole',
@@ -233,11 +282,22 @@ export class SyncService {
           deviceId: o.deviceId ?? null,
         })),
       });
+      const lotReponse = reponse.lot;
+      const appliquees = new Set(lotReponse?.details?.map((detail) => detail.opUuid) ?? []);
+      const erreurs = new Map<string, string>();
+      for (const conflit of lotReponse?.conflits ?? []) erreurs.set(conflit.opUuid, conflit.message);
+      for (const refus of lotReponse?.refusees ?? []) erreurs.set(refus.opUuid, refus.raison);
       const tx = db.transaction(STORE_OPERATIONS, 'readwrite');
-      for (const o of lot) tx.objectStore(STORE_OPERATIONS).delete(o.opUuid);
+      const store = tx.objectStore(STORE_OPERATIONS);
+      for (const operation of lot) {
+        if (appliquees.has(operation.opUuid)) store.delete(operation.opUuid);
+        else if (erreurs.has(operation.opUuid)) {
+          store.put({ ...operation, syncError: erreurs.get(operation.opUuid) });
+        }
+      }
       await this.finTransaction(tx);
       await this.compter();
-      return true;
+      return erreurs.size === 0;
     } catch {
       return false;
     }
@@ -322,6 +382,8 @@ export class SyncService {
     if (!this.connectivite.enLigne() || !this.session.connecte()) return;
     const reponse = await this.api.envoyer<{
       changements?: { entite: string; donnees?: unknown[]; lignes?: unknown[] }[];
+      ecole?: Record<string, unknown[]>;
+      parent?: Record<string, unknown[]>;
       curseur?: string;
       cursor?: string;
       derniereMaj?: string;
@@ -332,17 +394,27 @@ export class SyncService {
       entities: [...ENTITES_PULL],
       limit: 1000,
     });
-    for (const lot of reponse.changements ?? []) {
+    const changements: { entite: string; donnees?: unknown[]; lignes?: unknown[] }[] =
+      reponse.changements ?? Object.entries(reponse.ecole ?? reponse.parent ?? {}).map(
+        ([entite, lignes]) => ({ entite, lignes }),
+      );
+    for (const lot of changements) {
       const lignes = lot.donnees ?? lot.lignes ?? [];
       const mapping: Record<string, TypeEntiteLocale> = {
         attendance: 'presences',
+        presences: 'presences',
         student: 'eleves',
+        eleves: 'eleves',
         class: 'classes',
-        section: 'classes',
+        classes: 'classes',
         announcement: 'communiques',
+        communiques: 'communiques',
         request: 'demandes',
+        demandes: 'demandes',
         notification: 'notifications',
+        notifications: 'notifications',
         calendar: 'calendrier',
+        calendrier: 'calendrier',
       };
       const entite = mapping[lot.entite];
       if (entite && lignes.length) await this.mettreEnCache(entite, lignes);
@@ -383,9 +455,10 @@ export class SyncService {
 
   private async compter(): Promise<void> {
     const db = await this.ouvrir();
-    const n = await this.promettre<number>(
-      db.transaction(STORE_OPERATIONS, 'readonly').objectStore(STORE_OPERATIONS).count(),
+    const operations = await this.promettre<OperationFile[]>(
+      db.transaction(STORE_OPERATIONS, 'readonly').objectStore(STORE_OPERATIONS).getAll(),
     );
-    this.operationsEnFile.set(n);
+    this.operationsEnFile.set(operations.filter((operation) => !operation.syncError).length);
+    this.operationsEnErreur.set(operations.filter((operation) => !!operation.syncError).length);
   }
 }

@@ -78,6 +78,10 @@ export class InscriptionParent {
     this.erreur.set('');
     this.details.set([]);
 
+    if (!this.acceptTerms) {
+      this.erreur.set('Veuillez lire et accepter les conditions d’utilisation et la politique de confidentialité.');
+      return;
+    }
     if (!this.email.trim() && !this.phone.trim()) {
       this.erreur.set('Indiquez au moins une adresse e-mail ou un numéro de téléphone.');
       return;
@@ -103,7 +107,7 @@ export class InscriptionParent {
         codeEleve: this.codeEleve.trim(),
         relationship: this.relationship,
         password: this.password,
-        acceptTerms: true,
+        acceptTerms: this.acceptTerms,
       });
       this.toasts.succes(r.message ?? 'Compte parent créé.');
       this.router.navigate(['/connexion/parent'], {

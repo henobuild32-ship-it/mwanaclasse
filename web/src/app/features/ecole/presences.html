@@ -1,107 +1,131 @@
-<div class="page-entete">
-  <div>
-    <h1>Présences</h1>
-    <p>
-      Appel du jour
-      @if (recap(); as r) {
-        — {{ r.presents }} présents · {{ r.absents }} absents · {{ r.retards }} retards
-        @if (r.nonEnregistres > 0) { · {{ r.nonEnregistres }} non enregistrés }
-      }
-    </p>
+<section class="presence" [class.presence--economies]="modifie()">
+  <div class="page-entete presence__entete">
+    <div>
+      <h1>Présences</h1>
+      <p>Appel de la classe · {{ date() }}</p>
+    </div>
+    <span class="presence__etat" [class.presence__etat--local]="etatVisible() === 'local' || etatVisible() === 'attente'" [class.presence__etat--erreur]="etatVisible() === 'erreur'">
+      @if (synchronisationEnCours) { ● Synchronisation… }
+      @else if (etatVisible() === 'erreur') { ● À vérifier · {{ operationsEnErreur }} }
+      @else if (etatVisible() === 'synchronise') { ● Synchronisé }
+      @else if (etatVisible() === 'local') { ● Enregistré sur l’appareil }
+      @else if (etatVisible() === 'attente') { ● En attente de réseau · {{ operationsEnFile }} }
+      @else if (horsLigne) { ● Hors ligne }
+      @else { ● En ligne }
+    </span>
   </div>
-  @if (!enLigne) {
-    <span class="pastille-en-ligne pastille-hors-ligne">Hors ligne</span>
+
+  <div class="presence__resume" aria-label="Résumé des présences">
+    <button class="resume resume--present" [class.resume--actif]="filtre() === 'present'" [attr.aria-pressed]="filtre() === 'present'" (click)="basculerFiltre('present')">
+      <strong>{{ compteurs().presents }}</strong><span>Présents</span>
+    </button>
+    <button class="resume resume--absent" [class.resume--actif]="filtre() === 'absent'" [attr.aria-pressed]="filtre() === 'absent'" (click)="basculerFiltre('absent')">
+      <strong>{{ compteurs().absents }}</strong><span>Absents</span>
+    </button>
+    <button class="resume resume--retard" [class.resume--actif]="filtre() === 'retard'" [attr.aria-pressed]="filtre() === 'retard'" (click)="basculerFiltre('retard')">
+      <strong>{{ compteurs().retards }}</strong><span>Retards</span>
+    </button>
+    <button class="resume resume--non-enregistre" [class.resume--actif]="filtre() === 'non_enregistre'" [attr.aria-pressed]="filtre() === 'non_enregistre'" (click)="basculerFiltre('non_enregistre')">
+      <strong>{{ compteurs().nonEnregistres }}</strong><span>Non enregistrés</span>
+    </button>
+  </div>
+
+  <div class="presence__filtres">
+    <input type="date" [ngModel]="date()" (ngModelChange)="changerDate($event)" aria-label="Date de l'appel" />
+    <select [ngModel]="classeId()" (ngModelChange)="changerClasse($event)" aria-label="Classe">
+      <option value="">Choisir une classe</option>
+      @for (c of classes(); track c.id) { <option [value]="c.id">{{ c.name }}</option> }
+    </select>
+  </div>
+  @if (chargementFond() && !chargement()) {
+    <span class="presence__actualisation" aria-live="polite">Mise à jour en arrière-plan…</span>
   }
-</div>
 
-<div class="barre-outils">
-  <input
-    type="date"
-    [ngModel]="date()"
-    (ngModelChange)="date.set($event); chargerFeuille()"
-    aria-label="Date de l'appel"
-  />
-  <select
-    [ngModel]="classeId()"
-    (ngModelChange)="classeId.set($event); chargerFeuille()"
-    aria-label="Classe"
-  >
-    <option value="">Choisir une classe</option>
-    @for (c of classes(); track c.id) {
-      <option [value]="c.id">{{ c.name }}</option>
-    }
-  </select>
-  <button class="btn btn--secondaire btn--ligne" type="button" (click)="chargerFeuille()">
-    Actualiser
-  </button>
-</div>
+  <div class="presence__outils" aria-label="Actions sur la feuille">
+    <button class="outil" type="button" (click)="actualiser()" title="Actualiser la feuille"><span aria-hidden="true">↻</span><small>Actualiser</small></button>
+    <button class="outil" type="button" (click)="toutPresent()" [disabled]="!eleves().length" title="Marquer tous les élèves présents"><span aria-hidden="true">✓</span><small>Tout présent</small></button>
+    <span class="presence__separateur" aria-hidden="true"></span>
+    <button class="outil" type="button" (click)="exporterPDF()" [disabled]="exportEnCours() || !eleves().length" title="Exporter en PDF"><span aria-hidden="true">▤</span><small>PDF</small></button>
+    <button class="outil" type="button" (click)="exporterDOCX()" [disabled]="exportEnCours() || !eleves().length" title="Exporter en DOCX"><span aria-hidden="true">▧</span><small>DOCX</small></button>
+  </div>
 
-<div class="barre-outils">
-  <button class="btn btn--contour btn--ligne" type="button" (click)="toutPresent()" [disabled]="!eleves().length">
-    ✔ Tout présent
-  </button>
-  <button
-    class="btn btn--primaire btn--ligne"
-    type="button"
-    (click)="enregistrer()"
-    [disabled]="!modifie() || sauvegardeEnCours()"
-  >
-    {{ sauvegardeEnCours() ? 'Enregistrement…' : 'Enregistrer la feuille' }}
-  </button>
-  <button
-    class="btn btn--contour btn--ligne"
-    type="button"
-    (click)="exporterPDF()"
-    [disabled]="exportEnCours() || !eleves().length"
-    title="Télécharger la feuille en PDF"
-  >
-    📄 PDF
-  </button>
-  <button
-    class="btn btn--contour btn--ligne"
-    type="button"
-    (click)="exporterDOCX()"
-    [disabled]="exportEnCours() || !eleves().length"
-    title="Télécharger la feuille en DOCX"
-  >
-    📝 DOCX
-  </button>
-  @if (operationsEnFile > 0) {
-    <span class="pastille-en-ligne pastille-file">{{ operationsEnFile }} opération(s) en file</span>
+  @if (selectionnes() > 0) {
+    <div class="presence__selection" aria-live="polite">
+      <span>{{ selectionnes() }} sélectionné(s)</span><span>Appliquer :</span>
+      @for (s of statuts; track s.valeur) {
+        <button class="statut" type="button" [attr.data-variante]="s.variante" (click)="appliquerSelection(s.valeur)">{{ s.libelle }}</button>
+      }
+    </div>
   }
-</div>
 
-@if (chargement()) {
-  <app-chargement texte="Chargement de la feuille de présence…" />
-} @else if (erreur()) {
-  <app-etat-vide texte="{{ erreur() }}" icone="📡" />
-} @else if (eleves().length === 0) {
-  <app-etat-vide texte="Aucun élève dans cette classe pour la date choisie." />
-} @else {
-  <div class="carte">
-    <ul class="liste">
-      @for (e of eleves(); track e.student_id) {
-        <li class="ligne-liste ligne-liste--feuille">
+  @if (chargement()) {
+    <app-chargement texte="Préparation de la feuille…" />
+  } @else if (erreur() && !eleves().length) {
+    <app-etat-vide [texte]="erreur()" icone="📡" />
+  } @else if (eleves().length === 0) {
+    <app-etat-vide texte="Aucun élève dans cette classe pour la date choisie." />
+  } @else if (elevesFiltres().length === 0) {
+    <app-etat-vide texte="Aucun élève avec ce statut." />
+  } @else {
+    <div class="presence__liste-entete">
+      <label class="presence__selection-tous"><input type="checkbox" [checked]="selectionnes() === elevesFiltres().length" (change)="selectionnerTous($any($event.target).checked)" /><span>Sélectionner la liste</span></label>
+      <span>{{ elevesFiltres().length }} élève(s)</span>
+    </div>
+    <ul class="presence__liste">
+      @for (e of elevesFiltres(); track e.student_id) {
+        <li class="presence__ligne">
+          <label class="presence__case" [attr.aria-label]="'Sélectionner ' + e.full_name"><input type="checkbox" [checked]="estSelectionne(e.student_id)" (change)="selectionner(e.student_id, $any($event.target).checked)" /></label>
           <span class="avatar">{{ e.full_name[0] }}</span>
-          <div class="ligne-liste__principal">
-            <div class="ligne-liste__titre">{{ e.full_name }}</div>
-            <div class="ligne-liste__sous">{{ e.classe }}@if (e.section) { · {{ e.section }}} · {{ e.public_code }}</div>
-          </div>
-          <div class="statuts">
-            @for (s of statuts; track s.valeur) {
-              <button
-                type="button"
-                class="statut"
-                [class.statut--actif]="statutDe(e) === s.valeur"
-                [attr.data-variante]="s.variante"
-                (click)="choisir(e, s.valeur)"
-              >
-                {{ s.libelle }}
-              </button>
+          <div class="presence__identite">
+            <strong>{{ e.full_name }}</strong>
+            <small>{{ e.classe }}@if (e.section) { · {{ e.section }}} · {{ e.public_code }}</small>
+            @if (statutDe(e) === 'absent' && brouillon()[e.student_id]?.reason) {
+              <small class="presence__detail-resume">{{ raisonLibelle(brouillon()[e.student_id].reason) }} · {{ brouillon()[e.student_id].justified ? 'Justifiée' : 'Non justifiée' }}</small>
+            } @else if (statutDe(e) === 'retard' && brouillon()[e.student_id]?.arrivalTime) {
+              <small class="presence__detail-resume">Arrivée {{ brouillon()[e.student_id].arrivalTime }}</small>
             }
           </div>
+          <div class="presence__statuts" role="group" [attr.aria-label]="'Statut de ' + e.full_name">
+            @for (s of statuts; track s.valeur) {
+              <button type="button" class="statut" [class.statut--actif]="statutDe(e) === s.valeur" [attr.data-variante]="s.variante" [attr.aria-pressed]="statutDe(e) === s.valeur" (click)="choisir(e, s.valeur)">{{ s.libelle }}</button>
+            }
+          </div>
+          @if (statutDe(e) === 'absent' || statutDe(e) === 'retard') {
+            <button class="presence__details" type="button" (click)="ouvrirDetails(e)" [attr.aria-label]="aDetails(e) ? 'Modifier les détails de ' + e.full_name : 'Ajouter des détails pour ' + e.full_name" [title]="aDetails(e) ? 'Modifier les détails' : 'Ajouter un motif ou une note'">{{ aDetails(e) ? '▤' : '✎' }}</button>
+          }
         </li>
       }
     </ul>
+  }
+</section>
+
+@if (detailsEleveId(); as id) {
+  <div class="presence__voile" (click)="fermerDetails()" (keydown.escape)="fermerDetails()">
+    <section class="presence__dialogue" role="dialog" aria-modal="true" [attr.aria-label]="'Détails de présence pour ' + eleveDetails?.full_name" (click)="$event.stopPropagation()">
+      <div class="presence__dialogue-tirette" aria-hidden="true"></div>
+      <header><div><h2>{{ eleveDetails?.full_name }}</h2><p>{{ statutDe(eleveDetails!) === 'absent' ? 'Détails de l’absence' : 'Détails du retard' }}</p></div><button type="button" class="presence__fermer" (click)="fermerDetails()" aria-label="Fermer">×</button></header>
+      @if (statutDe(eleveDetails!) === 'absent') {
+        <label class="presence__champ">Motif
+          <select [ngModel]="detailsFormulaire().reason" (ngModelChange)="majDetails('reason', $event)"><option value="">Choisir un motif</option>@for (raison of raisonsAbsence; track raison.valeur) { <option [value]="raison.valeur">{{ raison.libelle }}</option> }</select>
+        </label>
+        <label class="presence__justifie"><input type="checkbox" [ngModel]="detailsFormulaire().justified" (ngModelChange)="majDetails('justified', $event)" /> Absence justifiée</label>
+      } @else {
+        <label class="presence__champ">Heure d’arrivée
+          <input type="time" [ngModel]="detailsFormulaire().arrivalTime" (ngModelChange)="majDetails('arrivalTime', $event)" />
+        </label>
+        <label class="presence__champ">Motif
+          <select [ngModel]="detailsFormulaire().reason" (ngModelChange)="majDetails('reason', $event)"><option value="">Choisir un motif (facultatif)</option>@for (raison of raisonsAbsence; track raison.valeur) { <option [value]="raison.valeur">{{ raison.libelle }}</option> }</select>
+        </label>
+      }
+      <label class="presence__champ">Note<textarea rows="3" maxlength="900" [ngModel]="detailsFormulaire().note" (ngModelChange)="majDetails('note', $event)" placeholder="Ajouter une précision…"></textarea></label>
+      <footer><button class="btn btn--secondaire btn--ligne" type="button" (click)="fermerDetails()">Annuler</button><button class="btn btn--primaire btn--ligne" type="button" (click)="enregistrerDetails()">Valider</button></footer>
+    </section>
+  </div>
+}
+
+@if (modifie()) {
+  <div class="presence__enregistrement" role="region" aria-label="Modifications à enregistrer">
+    <span><strong>{{ nombreModifications() }}</strong> modification(s)</span>
+    <button class="btn btn--primaire btn--ligne" type="button" (click)="enregistrer()" [disabled]="sauvegardeEnCours()">{{ sauvegardeEnCours() ? 'Enregistrement…' : 'Enregistrer la feuille' }}</button>
   </div>
 }
