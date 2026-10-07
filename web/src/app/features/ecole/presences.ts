@@ -290,7 +290,7 @@ export class PresencesEcole {
     void this.chargerFeuille();
   }
 
-  protected statutDe(eleve: PresencesEleve): Statut | undefined {
+  protected statutDe(eleve: PresencesEleve): Statut | 'non_enregistre' | undefined {
     return this.brouillon()[eleve.student_id]?.status;
   }
 
