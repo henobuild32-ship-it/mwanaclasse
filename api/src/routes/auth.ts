@@ -138,45 +138,83 @@ export async function registerAuthRoutes(deps: AppDependencies): Promise<void> {
       deviceId: (req.headers['x-device-id'] as string) ?? null,
     };
 
-    const result = await db.withIdentity({ actor: 'system', ip }, async (client) => {
-      // Limitation de débit : la création d'école est une opération rare.
-      const quota = await guard.consume(client, 'register', { kind: 'ip', key: ip ?? 'inconnue' });
-      if (!quota.allowed) {
-        const err = new Error(
-          'Trop de créations d’établissement depuis cette connexion. Réessayez plus tard.',
-        ) as Error & { statusCode?: number; code?: string };
-        err.statusCode = 429;
-        err.code = 'TROP_DE_REQUETES';
-        throw err;
+    let result: Awaited<ReturnType<typeof authService.registerSchool>>;
+    try {
+      result = await db.withIdentity({ actor: 'system', ip }, async (client) => {
+        // Limitation de débit : la création d'école est une opération rare.
+        const quota = await guard.consume(client, 'register', { kind: 'ip', key: ip ?? 'inconnue' });
+        if (!quota.allowed) {
+          const err = new Error(
+            'Trop de cr\u00e9ations d\u2019\u00e9tablissement depuis cette connexion. R\u00e9essayez plus tard.',
+          ) as Error & { statusCode?: number; code?: string };
+          err.statusCode = 429;
+          err.code = 'TROP_DE_REQUETES';
+          throw err;
+        }
+
+        // Unicité de l'e-mail du directeur
+        const existing = await client.query(
+          `SELECT 1 FROM sec.staff_users WHERE email = $1 LIMIT 1`,
+          [parsed.data.directorEmail.trim().toLowerCase()],
+        );
+        if ((existing.rowCount ?? 0) > 0) {
+          const err = new Error('Cette adresse e-mail est déjà utilisée par un compte.') as Error & {
+            statusCode?: number;
+            code?: string;
+          };
+          err.statusCode = 409;
+          err.code = 'EMAIL_EXISTANT';
+          throw err;
+        }
+
+        return authService.registerSchool(
+          client,
+          {
+            ...parsed.data,
+            type: types[0]!,
+            types,
+            isMixed: parsed.data.isMixed ?? null,
+            parentLinkMode: parsed.data.parentLinkMode ?? 'validation',
+          },
+          ctx,
+        );
+      });
+    } catch (err: unknown) {
+      const e = err as Error & { statusCode?: number; code?: string; violations?: string[] };
+
+      // Erreurs métier connues : on les retransmet telles quelles au client.
+      if (e.statusCode && e.statusCode < 500) {
+        return sendError(reply, e.statusCode, e.code ?? 'ERREUR', e.message, {
+          ...(e.violations ? { violations: e.violations } : {}),
+        });
       }
 
-      // Unicité de l'e-mail du directeur
-      const existing = await client.query(
-        `SELECT 1 FROM sec.staff_users WHERE email = $1 LIMIT 1`,
-        [parsed.data.directorEmail.trim().toLowerCase()],
-      );
-      if ((existing.rowCount ?? 0) > 0) {
-        const err = new Error('Cette adresse e-mail est déjà utilisée par un compte.') as Error & {
-          statusCode?: number;
-          code?: string;
-        };
-        err.statusCode = 409;
-        err.code = 'EMAIL_EXISTANT';
-        throw err;
+      // Erreur PostgreSQL de contrainte d'unicité (email race condition)
+      const pgCode = (e as any).code as string | undefined;
+      if (pgCode === '23505') {
+        return sendError(reply, 409, 'EMAIL_EXISTANT', 'Cette adresse e-mail est déjà utilisée par un compte.');
       }
 
-      return authService.registerSchool(
-        client,
-        {
-          ...parsed.data,
-          type: types[0]!,
-          types,
-          isMixed: parsed.data.isMixed ?? null,
-          parentLinkMode: parsed.data.parentLinkMode ?? 'validation',
-        },
-        ctx,
+      // Timeout base de données
+      if (pgCode === '57014') {
+        return sendError(reply, 504, 'DELAI_DEPASSE', 'La connexion a pris trop de temps. Réessayez dans quelques instants.');
+      }
+
+      // Connexion base de données impossible
+      if (/ECONNREFUSED|ECONNRESET|EHOSTUNREACH|ETIMEDOUT|connection/i.test(e.message ?? '')) {
+        req.log.error({ err, correlationId: req.correlationId }, 'erreur de connexion base de données (inscription école)');
+        return sendError(reply, 503, 'SERVICE_INDISPONIBLE', 'Une erreur de connexion est survenue. Veuillez réessayer dans quelques instants.');
+      }
+
+      // Erreur inattendue : on journalise sans exposer les détails au client.
+      req.log.error({ err, correlationId: req.correlationId }, 'erreur interne inscription école');
+      return sendError(
+        reply,
+        500,
+        'ERREUR_INTERNE',
+        `Une erreur interne est survenue. Si elle persiste, communiquez ce code a l'assistance : ${req.correlationId ?? 'inconnu'}`,
       );
-    });
+    }
 
     return noStore(reply).code(201).send({
       message: 'Votre établissement a été créé.',

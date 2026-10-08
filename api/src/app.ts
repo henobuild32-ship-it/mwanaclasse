@@ -434,6 +434,12 @@ export async function shutdown(deps: AppDependencies, reason: string): Promise<v
 let serverlessApp: FastifyInstance | null = null;
 
 export async function handler(req: any, res: any): Promise<void> {
+  // Identifiant de corrélation : permet de tracer l'erreur dans les logs
+  // sans exposer d'information interne au client.
+  const correlationId =
+    (req.headers?.['x-correlation-id'] as string) ??
+    randomUUID();
+
   try {
     if (!serverlessApp) {
       const deps = await buildApp();
@@ -442,14 +448,24 @@ export async function handler(req: any, res: any): Promise<void> {
     }
     serverlessApp.server.emit('request', req, res);
   } catch (err) {
-    const message = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
-    console.error('[serverless] échec de la requête :', err);
+    // On journalise le détail côté serveur uniquement — jamais côté client.
+    console.error('[serverless] erreur d\'initialisation :', err);
     try {
       if (!res.headersSent) {
         res.statusCode = 500;
         res.setHeader('content-type', 'application/json; charset=utf-8');
+        res.setHeader('x-correlation-id', correlationId);
       }
-      res.end(JSON.stringify({ error: { code: '500', message } }));
+      res.end(
+        JSON.stringify({
+          erreur: 'ERREUR_INTERNE',
+          message:
+            'Une erreur de connexion est survenue. Veuillez réessayer. ' +
+            'Si le problème persiste, communiquez ce code à l\'assistance\u00a0: ' +
+            correlationId,
+          correlationId,
+        }),
+      );
     } catch {
       /* la réponse est déjà terminée */
     }
