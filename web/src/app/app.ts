@@ -9,6 +9,10 @@ import { Confirmation, ToastContainerComponent } from './shared/ui';
 /** Routes publiques : accueil, connexions, inscription, mot de passe oublié. */
 const ROUTES_PUBLIQUES = /^\/(connexion\/|inscription\/|mot-de-passe-oublie$|conditions-utilisation$|politique-confidentialite$|aide$|a-propos$|$)/;
 
+/** Dernière page intérieure visitée : un rechargement y revient au lieu de l'accueil. */
+const CLE_DERNIER_CHEMIN = 'mwana.dernier_chemin';
+const CHEMIN_INTERIEUR = /^\/(ecole|parent)(\/|$)/;
+
 @Component({
   selector: 'app-root',
   imports: [RouterOutlet, RouterLink, ToastContainerComponent, Confirmation],
@@ -26,9 +30,43 @@ export class App {
   });
 
   private readonly urlCourante = signal(this.router.url);
+  /** Première navigation du chargement de page (un rechargement, pas un clic). */
+  private premiereNavigation = true;
   private readonly navigationSubscription = this.router.events
     .pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd))
-    .subscribe((e) => this.urlCourante.set(e.urlAfterRedirects));
+    .subscribe((e) => {
+      const url = e.urlAfterRedirects.split('?')[0];
+      this.urlCourante.set(e.urlAfterRedirects);
+
+      if (CHEMIN_INTERIEUR.test(url)) {
+        try {
+          localStorage.setItem(CLE_DERNIER_CHEMIN, url);
+        } catch {
+          /* stockage indisponible (mode privé) : sans conséquence */
+        }
+        return;
+      }
+
+      // Rechargement de page atterri sur l'accueil alors que la session est
+      // valide : on rouvre la dernière page au lieu de renvoyer l'utilisateur
+      // à l'accueil. Un clic vers l'accueil en cours de session n'est pas
+      // concerné (seule la première navigation du chargement est traitée).
+      if (this.premiereNavigation) {
+        this.premiereNavigation = false;
+        if (url === '/' && this.session.connecte()) {
+          const dernier = this.lireDernierChemin();
+          if (dernier && dernier !== '/') void this.router.navigateByUrl(dernier);
+        }
+      }
+    });
+
+  private lireDernierChemin(): string | null {
+    try {
+      return localStorage.getItem(CLE_DERNIER_CHEMIN);
+    } catch {
+      return null;
+    }
+  }
 
   /** true quand on est sur une page « vitrine » (sans barre d'application). */
   protected readonly pagePublique = computed(() =>

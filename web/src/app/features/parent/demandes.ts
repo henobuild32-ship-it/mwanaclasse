@@ -43,6 +43,9 @@ export class DemandesParent {
   protected readonly enfants = signal<Enfant[]>([]);
   protected readonly formulaireOuvert = signal(false);
   protected readonly enCours = signal(false);
+  /** Demande dépliée (fil d'échanges + champ de réponse). */
+  protected readonly idOuverte = signal('');
+  protected readonly enCoursReponse = signal(false);
 
   kind = 'reclamation';
   sujet = '';
@@ -50,6 +53,7 @@ export class DemandesParent {
   studentId = '';
   absenceDate = '';
   absenceReason = '';
+  reponse = '';
 
   /** Saisie relevée à l'ouverture, pour détecter une fermeture avec modifications. */
   private depart = '';
@@ -80,6 +84,35 @@ export class DemandesParent {
   protected echanges(d: Demande): { auteur: string; nom: string; message: string; date: string }[] {
     const e = (d as unknown as { echanges?: unknown }).echanges;
     return (Array.isArray(e) ? e : (d.messages ?? [])) as never;
+  }
+
+  protected basculer(id: string): void {
+    this.idOuverte.set(this.idOuverte() === id ? '' : id);
+    this.reponse = '';
+  }
+
+  protected cloturee(d: Demande): boolean {
+    return d.status === 'cloture';
+  }
+
+  /** Ajoute un message au fil d'une demande existante (POST parent/demandes/:id/messages). */
+  protected async envoyerReponse(id: string): Promise<void> {
+    if (this.enCoursReponse()) return;
+    if (this.reponse.trim().length < 1) {
+      this.toasts.erreur('Votre message est vide.');
+      return;
+    }
+    this.enCoursReponse.set(true);
+    try {
+      await this.api.envoyer(`parent/demandes/${id}/messages`, { message: this.reponse.trim() });
+      this.reponse = '';
+      this.toasts.succes('Message envoyé à l’administration.');
+      await this.charger();
+    } catch (err) {
+      this.toasts.erreur(toApiError(err).message);
+    } finally {
+      this.enCoursReponse.set(false);
+    }
   }
 
   protected async charger(): Promise<void> {

@@ -27,8 +27,8 @@
           <div class="ligne-liste__principal">
             <div class="ligne-liste__titre">
               {{ d.subject ?? d.reference ?? 'Demande' }}
-              @if (d.priority === 'haute' || d.priority === 'urgente') {
-                <span class="pastille pastille--danger">{{ d.priority }}</span>
+              @if (priorite(d) >= 3) {
+                <span class="pastille pastille--danger">{{ libellePriorite(d) }}</span>
               }
             </div>
             <div class="ligne-liste__sous">
@@ -64,6 +64,20 @@
 
         @if (idReponse() === d.id) {
           <li class="bloc-note">
+            @if (echanges(d).length > 0) {
+              <div class="encart">
+                <strong>Fil d'échanges ({{ echanges(d).length }})</strong>
+                @for (e of echanges(d); track $index) {
+                  <div class="texte-doux" style="white-space: pre-wrap">
+                    <strong
+                      >{{ e.auteur === 'ecole' ? 'École' : 'Parent' }}{{ e.nom ? ' — ' + e.nom : '' }} :</strong
+                    >
+                    {{ e.message }}
+                    <span style="font-size: 0.85em">({{ e.date | slice: 0:10 }})</span>
+                  </div>
+                }
+              </div>
+            }
             <div class="champ">
               <label [for]="'reponse-' + d.id">Votre réponse *</label>
               <textarea

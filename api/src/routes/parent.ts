@@ -922,13 +922,14 @@ export async function registerParentRoutes(deps: AppDependencies): Promise<void>
         throw err;
       }
 
-      // Référence lisible pour le suivi administratif
-      const seq = await client.query<{ n: string }>(
-        `SELECT (count(*) + 1)::text AS n FROM app.requests
-          WHERE school_id = $1 AND created_at >= date_trunc('year', now())`,
+      // Référence lisible pour le suivi administratif : calculée par la base
+      // sous verrou par école — un comptage côté application ne voyait que les
+      // demandes du parent connecté et provoquait un 409 dès la deuxième.
+      const seq = await client.query<{ ref: string }>(
+        `SELECT app.nouvelle_reference_demande($1) AS ref`,
         [schoolId],
       );
-      const reference = `DEM/${new Date().getFullYear()}/${String(seq.rows[0]?.n ?? '1').padStart(4, '0')}`;
+      const reference = seq.rows[0]?.ref ?? `DEM/${new Date().getFullYear()}/0001`;
 
       const { rows } = await client.query(
         `INSERT INTO app.requests

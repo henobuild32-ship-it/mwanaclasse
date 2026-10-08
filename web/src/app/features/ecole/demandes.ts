@@ -15,7 +15,11 @@ interface DemandeEcole extends Demande {
   classe?: string | null;
   messages_parent?: unknown[];
   messages_ecole?: unknown[];
+  echanges?: { auteur: string; nom: string | null; message: string; date: string }[];
 }
+
+/** Priorité stockée en petit entier (1..4) — voir app.requests.priority. */
+const LIBELLES_PRIORITE: Record<number, string> = { 1: 'faible', 2: 'normale', 3: 'haute', 4: 'urgente' };
 
 /** Demandes des parents (traitement côté école, spec §5). */
 @Component({
@@ -70,6 +74,18 @@ export class DemandesEcole {
     this.idReponse.set(this.idReponse() === id ? '' : id);
     this.reponse = '';
     this.nouveauStatut = 'repondu';
+  }
+
+  protected priorite(d: DemandeEcole): number {
+    return typeof d.priority === 'number' ? d.priority : 2;
+  }
+
+  protected libellePriorite(d: DemandeEcole): string {
+    return LIBELLES_PRIORITE[this.priorite(d)] ?? 'normale';
+  }
+
+  protected echanges(d: DemandeEcole): { auteur: string; nom: string | null; message: string; date: string }[] {
+    return Array.isArray(d.echanges) ? d.echanges : [];
   }
 
   protected async envoyerReponse(id: string): Promise<void> {

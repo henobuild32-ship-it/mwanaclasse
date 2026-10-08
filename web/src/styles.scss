@@ -41,6 +41,12 @@ body {
   padding: 0;
 }
 
+/* Écran fixe : la place de la barre de défilement est réservée en permanence,
+   la mise en page ne glisse d'aucun pixel quand une liste s'allonge. */
+html {
+  scrollbar-gutter: stable;
+}
+
 body {
   font-family:
     'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
@@ -49,6 +55,8 @@ body {
   -webkit-font-smoothing: antialiased;
   font-size: 16px;
   line-height: 1.45;
+  /* Aucun déplacement horizontal : contenu large => pas de glissement. */
+  overflow-x: hidden;
 }
 
 h1,

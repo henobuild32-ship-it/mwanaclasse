@@ -125,11 +125,26 @@ export async function registerSyncRoutes(deps: AppDependencies): Promise<void> {
     }
 
     const result = await db.withIdentity(dbIdentityFrom(req), async (client) => {
+      // Un parent n'a pas d'école de session : on la retrouve par son lien
+      // avec un enfant. Un parent sans enfant rattaché déclare quand même son
+      // terminal (sync.clients.school_id nullable depuis 014).
+      let schoolId = auth.schoolId ?? null;
+      if (!schoolId && auth.identity.audience === 'parent') {
+        const liens = await client.query<{ school_id: string }>(
+          `SELECT school_id FROM app.parent_student_links
+            WHERE parent_id = $1 AND status = 'actif'
+            ORDER BY created_at DESC LIMIT 1`,
+          [auth.identity.parentId ?? auth.userId],
+        );
+        schoolId = liens.rows[0]?.school_id ?? null;
+      }
+
       const { rows } = await client.query(
         `INSERT INTO sync.clients
            (id, school_id, audience, staff_user_id, parent_id, label, platform, app_version, user_agent)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
          ON CONFLICT (id) DO UPDATE SET
+           school_id = coalesce(sync.clients.school_id, EXCLUDED.school_id),
            label = EXCLUDED.label,
            platform = EXCLUDED.platform,
            app_version = EXCLUDED.app_version,
@@ -138,7 +153,7 @@ export async function registerSyncRoutes(deps: AppDependencies): Promise<void> {
          RETURNING id, label, last_sync_at, last_pull_cursor, pending_count, is_blocked`,
         [
           parsed.data.clientId,
-          auth.schoolId,
+          schoolId,
           parsed.data.audience,
           auth.identity.staffUserId ?? null,
           auth.identity.parentId ?? null,
@@ -438,7 +453,7 @@ export async function registerSyncRoutes(deps: AppDependencies): Promise<void> {
           await client.query(
             `INSERT INTO sync.change_log
                (school_id, entity_type, entity_id, operation, changed_by_name, device_id)
-             SELECT $1, $2, coalesce($3::uuid, gen_random_uuid()), 'update', $4, $5
+             SELECT $1::uuid, $2, coalesce($3::uuid, gen_random_uuid()), 'update', $4, $5
               WHERE $3::uuid IS NOT NULL`,
             [auth.schoolId, a.entityType, a.entityId ?? null, auth.displayName, a.deviceId ?? null],
           );
@@ -1145,12 +1160,11 @@ async function applyOperation(
         return { status: 'rejected', message: 'Aucun enfant connecté à ce compte.' };
       }
 
-      const seq = await client.query<{ n: string }>(
-        `SELECT (count(*) + 1)::text AS n FROM app.requests
-          WHERE school_id = $1 AND created_at >= date_trunc('year', now())`,
+      const seq = await client.query<{ ref: string }>(
+        `SELECT app.nouvelle_reference_demande($1) AS ref`,
         [parentSchoolId],
       );
-      const reference = `DEM/${new Date().getFullYear()}/${String(seq.rows[0]?.n ?? '1').padStart(4, '0')}`;
+      const reference = seq.rows[0]?.ref ?? `DEM/${new Date().getFullYear()}/0001`;
 
       const { rows } = await client.query<{ id: string }>(
         `INSERT INTO app.requests

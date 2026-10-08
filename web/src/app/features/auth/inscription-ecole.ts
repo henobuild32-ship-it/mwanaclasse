@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { ApiService, toApiError } from '../../core/api.service';
+import { SessionService } from '../../core/session.service';
 import { TYPES_ECOLE, inclutCollege } from '../../core/types-ecole';
 import { ToastService } from '../../core/toast.service';
 import { ChoixMultiples } from '../../shared/ui';
@@ -24,6 +25,7 @@ interface DetailErreur {
 export class InscriptionEcole {
   private readonly api = inject(ApiService);
   private readonly router = inject(Router);
+  private readonly session = inject(SessionService);
   private readonly toasts = inject(ToastService);
 
   protected readonly typesDisponibles = TYPES_ECOLE;
@@ -129,7 +131,21 @@ export class InscriptionEcole {
         parentLinkMode: this.parentLinkMode,
         acceptTerms: this.acceptTerms,
       });
-      this.toasts.succes('École créée. Vous pouvez maintenant vous connecter.');
+      this.toasts.succes('École créée. Bienvenue dans votre tableau de bord.');
+      // Connexion automatique : l'utilisateur accède directement à son
+      // tableau de bord école, sans repasser par l'écran de connexion.
+      try {
+        await this.session.connecterEcole({
+          email: this.directorEmail.trim(),
+          password: this.password,
+        });
+        if (this.session.connecte()) {
+          await this.router.navigate(['/ecole']);
+          return;
+        }
+      } catch {
+        /* repli sur la page de connexion ci-dessous */
+      }
       this.router.navigate(['/connexion/ecole'], {
         queryParams: { email: this.directorEmail.trim() },
       });

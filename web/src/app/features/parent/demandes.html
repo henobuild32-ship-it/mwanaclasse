@@ -94,11 +94,53 @@
         @if (d.message) {
           <p>{{ d.message }}</p>
         }
-        @if (echanges(d).length > 1) {
+        <div class="btn-groupe">
+          <button class="btn btn--secondaire btn--petit" type="button" (click)="basculer(d.id)">
+            {{ idOuverte() === d.id ? 'Masquer le fil' : 'Voir les échanges' }}
+            ({{ echanges(d).length }})
+          </button>
+        </div>
+
+        @if (idOuverte() === d.id) {
           <div class="encart">
-            <strong>{{ echanges(d).length }} échange(s)</strong>
-            Dernier : {{ echanges(d)[echanges(d).length - 1].nom }}
+            @if (echanges(d).length === 0) {
+              <span class="texte-doux">Aucun échange pour l’instant.</span>
+            }
+            @for (e of echanges(d); track $index) {
+              <div class="texte-doux" style="white-space: pre-wrap">
+                <strong>{{ e.auteur === 'ecole' ? 'École' : 'Vous' }}{{ e.nom ? ' — ' + e.nom : '' }} :</strong>
+                {{ e.message }}
+                <span style="font-size: 0.85em">({{ e.date | slice: 0:10 }})</span>
+              </div>
+            }
           </div>
+
+          @if (cloturee(d)) {
+            <p class="texte-doux" style="margin-bottom: 0">
+              Demande clôturée : envoyez une nouvelle demande si nécessaire.
+            </p>
+          } @else {
+            <div class="champ">
+              <label [for]="'reponse-' + d.id">Votre message à l’administration</label>
+              <textarea
+                [id]="'reponse-' + d.id"
+                rows="3"
+                maxlength="8000"
+                [(ngModel)]="reponse"
+                placeholder="Écrivez votre message…"
+              ></textarea>
+            </div>
+            <div class="btn-groupe">
+              <button
+                class="btn btn--primaire btn--ligne"
+                type="button"
+                [disabled]="enCoursReponse()"
+                (click)="envoyerReponse(d.id)"
+              >
+                {{ enCoursReponse() ? 'Envoi…' : 'Envoyer le message' }}
+              </button>
+            </div>
+          }
         }
       </div>
     }

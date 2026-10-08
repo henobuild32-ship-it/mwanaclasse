@@ -1689,14 +1689,14 @@ export async function registerSchoolRoutes(deps: AppDependencies): Promise<void>
             }
 
             // Numéro de référence du document : séquentiel par école et par année.
-            const seq = await c.query<{ n: string }>(
-              `SELECT (count(*) + 1)::text AS n FROM app.announcements
-                WHERE school_id = $1 AND created_at >= date_trunc('year', now())`,
-              [schoolId],
-            );
+            // Généré par la base (verrou par école) pour éviter les collisions.
             const reference =
               input.reference ??
-              `COMM/${new Date().getFullYear()}/${String(seq.rows[0]?.n ?? '1').padStart(4, '0')}`;
+              (await c.query<{ ref: string }>(
+                `SELECT app.nouvelle_reference_communique($1) AS ref`,
+                [schoolId],
+              )).rows[0]?.ref ??
+              `COMM/${new Date().getFullYear()}/0001`;
 
             const { rows } = await c.query(
               `INSERT INTO app.announcements
@@ -1743,12 +1743,12 @@ export async function registerSchoolRoutes(deps: AppDependencies): Promise<void>
                 `INSERT INTO app.notifications
                    (school_id, audience, parent_id, kind, title, body, severity,
                     entity_type, entity_id, action_url)
-                 SELECT DISTINCT $1, 'parent', r.parent_id,
+                 SELECT DISTINCT $1::uuid, 'parent', r.parent_id,
                         $3, $4, $5,
                         CASE WHEN $6::boolean THEN 'urgent' ELSE 'info' END,
-                        'announcement', $2, '/parent/communiques/' || $2::text
+                        'announcement', $2::uuid, '/parent/communiques/' || $2::uuid::text
                    FROM app.announcement_recipients r
-                  WHERE r.announcement_id = $2`,
+                  WHERE r.announcement_id = $2::uuid`,
                 [
                   schoolId,
                   announcement.id,
@@ -1890,12 +1890,12 @@ export async function registerSchoolRoutes(deps: AppDependencies): Promise<void>
               `INSERT INTO app.notifications
                  (school_id, audience, parent_id, kind, title, body, severity,
                   entity_type, entity_id, action_url)
-               SELECT DISTINCT $1, 'parent', r.parent_id,
+               SELECT DISTINCT $1::uuid, 'parent', r.parent_id,
                       $3, $4, $5,
                       CASE WHEN $6::boolean THEN 'urgent' ELSE 'info' END,
-                      'announcement', $2, '/parent/communiques/' || $2::text
+                      'announcement', $2::uuid, '/parent/communiques/' || $2::uuid::text
                  FROM app.announcement_recipients r
-                WHERE r.announcement_id = $2`,
+                WHERE r.announcement_id = $2::uuid`,
               [
                 schoolId,
                 ann.id,
@@ -2188,7 +2188,7 @@ export async function registerSchoolRoutes(deps: AppDependencies): Promise<void>
                     entity_type, entity_id, action_url)
                  VALUES ($1,'parent',$2,'liaison_validee','Accès à votre enfant confirmé',
                          'L’école a validé votre accès. Vous pouvez consulter les présences et les communiqués.',
-                         'succes','student',$3,'/parent/enfants/' || $3::text)`,
+                         'succes','student',$3,'/parent/enfants/' || $3::uuid::text)`,
                 [schoolId, link.parent_id, link.student_id],
               );
             }
@@ -2225,7 +2225,13 @@ export async function registerSchoolRoutes(deps: AppDependencies): Promise<void>
                 (SELECT count(*) FROM app.request_messages m
                   WHERE m.request_id = r.id AND m.author_type = 'parent')::int AS messages_parent,
                 (SELECT count(*) FROM app.request_messages m
-                  WHERE m.request_id = r.id AND m.author_type = 'ecole')::int AS messages_ecole
+                  WHERE m.request_id = r.id AND m.author_type = 'ecole')::int AS messages_ecole,
+                (SELECT coalesce(json_agg(json_build_object(
+                          'auteur', m.author_type, 'nom', m.author_name,
+                          'message', m.body, 'date', m.created_at)
+                        ORDER BY m.created_at), '[]'::json)
+                   FROM app.request_messages m
+                  WHERE m.request_id = r.id AND m.is_internal = false) AS echanges
            FROM app.requests r
            JOIN app.parents p ON p.id = r.parent_id
            LEFT JOIN app.students s ON s.id = r.student_id
@@ -2320,8 +2326,8 @@ export async function registerSchoolRoutes(deps: AppDependencies): Promise<void>
               `INSERT INTO app.notifications
                  (school_id, audience, parent_id, kind, title, body, severity,
                   entity_type, entity_id, action_url)
-               VALUES ($1,'parent',$2,'reponse_administration',$3,$4,'info','request',$5,
-                       '/parent/demandes/' || $5::text)`,
+               VALUES ($1,'parent',$2,'reponse_administration',$3,$4,'info','request',$5::uuid,
+                       '/parent/demandes/' || $5::uuid::text)`,
               [
                 schoolId,
                 request.parent_id,
@@ -2875,11 +2881,11 @@ async function resolveAndInsertRecipients(
   const { rowCount } = await client.query(
     `INSERT INTO app.announcement_recipients
        (announcement_id, school_id, parent_id, student_id)
-     SELECT DISTINCT $1, $2, l.parent_id, l.student_id
+     SELECT DISTINCT $1::uuid, $2::uuid, l.parent_id, l.student_id
        FROM app.parent_student_links l
        JOIN app.students s ON s.id = l.student_id
        JOIN app.classes  cl ON cl.id = s.class_id
-      WHERE l.school_id = $2
+      WHERE l.school_id = $2::uuid
         AND l.status = 'actif'
         AND s.status = 'actif'
         AND (

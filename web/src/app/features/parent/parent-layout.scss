@@ -100,3 +100,54 @@
 .navigation__lien--actif {
   color: var(--mc-ecole, var(--mc-primaire));
 }
+
+/* ---- Pastille d'état réseau : vert = en ligne, jaune = connexion faible,
+        rouge = hors ligne ---- */
+
+.pastille-reseau {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  min-height: 26px;
+  padding: 3px 10px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.pastille-reseau__point {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  background: currentColor;
+  box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 20%, transparent);
+}
+
+.pastille-reseau--en-ligne {
+  background: #ecfdf5;
+  color: #047857;
+  border-color: #a7f3d0;
+}
+
+.pastille-reseau--faible {
+  background: #fffbeb;
+  color: #b45309;
+  border-color: #fde68a;
+}
+
+.pastille-reseau--hors-ligne {
+  background: #fef2f2;
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+
+/* Le profil EST le bouton : pas de chevron, cible stable en taille. */
+.profil-bouton {
+  padding-left: 5px;
+  padding-right: 5px;
+}

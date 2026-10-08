@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { ApiService, toApiError } from '../../core/api.service';
+import { SessionService } from '../../core/session.service';
 import { ToastService } from '../../core/toast.service';
 
 const RELATIONS = [
@@ -35,6 +36,7 @@ interface DetailErreur {
 export class InscriptionParent {
   private readonly api = inject(ApiService);
   private readonly router = inject(Router);
+  private readonly session = inject(SessionService);
   private readonly toasts = inject(ToastService);
 
   protected readonly relations = RELATIONS;
@@ -109,9 +111,20 @@ export class InscriptionParent {
         password: this.password,
         acceptTerms: this.acceptTerms,
       });
+      const identifiant = this.email.trim() || this.phone.trim();
       this.toasts.succes(r.message ?? 'Compte parent créé.');
+      // Connexion automatique : ouverture directe du tableau de bord parent.
+      try {
+        await this.session.connecterParent({ emailOrPhone: identifiant, password: this.password });
+        if (this.session.connecte()) {
+          await this.router.navigate(['/parent']);
+          return;
+        }
+      } catch {
+        /* repli sur la page de connexion ci-dessous */
+      }
       this.router.navigate(['/connexion/parent'], {
-        queryParams: { identifiant: this.email.trim() || this.phone.trim() },
+        queryParams: { identifiant },
       });
     } catch (err) {
       const e = toApiError(err);

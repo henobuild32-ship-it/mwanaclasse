@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, HostListener, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { ConnectiviteService } from '../../core/connectivite.service';
 import { EnfantActifService } from '../../core/enfant-actif.service';
@@ -31,6 +31,39 @@ export class EspaceParentLayout {
   protected readonly _menuOuvert = signal(false);
   protected readonly menuOuvert = computed(() => this._menuOuvert());
 
+  /**
+   * État du réseau affiché en pastille :
+   *  - vert   « En ligne »          : connecté, rien en attente
+   *  - jaune  « Connexion faible »  : en ligne mais des opérations attendent
+   *  - rouge  « Hors ligne »        : aucune connexion réseau
+   */
+  protected readonly etatReseau = computed(() => {
+    if (!this.connectivite.enLigne()) {
+      return {
+        niveau: 'hors_ligne' as const,
+        libelle: 'Hors ligne',
+        detail: 'Aucune connexion réseau : les actions seront envoyées au retour du réseau.',
+      };
+    }
+    const enFile = this.sync.operationsEnFile();
+    const enErreur = this.sync.operationsEnErreur();
+    if (enErreur > 0 || enFile > 0) {
+      return {
+        niveau: 'faible' as const,
+        libelle: 'Connexion faible',
+        detail:
+          enErreur > 0
+            ? `${enErreur} opération(s) en erreur, ${enFile} en attente d’envoi.`
+            : `${enFile} opération(s) en attente d’envoi.`,
+      };
+    }
+    return {
+      niveau: 'en_ligne' as const,
+      libelle: 'En ligne',
+      detail: 'Connecté, synchronisation à jour.',
+    };
+  });
+
   protected readonly onglets: Onglet[] = [
     { chemin: '/parent', libelle: 'Accueil', icone: '🏠' },
     { chemin: '/parent/enfants', libelle: 'Enfants', icone: '👧' },
@@ -43,6 +76,13 @@ export class EspaceParentLayout {
   }
 
   protected toggleMenu(): void { this._menuOuvert.update((v) => !v); }
+
+  /** Clic en dehors du profil : le menu se referme (aucun chevron à fermer). */
+  @HostListener('document:click', ['$event'])
+  protected fermerMenuEnDehors(event: Event): void {
+    const cible = event.target as HTMLElement;
+    if (this._menuOuvert() && !cible.closest('.dropdown')) this._menuOuvert.set(false);
+  }
 
   protected choisir(id: string | null): void {
     this.selection.selectionner(id);
