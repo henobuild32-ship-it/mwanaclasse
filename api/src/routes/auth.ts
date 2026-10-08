@@ -14,6 +14,7 @@ import type { AppDependencies } from '../app.js';
 import { clientIp, dbIdentityFrom, requireAuth, sendError, noStore } from '../http/middleware.js';
 import { refreshCookieOptions, REFRESH_COOKIE } from '../security/sessions.js';
 import { AUDIT_ACTIONS } from '../security/audit.js';
+import { normalizeStudentCode } from '../security/codes.js';
 
 /* ==========================================================================
  *  Schémas de validation
@@ -273,12 +274,7 @@ export async function registerAuthRoutes(deps: AppDependencies): Promise<void> {
 
       // Code élève obligatoire : il identifie l'enfant ET son établissement,
       // ce qui évite tout code école à retenir ou à diffuser.
-      const normalizedCode = parsed.data.codeEleve
-        .toUpperCase()
-        .replace(/[^A-Z0-9]/g, '');
-      const studentCode = normalizedCode.startsWith('MCELV')
-        ? `MC-ELV-${normalizedCode.slice(4)}`
-        : normalizedCode;
+      const studentCode = normalizeStudentCode(parsed.data.codeEleve);
 
       const student = await client.query<{
         student_id: string;
@@ -324,12 +320,19 @@ export async function registerAuthRoutes(deps: AppDependencies): Promise<void> {
 
       // Rattachement immédiat à l'enfant (et donc à son établissement) :
       // le compte n'est jamais créé orphelin.
+      // Responsable principal : uniquement si l'enfant n'a pas déjà de lien
+      // principal actif ou en attente (index unique links_one_primary).
       const autoApprove = enfant.parent_link_mode === 'automatique';
       await client.query(
         `INSERT INTO app.parent_student_links
            (school_id, parent_id, student_id, relationship, status, is_primary,
             requested_method, decided_at, decision_note)
-         VALUES ($1,$2,$3,$4,$5::app.link_status,true,'code_enfant',
+         VALUES ($1,$2,$3,$4,$5::app.link_status,
+                 NOT EXISTS (
+                   SELECT 1 FROM app.parent_student_links l
+                    WHERE l.student_id = $3 AND l.is_primary
+                      AND l.status IN ('actif','en_attente')),
+                 'code_enfant',
                  CASE WHEN $5 = 'actif' THEN now() ELSE NULL END,
                  CASE WHEN $5 = 'actif' THEN 'Validation automatique (configuration de l''école)' ELSE NULL END)
          ON CONFLICT (parent_id, student_id) DO NOTHING`,

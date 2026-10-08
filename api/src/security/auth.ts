@@ -990,7 +990,7 @@ export class AuthService {
          (public_code, slug, official_name, type, types, is_mixed, city, commune, address_line,
           phones, email, description, opening_hours, primary_color,
           parent_link_mode, current_year_label, onboarded_at)
-       VALUES ($1,$2,$3,$4,$5::app.school_type[],$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17, now())
+       VALUES ($1,$2,$3,$4,$5::app.school_type[],$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16, now())
        RETURNING id, official_name`,
       [
         schoolCode,

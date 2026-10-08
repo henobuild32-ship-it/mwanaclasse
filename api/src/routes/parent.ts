@@ -23,6 +23,7 @@ import {
   noStore,
 } from '../http/middleware.js';
 import { AUDIT_ACTIONS } from '../security/audit.js';
+import { normalizeStudentCode } from '../security/codes.js';
 
 const uuid = z.string().uuid('Identifiant invalide.');
 const optionalText = (max: number) => z.string().trim().max(max).optional().nullable();
@@ -258,12 +259,7 @@ export async function registerParentRoutes(deps: AppDependencies): Promise<void>
       return sendError(reply, 400, 'DONNEES_INVALIDES', 'Le code de l’enfant est obligatoire.');
     }
 
-    const normalize = (raw: string, prefix: string): string => {
-      const c = raw.toUpperCase().replace(/[^A-Z0-9]/g, '');
-      return c.startsWith(prefix) ? `MC-${prefix}-${c.slice(prefix.length)}` : c;
-    };
-
-    const studentCode = normalize(parsed.data.codeEnfant, 'ELV');
+    const studentCode = normalizeStudentCode(parsed.data.codeEnfant);
     const ip = clientIp(req);
 
     const result = await db.withIdentity(dbIdentityFrom(req), async (client) => {
@@ -362,10 +358,12 @@ export async function registerParentRoutes(deps: AppDependencies): Promise<void>
       const status = autoApprove ? 'actif' : 'en_attente';
 
       // Premier parent rattaché => responsable principal
+      // (on ne recrée jamais de lien principal tant qu'un lien principal
+      //  non terminé existe : index unique links_one_primary)
       const isPrimary = (
         await client.query<{ n: string }>(
           `SELECT count(*)::text AS n FROM app.parent_student_links
-            WHERE student_id = $1 AND status = 'actif'`,
+            WHERE student_id = $1 AND is_primary AND status IN ('actif','en_attente')`,
           [student.student_id],
         )
       ).rows[0]!.n === '0';
