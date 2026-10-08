@@ -329,7 +329,17 @@ export function translatePgError(err: unknown): { status: number; code: string; 
     case '57014': // query_canceled (statement_timeout)
       return { status: 504, code: 'DELAI_DEPASSE', message: 'L’opération a pris trop de temps.' };
 
+    case '08000': // connection_exception
+    case '08001': // sqlclient_unable_to_establish_sqlconnection
+    case '08003': // connection_does_not_exist
+    case '08004': // sqlserver_rejected_establishment_of_sqlconnection
+    case '08006': // connection_failure
+    case '08P01': // protocol_violation
     case '53300': // too_many_connections
+    case '53400': // configuration_limit_exceeded
+    case '57P01': // admin_shutdown
+    case '57P02': // crash_shutdown
+    case '57P03': // cannot_connect_now
       return { status: 503, code: 'BASE_SATUREE', message: 'Le service est momentanément surchargé.' };
 
     default:
@@ -340,3 +350,33 @@ export function translatePgError(err: unknown): { status: number; code: string; 
       };
   }
 }
+
+/**
+ * Une erreur qui n'a PAS de SQLSTATE (échec de connexion réseau, épuisement du
+ * pool, expiration de délai) ne doit jamais se terminer en 500 : le client
+ * reçoit un « service momentanément indisponible » avec une consigne de
+ * nouvelle tentative, et le serveur continue de répondre aux autres requêtes.
+ */
+export function isInfrastructureError(err: unknown): boolean {
+  const e = err as { code?: string; message?: string };
+  const code = String(e.code ?? '');
+  if (
+    [
+      'ECONNREFUSED',
+      'ECONNRESET',
+      'ETIMEDOUT',
+      'ENOTFOUND',
+      'EAI_AGAIN',
+      'EPIPE',
+      'EHOSTUNREACH',
+      'ENETUNREACH',
+      'ERR_SOCKET_CONNECTION_TIMEOUT',
+    ].includes(code)
+  ) {
+    return true;
+  }
+  return /timeout exceeded when trying to connect|Connection terminated|Client has encountered a connection error|remaining connection slots|too many clients already|Connection ended unexpectedly/i.test(
+    e.message ?? '',
+  );
+}
+

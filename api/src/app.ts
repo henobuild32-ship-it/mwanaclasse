@@ -23,7 +23,7 @@ import rateLimitPlugin from '@fastify/rate-limit';
 import { randomUUID } from 'node:crypto';
 
 import { loadConfig, type AppConfig } from './config/index.js';
-import { Database, translatePgError } from './db/pool.js';
+import { Database, translatePgError, isInfrastructureError } from './db/pool.js';
 import { SecretsManager } from './security/secrets.js';
 import { AuditLogger } from './security/audit.js';
 import { BruteForceGuard } from './security/bruteforce.js';
@@ -326,6 +326,23 @@ export async function buildApp(overrides: Record<string, string | undefined> = {
       return reply.code(translated.status).send({
         erreur: translated.code,
         message: translated.message,
+        correlationId: req.correlationId,
+      });
+    }
+
+    // Panne d'infrastructure (base injoignable, pool épuisé, délai réseau) :
+    // 503 + consigne de nouvelle tentative. Le serveur reste debout et continue
+    // de servir les autres requêtes : une saturation ne doit jamais se
+    // traduire par une erreur interne.
+    if (isInfrastructureError(err)) {
+      reply.header('Retry-After', '5');
+      req.log.error(
+        { correlationId: req.correlationId, code: err.code, message: err.message },
+        'infrastructure indisponible',
+      );
+      return reply.code(503).send({
+        erreur: 'SERVICE_INDISPONIBLE',
+        message: 'Le service est momentanément surchargé. Merci de réessayer dans quelques instants.',
         correlationId: req.correlationId,
       });
     }

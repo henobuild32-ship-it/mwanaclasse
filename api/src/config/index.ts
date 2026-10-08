@@ -64,10 +64,19 @@ const EnvSchema = z.object({
   COOKIE_SAMESITE: z.enum(['strict', 'lax', 'none']).default('lax'),
 
   /* --- Anti-bruteforce -------------------------------------------------- */
-  LOGIN_MAX_ATTEMPTS: z.coerce.number().int().min(3).max(50).default(5),
+  LOGIN_MAX_ATTEMPTS: z.coerce.number().int().min(3).max(200).default(10),
   LOGIN_LOCKOUT_MINUTES: z.coerce.number().int().min(1).max(1440).default(15),
-  RATE_LIMIT_GLOBAL_PER_MINUTE: z.coerce.number().int().min(10).default(300),
-  RATE_LIMIT_LOGIN_PER_MINUTE: z.coerce.number().int().min(3).default(10),
+  /** Requêtes HTTP acceptées par minute ET par adresse IP (toutes routes) */
+  RATE_LIMIT_GLOBAL_PER_MINUTE: z.coerce.number().int().min(10).default(2000),
+  /** Tentatives de connexion par minute et par identifiant */
+  RATE_LIMIT_LOGIN_PER_MINUTE: z.coerce.number().int().min(3).default(20),
+  /** Tentatives de connexion par minute et par adresse IP (réseau partagé :
+   *  un établissement où des centaines de personnes partagent une IP) */
+  RATE_LIMIT_LOGIN_IP_PER_MINUTE: z.coerce.number().int().min(10).default(300),
+  /** Créations de compte par heure et par adresse IP */
+  RATE_LIMIT_REGISTER_PER_HOUR: z.coerce.number().int().min(5).default(200),
+  /** Réinitialisations de mot de passe par heure et par adresse IP */
+  RATE_LIMIT_PASSWORD_RESET_PER_HOUR: z.coerce.number().int().min(3).default(20),
   CODE_LOOKUP_PER_HOUR: z.coerce.number().int().min(5).default(40),
 
   /* --- Deuxième facteur ------------------------------------------------- */
@@ -223,11 +232,13 @@ export function securityPolicySummary(cfg: AppConfig) {
     antiBruteforce: {
       tentativesAvantVerrouillage: cfg.LOGIN_MAX_ATTEMPTS,
       verrouillageMinutes: cfg.LOGIN_LOCKOUT_MINUTES,
-      paliers: ['5 échecs → 1 min', '8 échecs → 5 min', '12 échecs → 30 min', '20 échecs → 24 h'],
+      paliers: ['10 échecs → 1 min', '20 échecs → 5 min', '40 échecs → 30 min', '80 échecs → 1 h'],
     },
     limitationDebit: {
       globalParMinute: cfg.RATE_LIMIT_GLOBAL_PER_MINUTE,
       connexionsParMinute: cfg.RATE_LIMIT_LOGIN_PER_MINUTE,
+      connexionsParIpParMinute: cfg.RATE_LIMIT_LOGIN_IP_PER_MINUTE,
+      inscriptionsParHeureParIp: cfg.RATE_LIMIT_REGISTER_PER_HOUR,
       rechercheCodeParHeure: cfg.CODE_LOOKUP_PER_HOUR,
     },
     journal: {

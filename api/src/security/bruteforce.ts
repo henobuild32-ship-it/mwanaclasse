@@ -5,8 +5,8 @@
  *  Trois niveaux complémentaires :
  *
  *   1. Verrouillage progressif d'un compte
- *        5 échecs → 1 minute      8 échecs → 5 minutes
- *       12 échecs → 30 minutes    20 échecs → 24 heures
+ *        10 échecs → 1 minute      20 échecs → 5 minutes
+ *        40 échecs → 30 minutes    80 échecs → 1 heure
  *      (paliers définis dans la fonction SQL sec.register_login_attempt)
  *
  *   2. Limitation de débit par sujet : adresse IP, identifiant, école,
@@ -46,14 +46,14 @@ export function quotaRules(cfg: AppConfig): Record<string, QuotaRule> {
     },
     login_ip: {
       bucket: 'login_ip',
-      limit: cfg.RATE_LIMIT_LOGIN_PER_MINUTE * 4,
+      limit: cfg.RATE_LIMIT_LOGIN_IP_PER_MINUTE,
       windowSeconds: 60,
       blockSeconds: 600,
-      description: 'Tentatives de connexion par adresse IP',
+      description: 'Tentatives de connexion par adresse IP (réseau partagé)',
     },
     register: {
       bucket: 'register',
-      limit: 5,
+      limit: cfg.RATE_LIMIT_REGISTER_PER_HOUR,
       windowSeconds: 3600,
       blockSeconds: 3600,
       description: 'Créations de compte',
@@ -74,7 +74,7 @@ export function quotaRules(cfg: AppConfig): Record<string, QuotaRule> {
     },
     password_reset: {
       bucket: 'password_reset',
-      limit: 3,
+      limit: cfg.RATE_LIMIT_PASSWORD_RESET_PER_HOUR,
       windowSeconds: 3600,
       blockSeconds: 3600,
       description: 'Demandes de réinitialisation de mot de passe',
@@ -143,26 +143,37 @@ export class BruteForceGuard {
   ): Promise<QuotaDecision> {
     const rule = this.rules[ruleKey as string] ?? this.rules['login']!;
 
-    const { rows } = await client.query<{
-      allowed: boolean;
-      remaining: number;
-      retry_after: number;
-    }>(`SELECT * FROM sec.consume_quota($1, $2, $3, $4, $5, $6)`, [
-      rule.bucket,
-      subject.kind,
-      subject.key,
-      rule.limit,
-      rule.windowSeconds,
-      rule.blockSeconds,
-    ]);
+    try {
+      const { rows } = await client.query<{
+        allowed: boolean;
+        remaining: number;
+        retry_after: number;
+      }>(`SELECT * FROM sec.consume_quota($1, $2, $3, $4, $5, $6)`, [
+        rule.bucket,
+        subject.kind,
+        subject.key,
+        rule.limit,
+        rule.windowSeconds,
+        rule.blockSeconds,
+      ]);
 
-    const row = rows[0];
-    return {
-      allowed: row?.allowed ?? true,
-      remaining: Math.max(0, row?.remaining ?? 0),
-      retryAfterSeconds: Math.max(0, row?.retry_after ?? 0),
-      rule: rule.bucket,
-    };
+      const row = rows[0];
+      return {
+        allowed: row?.allowed ?? true,
+        remaining: Math.max(0, row?.remaining ?? 0),
+        retryAfterSeconds: Math.max(0, row?.retry_after ?? 0),
+        rule: rule.bucket,
+      };
+    } catch (err) {
+      // Disponibilité d'abord : un compteur illisible (base momentanément
+      // indisponible) ne doit JAMAIS faire échouer une connexion ou une
+      // inscription légitime. On autorise (fail-open) et on trace l'anomalie.
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[bruteforce] quota « ${rule.bucket} » indisponible, requête autorisée : ${(err as Error).message}`,
+      );
+      return { allowed: true, remaining: rule.limit, retryAfterSeconds: 0, rule: rule.bucket };
+    }
   }
 
   /**
@@ -242,47 +253,112 @@ export class BruteForceGuard {
    * Applique tous les contrôles de débit à une tentative de connexion, en
    * fonction de l'identifiant ET de l'adresse IP (deux sujets distincts :
    * un attaquant qui change d'identifiant reste limité par son IP).
+   *
+   * Les trois contrôles (verrou IP, quota identifiant, quota IP) sont
+   * exécutés en UNE seule requête SQL : chaque aller-retour coûte des
+   * centaines de millisecondes, ce qui comptait pour ~1 seconde par
+   * connexion tentée avant cette optimisation.
    */
   async checkLogin(
     client: PoolClient,
     identifier: string,
     ip: string | null,
   ): Promise<{ allowed: boolean; retryAfterSeconds: number; reason?: string }> {
-    if (ip) {
-      const ipLock = await this.isLocked(client, 'ip', ip);
-      if (ipLock.locked) {
+    const bySubject = identifier.toLowerCase();
+
+    try {
+      if (!ip) {
+        const byIdentifier = await this.consume(client, 'login', {
+          kind: 'identifier',
+          key: bySubject,
+        });
+        if (!byIdentifier.allowed) {
+          return {
+            allowed: false,
+            retryAfterSeconds: byIdentifier.retryAfterSeconds,
+            reason: 'Trop de tentatives sur ce compte. Réessayez plus tard.',
+          };
+        }
+        return { allowed: true, retryAfterSeconds: 0 };
+      }
+
+      const login = this.rules['login']!;
+      const loginIp = this.rules['login_ip']!;
+
+      const { rows } = await client.query<{
+        ip_locked: boolean;
+        ip_until: string | null;
+        id_allowed: boolean;
+        id_retry: number;
+        ip_allowed: boolean;
+        ip_retry: number;
+      }>(
+        `WITH verrou AS (
+           SELECT * FROM sec.is_locked_out('ip', $1)
+         ),
+         conso_ident AS (
+           SELECT * FROM sec.consume_quota($2, 'identifier', $3, $4, $5, $6)
+         ),
+         conso_ip AS (
+           SELECT * FROM sec.consume_quota($7, 'ip', $8, $9, $10, $11)
+         )
+         SELECT COALESCE((SELECT locked  FROM verrou), false)     AS ip_locked,
+                (SELECT until FROM verrou)                        AS ip_until,
+                COALESCE((SELECT allowed FROM conso_ident), true) AS id_allowed,
+                COALESCE((SELECT retry_after FROM conso_ident), 0) AS id_retry,
+                COALESCE((SELECT allowed FROM conso_ip), true)     AS ip_allowed,
+                COALESCE((SELECT retry_after FROM conso_ip), 0)    AS ip_retry`,
+        [
+          ip,
+          login.bucket,
+          bySubject,
+          login.limit,
+          login.windowSeconds,
+          login.blockSeconds,
+          loginIp.bucket,
+          ip,
+          loginIp.limit,
+          loginIp.windowSeconds,
+          loginIp.blockSeconds,
+        ],
+      );
+
+      const row = rows[0];
+      if (!row) return { allowed: true, retryAfterSeconds: 0 };
+
+      if (row.ip_locked && row.ip_until) {
+        const retryAfterSeconds = Math.max(
+          1,
+          Math.ceil((new Date(row.ip_until).getTime() - Date.now()) / 1000),
+        );
         return {
           allowed: false,
-          retryAfterSeconds: ipLock.retryAfterSeconds,
+          retryAfterSeconds,
           reason: 'Adresse temporairement bloquée après plusieurs échecs.',
         };
       }
-    }
-
-    const byIdentifier = await this.consume(client, 'login', {
-      kind: 'identifier',
-      key: identifier.toLowerCase(),
-    });
-    if (!byIdentifier.allowed) {
-      return {
-        allowed: false,
-        retryAfterSeconds: byIdentifier.retryAfterSeconds,
-        reason: 'Trop de tentatives sur ce compte. Réessayez plus tard.',
-      };
-    }
-
-    if (ip) {
-      const byIp = await this.consume(client, 'login_ip', { kind: 'ip', key: ip });
-      if (!byIp.allowed) {
+      if (!row.id_allowed) {
         return {
           allowed: false,
-          retryAfterSeconds: byIp.retryAfterSeconds,
+          retryAfterSeconds: Math.max(0, row.id_retry),
+          reason: 'Trop de tentatives sur ce compte. Réessayez plus tard.',
+        };
+      }
+      if (!row.ip_allowed) {
+        return {
+          allowed: false,
+          retryAfterSeconds: Math.max(0, row.ip_retry),
           reason: 'Trop de tentatives depuis cette connexion. Réessayez plus tard.',
         };
       }
+      return { allowed: true, retryAfterSeconds: 0 };
+    } catch (err) {
+      // Fail-open : une panne du compteur ne doit pas refuser en masse des
+      // milliers de connexions légitimes (voir consume()).
+      // eslint-disable-next-line no-console
+      console.warn(`[bruteforce] contrôle de débit indisponible, tentative autorisée : ${(err as Error).message}`);
+      return { allowed: true, retryAfterSeconds: 0 };
     }
-
-    return { allowed: true, retryAfterSeconds: 0 };
   }
 
   /** Libère explicitement un verrouillage (action d'administration). */

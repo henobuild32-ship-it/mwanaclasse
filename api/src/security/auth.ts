@@ -45,6 +45,9 @@ export type LoginOutcome =
       status: 'succes';
       tokens: IssuedTokens;
       profile: StaffProfile | ParentProfile;
+      /** Politique « 2FA obligatoire » non encore satisfaite sur le compte :
+       *  la connexion passe, l'application doit proposer l'activation. */
+      mfaSetupPending?: boolean;
     }
   | { status: '2fa_requis'; challengeToken: string; method: 'totp'; expiresInSeconds: number }
   | { status: 'echec'; message: string }
@@ -293,23 +296,24 @@ export class AuthService {
       };
     }
 
-    // (8) Deuxième facteur : exigé dès qu'il est activé sur le compte.
-    //     Pour la direction et si la politique l'impose, il est obligatoire.
-    if (!user.totp_enabled && (this.cfg.REQUIRE_2FA_STAFF || (this.cfg.REQUIRE_2FA_DIRECTOR && user.is_owner))) {
+    // (8) Deuxième facteur : impératif dès qu'il est activé sur le compte.
+    //     Si la politique l'impose mais qu'il n'est pas encore configuré, la
+    //     connexion est AUTORISÉE — refuser fermerait la porte d'un établissement
+    //     entier — et l'application reçoit un signal pour guider l'utilisateur
+    //     vers l'activation.
+    const mfaAPConfigurer =
+      !user.totp_enabled &&
+      (this.cfg.REQUIRE_2FA_STAFF || (this.cfg.REQUIRE_2FA_DIRECTOR && user.is_owner));
+
+    if (mfaAPConfigurer) {
       await this.audit.write(client, this.auditCtx(user.school_id, user.id, ctx, user.full_name), {
-        action: AUDIT_ACTIONS.MFA_ENABLED,
+        action: AUDIT_ACTIONS.LOGIN_SUCCESS,
         severity: 'warning',
-        result: 'refuse',
+        result: 'succes',
         entityType: 'staff',
         entityId: user.id,
-        payload: { motif: 'double authentification obligatoire non configurée' },
+        payload: { motif: 'double authentification obligatoire non encore configurée' },
       });
-      return {
-        status: 'echec',
-        message:
-          'La double authentification est obligatoire pour votre compte. ' +
-          'Activez-la depuis les paramètres de sécurité (l’assistance peut vous accompagner).',
-      };
     }
 
     if (user.totp_enabled) {
@@ -450,6 +454,7 @@ export class AuthService {
         twoFactorEnabled: user.totp_enabled,
         primaryColor: user.primary_color,
       },
+      ...(mfaAPConfigurer ? { mfaSetupPending: true } : {}),
     };
   }
 

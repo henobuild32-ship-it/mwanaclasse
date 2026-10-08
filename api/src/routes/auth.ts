@@ -396,6 +396,9 @@ export async function registerAuthRoutes(deps: AppDependencies): Promise<void> {
         jetonAcces: outcome.tokens.accessToken,
         expireDans: outcome.tokens.accessExpiresIn,
         profil: outcome.profile,
+        ...(outcome.mfaSetupPending
+          ? { doubleAuthentificationAConfigurer: true }
+          : {}),
       });
     }
 
