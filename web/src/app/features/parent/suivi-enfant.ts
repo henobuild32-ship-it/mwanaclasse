@@ -123,13 +123,38 @@ export class SuiviEnfant implements OnInit, OnDestroy {
   /*  Glissement vers le bas pour fermer                              */
   /* ---------------------------------------------------------------- */
 
+  /**
+   * Le swipe-to-close n'est actif que si le contenu scrollé est en haut.
+   * Sans cette garde, dès que le doigt descend (défilement du contenu vers
+   * le haut), la feuille entière se translatait avec le geste : le modal
+   * « calait » au milieu du défilement.
+   */
+  private contenuEnHaut(event: TouchEvent): boolean {
+    const cible = event.target as HTMLElement | null;
+    const corps = cible?.closest('.feuille__corps') as HTMLElement | null;
+    if (!corps) return true;
+    return corps.scrollTop <= 0;
+  }
+
   protected toucheDebut(event: TouchEvent): void {
+    if (!this.contenuEnHaut(event)) {
+      this.toucheY = null;
+      return;
+    }
     this.toucheY = event.touches[0]?.clientY ?? null;
     this.deplacement = 0;
   }
 
   protected toucheMove(event: TouchEvent): void {
     if (this.toucheY === null) return;
+    // Le contenu a défilé depuis le début du geste : on abandonne le swipe
+    // pour laisser le défilement natif faire son travail.
+    if (!this.contenuEnHaut(event)) {
+      this.toucheY = null;
+      this.deplacement = 0;
+      this.glissement.set(0);
+      return;
+    }
     const y = event.touches[0]?.clientY ?? null;
     if (y === null) return;
     // Balayage strictement descendant, depuis le haut de la feuille.
