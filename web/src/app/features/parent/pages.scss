@@ -119,7 +119,10 @@
   position: relative;
   width: 100%;
   max-width: 680px;
+  /* svh = hauteur visible stable : ne « cale » plus quand la barre d'URL
+     mobile se rétracte au défilement (vh changeait en cours de scroll). */
   max-height: 92vh;
+  max-height: 92svh;
   display: flex;
   flex-direction: column;
   background: var(--mc-fond);
@@ -135,7 +138,7 @@
 /* Centrage sur tablette et plus (bottom sheet sur mobile). */
 @media (min-width: 720px) {
   .feuille-voile { align-items: center; padding: 24px; }
-  .feuille { border-radius: 20px; max-height: 88vh; }
+  .feuille { border-radius: 20px; max-height: 88vh; max-height: 88svh; }
   .feuille__tirette { display: none; }
 }
 
@@ -174,7 +177,11 @@
   flex: 1 1 auto;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  /* Empêche le scroll de « rebondir » vers la page derrière quand on
+     atteint le bas du contenu (le modal semblait décaler/cale). */
+  overscroll-behavior: contain;
   padding-top: 12px;
+  padding-bottom: 8px;
   display: flex;
   flex-direction: column;
   gap: 14px;

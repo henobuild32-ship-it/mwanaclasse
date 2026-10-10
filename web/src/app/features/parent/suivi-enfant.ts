@@ -61,12 +61,21 @@ export class SuiviEnfant implements OnInit, OnDestroy {
   private toucheY: number | null = null;
   private deplacement = 0;
   private fermeEnCours = false;
+  /** Position de scroll de la page avant l'ouverture (verrou iOS). */
+  private scrollYDepart = 0;
 
   protected readonly glissement = signal(0);
 
   ngOnInit(): void {
-    // Verrou du scroll d'arrière-plan pendant l'ouverture.
-    document.body.style.overflow = 'hidden';
+    // Verrou du scroll d'arrière-plan : position:fixed indispensable sur
+    // iOS Safari (overflow:hidden seul ne bloque pas → la page défilait
+    // derrière le modal et celui-ci semblait « cale » vers la fin).
+    this.scrollYDepart = window.scrollY;
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${this.scrollYDepart}px`;
+    document.body.style.left = '0';
+    document.body.style.right = '0';
+    document.body.style.width = '100%';
     // Bouton retour du téléphone : ferme le modal au lieu de quitter la page.
     history.pushState({ mwanaFeuille: true }, '');
     window.addEventListener('popstate', this.onPopstate);
@@ -74,7 +83,13 @@ export class SuiviEnfant implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    document.body.style.overflow = '';
+    // Restaure le scroll d'arrière-plan à sa position d'origine.
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.left = '';
+    document.body.style.right = '';
+    document.body.style.width = '';
+    window.scrollTo(0, this.scrollYDepart);
     window.removeEventListener('popstate', this.onPopstate);
     // Si le modal est détruit sans passer par popstate (navigation), on
     // retire proprement l'entrée d'historique ajoutée à l'ouverture.

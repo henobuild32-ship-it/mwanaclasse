@@ -305,8 +305,10 @@ img {
 
 .grille-2 {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  /* Mobile-first : 1 colonne empilée sur petit écran (sinon les deux
+     champs se collent), 2 colonnes à partir de 720px (voir media plus bas). */
+  grid-template-columns: 1fr;
+  gap: 12px;
 }
 
 /* Colonnes de cartes : 1 seule sur mobile, empilement progressif.
@@ -809,7 +811,9 @@ img {
   flex-direction: column;
   width: 100%;
   max-width: 680px;
+  /* svh : hauteur stable quand la barre d'URL mobile se rétracte. */
   max-height: 92vh;
+  max-height: 92svh;
   background: var(--mc-fond-2);
   border: 1px solid var(--mc-trait);
   border-radius: 20px 20px 0 0;
@@ -872,7 +876,10 @@ img {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 16px 18px;
+  /* Anti-rebond : le scroll ne « file » plus vers la page derrière
+     en fin de contenu (modales demandes/suivi). */
+  overscroll-behavior: contain;
+  padding: 16px 18px 20px;
 }
 
 .overlay__titre-confirm {
@@ -904,6 +911,7 @@ img {
   .overlay__panneau {
     border-radius: 18px;
     max-height: 86vh;
+    max-height: 86svh;
   }
   .overlay__pied .btn {
     flex: 0 0 auto;
