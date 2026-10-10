@@ -7,7 +7,7 @@
 </div>
 
 @if (chargement()) {
-  <app-chargement texte="Chargement de vos enfants…" />
+  <app-squelette forme="cartes" [nb]="3" />
 } @else if (erreur()) {
   <app-etat-vide texte="{{ erreur() }}" icone="📡" />
 } @else if (enfants().length === 0) {
@@ -45,7 +45,9 @@
           </div>
         </div>
 
-        <a class="btn btn--secondaire" [routerLink]="['/parent/enfants', e.id]">Voir le suivi complet</a>
+        <button class="btn btn--secondaire" type="button" (click)="suiviOuvert.set(e.id)">
+          Voir le suivi complet
+        </button>
       </div>
     }
   </div>
@@ -62,4 +64,8 @@
   >
     <app-ajouter-enfant (enregistre)="onEnfantAjoute()" />
   </app-overlay>
+}
+
+@if (suiviOuvert(); as id) {
+  <app-suivi-enfant [enfantId]="id" (fermeture)="suiviOuvert.set(null)" />
 }

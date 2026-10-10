@@ -1,17 +1,18 @@
 import { Component, ViewChild, inject, signal } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
 import { ApiService, toApiError } from '../../core/api.service';
 import { ConfirmationService } from '../../core/confirmation.service';
 import { EnfantActifService } from '../../core/enfant-actif.service';
 import { Enfant } from '../../core/models';
 import { SyncService } from '../../core/sync.service';
-import { Chargement, EtatVide, Etiquette, etiquetteStatut, OverlayFormulaire } from '../../shared/ui';
+import { EtatVide, Etiquette, etiquetteStatut, OverlayFormulaire, Squelette } from '../../shared/ui';
 import { AjouterEnfant } from './enfants-ajouter';
+import { SuiviEnfant } from './suivi-enfant';
 
 /** Liste des enfants rattachés au compte parent (spec §6). */
 @Component({
   selector: 'app-enfants-parent',
-  imports: [RouterLink, Chargement, EtatVide, Etiquette, OverlayFormulaire, AjouterEnfant],
+  imports: [EtatVide, Etiquette, OverlayFormulaire, AjouterEnfant, SuiviEnfant, Squelette],
   templateUrl: './enfants.html',
   styleUrl: './pages.scss',
 })
@@ -27,6 +28,8 @@ export class EnfantsParent {
   protected readonly erreur = signal('');
   protected readonly enfants = signal<Enfant[]>([]);
   protected readonly ajout = signal(false);
+  /** Enfant dont le suivi complet est ouvert en modal (spec B1). */
+  protected readonly suiviOuvert = signal<string | null>(null);
 
   @ViewChild(AjouterEnfant) private formAjout?: AjouterEnfant;
 
@@ -85,15 +88,15 @@ export class EnfantsParent {
     this.chargement.set(true);
     this.erreur.set('');
     try {
-      const r = await this.sync.lire(
-        'eleves',
+      await this.sync.lireDabord<{ enfants: Enfant[] }>(
+        'parent.enfants',
         () => this.api.lire<{ enfants: Enfant[] }>('parent/enfants'),
-        (rep) => rep.enfants ?? [],
+        (r) => this.enfants.set(r.enfants ?? []),
+        { entite: 'eleves', extraire: (r) => r.enfants ?? [] },
       );
-      this.enfants.set(((r.enfants ?? []) as unknown as Enfant[]) ?? []);
     } catch (err) {
       const e = toApiError(err);
-      this.erreur.set(e.horsLigne ? 'Hors ligne : enfants indisponibles.' : e.message);
+      this.erreur.set(e.horsLigne || (err as Error)?.message === 'HORS_LIGNE' ? 'Hors ligne : enfants indisponibles.' : e.message);
     } finally {
       this.chargement.set(false);
     }

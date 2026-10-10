@@ -2,6 +2,7 @@ import { Component, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { ApiService, toApiError } from '../../core/api.service';
+import { ConfirmationService } from '../../core/confirmation.service';
 import { ExportService } from '../../core/export.service';
 import { Classe, PresencesEleve, RecapPresence } from '../../core/models';
 import { ConnectiviteService } from '../../core/connectivite.service';
@@ -53,6 +54,14 @@ interface DetailsFormulaire {
   arrivalTime: string;
 }
 
+/** État d'un jour renvoyé par l'API (régime d'activité + calendrier). */
+interface JourEtat {
+  date: string;
+  scolaire: boolean;
+  ferme: boolean;
+  evenements: { titre: string; kind: string; schoolClosed: boolean }[];
+}
+
 const STATUTS: { valeur: Statut; libelle: string; variante: 'succes' | 'danger' | 'attention' | 'info' }[] = [
   { valeur: 'present', libelle: 'Présent', variante: 'succes' },
   { valeur: 'retard', libelle: 'Retard', variante: 'attention' },
@@ -72,6 +81,7 @@ const NOTE_META = 'MC-PRESENCE-V1:';
 interface ReponsePresences {
   eleves: PresencesEleve[];
   recap: RecapPresence;
+  jour?: JourEtat;
 }
 
 /** Feuille de présence (spec §18 — mode hors ligne) + export PDF/DOCX. */
@@ -87,6 +97,7 @@ export class PresencesEcole {
   private readonly sync = inject(SyncService);
   private readonly connectivite = inject(ConnectiviteService);
   private readonly toasts = inject(ToastService);
+  private readonly confirmation = inject(ConfirmationService);
   protected readonly session = inject(SessionService);
   protected readonly statuts = STATUTS;
   protected readonly raisonsAbsence = RAISONS_ABSENCE;
@@ -109,6 +120,12 @@ export class PresencesEcole {
   protected readonly etatFeuille = signal<'local' | 'synchronise' | 'attente' | null>(null);
   protected readonly instantaneEnregistre = signal(0);
   protected readonly aChargeUneFois = signal(false);
+  /** État du jour affiché (férié, non scolaire, événement…). */
+  protected readonly jour = signal<JourEtat | null>(null);
+  /** Ouverture exceptionnelle de l'appel par l'admin sur un jour fermé. */
+  protected readonly appelExceptionnel = signal(false);
+  /** États des jours autour d'aujourd'hui, pour le sélecteur de date. */
+  protected readonly joursPeriode = signal<Map<string, JourEtat>>(new Map());
   private readonly base = signal<Record<string, EntreeBrouillon>>({});
   private derniereSyncTraitee = 0;
 
@@ -141,6 +158,48 @@ export class PresencesEcole {
 
   protected readonly modifie = computed(() => this.nombreModifications() > 0);
   protected readonly selectionnes = computed(() => Object.values(this.selection()).filter(Boolean).length);
+
+  /** Appel verrouillé : jour fermé sans ouverture exceptionnelle. */
+  protected readonly verrouille = computed(() => {
+    const j = this.jour();
+    return !!j?.ferme && !this.appelExceptionnel();
+  });
+
+  /** Bandeau d'information au-dessus de la feuille. */
+  protected readonly bandeau = computed<{ type: 'ferme' | 'info'; texte: string } | null>(() => {
+    const j = this.jour();
+    if (!j) return null;
+    const fermee = j.evenements.find((e) => e.schoolClosed);
+    if (fermee) {
+      const texte =
+        fermee.kind === 'ferie' ? `Jour férié : ${fermee.titre}` : `École fermée : ${fermee.titre}`;
+      return { type: 'ferme', texte };
+    }
+    if (!j.scolaire) {
+      return {
+        type: 'ferme',
+        texte: 'Jour non scolaire — aucun appel possible, aucune absence comptée',
+      };
+    }
+    const evenement = j.evenements.find((e) => !e.schoolClosed);
+    if (evenement) return { type: 'info', texte: `Événement : ${evenement.titre}` };
+    return null;
+  });
+
+  /** Semaine affichée sous le sélecteur : lundi → dimanche de la date choisie. */
+  protected readonly semaine = computed<{ iso: string; libelle: string; jourMois: number; etat: JourEtat | null }[]>(() => {
+    const ref = new Date(`${this.date()}T12:00:00Z`);
+    const decalage = (ref.getUTCDay() || 7) - 1; // lundi = début de semaine
+    const lundi = new Date(ref.getTime() - decalage * 86_400_000);
+    const noms = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+    const etats = this.joursPeriode();
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(lundi.getTime() + i * 86_400_000);
+      const iso = d.toISOString().slice(0, 10);
+      return { iso, libelle: noms[i], jourMois: d.getUTCDate(), etat: etats.get(iso) ?? null };
+    });
+  });
+
   protected readonly etatVisible = computed(() => {
     if (this.sync.operationsEnErreur() > 0) return 'erreur';
     if (this.etatFeuille() === 'local' && this.operationsEnFile > 0) return 'attente';
@@ -163,6 +222,7 @@ export class PresencesEcole {
       }
     });
     void this.chargerClasses();
+    void this.chargerJoursPeriode();
   }
 
   protected get enLigne(): boolean {
@@ -210,6 +270,27 @@ export class PresencesEcole {
     await this.chargerFeuille();
   }
 
+  /** États des jours d'une période élargie : le sélecteur de date marque
+   *  visuellement les fériés, événements et jours non scolaires. */
+  protected async chargerJoursPeriode(): Promise<void> {
+    const du = new Date(Date.now() - 14 * 86_400_000).toISOString().slice(0, 10);
+    const au = new Date(Date.now() + 60 * 86_400_000).toISOString().slice(0, 10);
+    let jours: JourEtat[] = [];
+    if (this.connectivite.enLigne()) {
+      try {
+        const r = await this.api.lire<{ jours: JourEtat[] }>('ecole/etat-jours', { du, au });
+        jours = r.jours ?? [];
+        await this.sync.mettreEnCache('etat-jours', [{ du, au, jours }]);
+      } catch {
+        return; // le sélecteur reste sans marqueurs, sans bloquer l'appel
+      }
+    } else {
+      const cache = await this.sync.depuisLeCache<{ du: string; au: string; jours: JourEtat[] }>('etat-jours');
+      jours = cache[0]?.jours ?? [];
+    }
+    this.joursPeriode.set(new Map(jours.map((j) => [j.date, j])));
+  }
+
   protected async chargerFeuille(): Promise<void> {
     if (!this.classeId()) {
       this.eleves.set([]);
@@ -254,6 +335,8 @@ export class PresencesEcole {
         classeId: this.classeId(),
       });
       const liste = r.eleves ?? [];
+      this.jour.set(r.jour ?? null);
+      if (!r.jour?.ferme) this.appelExceptionnel.set(false);
       this.installerFeuille(liste, r.recap);
       await this.enregistrerInstantane(liste, r.recap);
       this.etatFeuille.set('synchronise');
@@ -278,7 +361,33 @@ export class PresencesEcole {
       return;
     }
     this.date.set(valeur);
+    this.appelExceptionnel.set(false);
+    // Hors ligne, l'état vient du cache de période ; en ligne la feuille
+    // renverra l'état à jour. On affiche immédiatement ce que l'on connaît.
+    const connu = this.joursPeriode().get(valeur);
+    this.jour.set(connu ?? null);
     void this.chargerFeuille();
+  }
+
+  /** Le jour affiché est-il couvert par les états connus (cache/serveur) ? */
+  protected get jourConnu(): boolean {
+    return this.jour() !== null;
+  }
+
+  /** Ouvre exceptionnellement l'appel d'un jour fermé, après confirmation. */
+  protected async ouvrirAppelExceptionnel(): Promise<void> {
+    const b = this.bandeau();
+    const choix = await this.confirmation.demander({
+      titre: 'Ouvrir l’appel exceptionnellement',
+      message:
+        `${b?.texte ?? 'Jour fermé'} : l'école est normalement fermée à cette date. ` +
+        'Les présences enregistrées compteront malgré tout dans les statistiques.',
+      texteAbandonner: 'Annuler',
+      texteEnregistrer: 'Ouvrir l’appel',
+    });
+    if (choix !== 'enregistrer') return;
+    this.appelExceptionnel.set(true);
+    this.toasts.info('Appel ouvert exceptionnellement pour ce jour.');
   }
 
   protected changerClasse(valeur: string): void {
@@ -399,6 +508,10 @@ export class PresencesEcole {
   }
 
   protected async enregistrer(): Promise<void> {
+    if (this.verrouille()) {
+      this.toasts.erreur(`${this.bandeau()?.texte ?? 'Jour fermé'} — l'appel est désactivé.`);
+      return;
+    }
     const eleves = this.eleves();
     if (!eleves.length || this.sauvegardeEnCours() || !this.modifie()) return;
 
@@ -563,6 +676,7 @@ export class PresencesEcole {
   }
 
   private choisirStatut(id: string, status: Statut): void {
+    if (this.verrouille()) return;
     this.brouillon.update((b) => ({
       ...b,
       [id]: {

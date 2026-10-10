@@ -108,6 +108,20 @@
           </select>
         </div>
       </div>
+      <div class="champ">
+        <label>Régime d'activité de l'école *</label>
+        <div class="choix-multiples" role="radiogroup" aria-label="Régime d'activité">
+          <label class="choix-multiple" [class.choix-multiple--actif]="activityDays === 'lundi_vendredi'">
+            <input type="radio" name="activityDays" [(ngModel)]="activityDays" value="lundi_vendredi" />
+            <span>Lundi → Vendredi <small>(samedi et dimanche non scolaires)</small></span>
+          </label>
+          <label class="choix-multiple" [class.choix-multiple--actif]="activityDays === 'lundi_samedi'">
+            <input type="radio" name="activityDays" [(ngModel)]="activityDays" value="lundi_samedi" />
+            <span>Lundi → Samedi <small>(dimanche non scolaire)</small></span>
+          </label>
+        </div>
+        <span class="texte-doux">Aucun appel n'est possible les jours hors régime, et aucune absence n'est comptée.</span>
+      </div>
       <div class="grille-2">
         <div class="champ">
           <label for="signature-nom">Nom de la signature</label>

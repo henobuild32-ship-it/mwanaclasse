@@ -3,18 +3,23 @@
     <h1>Calendrier</h1>
     <p>{{ evenements().length }} événement(s) scolaire(s)</p>
   </div>
-  <button class="btn btn--primaire btn--ligne" type="button" (click)="ouvrirFormulaire()">
-    + Événement
-  </button>
+  <div class="btn-groupe">
+    <button class="btn btn--secondaire btn--ligne" type="button" (click)="preRemplirRdc()" [disabled]="preRemplissage()">
+      {{ preRemplissage() ? 'Ajout…' : 'Fériés RDC' }}
+    </button>
+    <button class="btn btn--primaire btn--ligne" type="button" (click)="ouvrirFormulaire()">
+      + Événement
+    </button>
+  </div>
 </div>
 
 @if (formulaire()) {
   <app-overlay
-    titre="Nouvel événement"
-    validerTexte="Ajouter"
+    [titre]="editionEnCours ? 'Modifier l’événement' : 'Nouvel événement'"
+    [validerTexte]="editionEnCours ? 'Enregistrer' : 'Ajouter'"
     [enCours]="enCours()"
     (fermetureDemandee)="fermerFormulaire()"
-    (validerDemande)="creer()"
+    (validerDemande)="enregistrer()"
   >
     <div class="champ">
       <label for="titre-evt">Titre *</label>
@@ -23,9 +28,9 @@
     <div class="grille-2">
       <div class="champ">
         <label for="type-evt">Type</label>
-        <select id="type-evt" name="type" [(ngModel)]="type">
+        <select id="type-evt" name="type" [(ngModel)]="type" (ngModelChange)="changerType($event)">
           @for (t of types; track t) {
-            <option [value]="t">{{ t }}</option>
+            <option [value]="t">{{ libelleType(t) }}</option>
           }
         </select>
       </div>
@@ -60,8 +65,12 @@
         </div>
       </div>
     }
+    <label class="case-a-cocher">
+      <input type="checkbox" name="ecoleFermee" [(ngModel)]="ecoleFermee" />
+      <span>École fermée — aucun appel, aucune absence comptée</span>
+    </label>
     <div class="champ">
-      <label for="description-evt">Description</label>
+      <label for="description-evt">Note (facultative)</label>
       <textarea id="description-evt" name="description" maxlength="4000" [(ngModel)]="description"></textarea>
     </div>
   </app-overlay>
@@ -85,21 +94,25 @@
           <div class="ligne-liste__principal">
             <div class="ligne-liste__titre">{{ e.title }}</div>
             <div class="ligne-liste__sous">
-              {{ e.kind ?? '—' }}
+              {{ libelleType(e.kind) }}
               @if (e.ends_on) { · jusqu'au {{ e.ends_on | slice: 0:10 }} }
               @if (e.start_time) { · {{ e.start_time }} }
               @if (e.location) { · {{ e.location }} }
-              · {{ e.audience_kind ?? 'toute_ecole' }}
             </div>
             @if (e.description) {
               <div class="texte-doux" style="margin-top: 4px">{{ e.description }}</div>
             }
           </div>
           <div class="ligne-liste__fin">
+            @if (e.school_closed) {
+              <app-etiquette texte="école fermée" variante="danger" />
+            }
             <app-etiquette
               [texte]="e.is_published ? 'publié' : 'brouillon'"
               [variante]="e.is_published ? 'succes' : 'neutre'"
             />
+            <button class="btn-icone" type="button" (click)="ouvrirEdition(e)" aria-label="Modifier {{ e.title }}">✎</button>
+            <button class="btn-icone btn-icone--danger" type="button" (click)="supprimer(e)" aria-label="Supprimer {{ e.title }}">🗑</button>
           </div>
         </li>
       }

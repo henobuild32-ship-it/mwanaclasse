@@ -1,4 +1,22 @@
 <div class="coquille" [class.coquille--publique]="pagePublique()">
+  @if (sync.enCours()) {
+    <div class="barre-synchro" role="progressbar" aria-label="Synchronisation en cours"></div>
+  }
+
+  @if (majApp.disponible()) {
+    <div class="bandeau-maj" role="status">
+      <span>Une mise à jour est disponible.</span>
+      <button
+        class="btn btn--primaire btn--petit"
+        type="button"
+        [disabled]="majApp.enCours()"
+        (click)="majApp.appliquer()"
+      >
+        Mettre à jour
+      </button>
+    </div>
+  }
+
   @if (sync.preparationInitiale()) {
     <section class="preparation" role="status" aria-live="polite">
       <div class="preparation__contenu">

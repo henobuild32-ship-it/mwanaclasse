@@ -27,6 +27,13 @@ import {
   type QueryableClient,
 } from '../http/middleware.js';
 import { AUDIT_ACTIONS } from '../security/audit.js';
+import {
+  filtreJoursScolairesSql,
+  libelleFermeture,
+  lireEtatJour,
+  lireEtatsJours,
+} from '../domain/calendrier-scolaire.js';
+import { insererFeriesRdc } from '../domain/feries-rdc.js';
 
 /* ==========================================================================
  *  Schémas
@@ -95,6 +102,8 @@ const AttendanceBulkSchema = z.object({
   entries: z.array(AttendanceEntrySchema).min(1).max(2000),
   /** Identifiant du terminal : utilisé pour la traçabilité hors ligne */
   deviceId: optionalText(120),
+  /** Ouverture exceptionnelle : autorise l'appel un jour non scolaire ou férié. */
+  forcer: z.boolean().optional(),
 });
 
 const AnnouncementSchema = z.object({
@@ -1323,6 +1332,10 @@ export async function registerSchoolRoutes(deps: AppDependencies): Promise<void>
         [schoolId, date, classId, sectionId],
       );
 
+      // État du jour (régime d'activité + fériés/événements) : la feuille
+      // d'appel s'adapte côté interface (bandeau, désactivation).
+      const jour = await lireEtatJour(client, schoolId, date);
+
       const recap = {
         date,
         total: rows.length,
@@ -1333,7 +1346,7 @@ export async function registerSchoolRoutes(deps: AppDependencies): Promise<void>
         nonEnregistres: rows.filter((r: any) => r.status === 'non_enregistre').length,
       };
 
-      return { eleves: rows, recap };
+      return { eleves: rows, recap, jour };
     });
 
     // L'administration peut enregistrer hors ligne : la feuille est mise en
@@ -1356,6 +1369,17 @@ export async function registerSchoolRoutes(deps: AppDependencies): Promise<void>
         });
       }
       const input = parsed.data;
+
+      // Jour non scolaire ou école fermée : aucun appel, aucune absence
+      // comptée — sauf ouverture exceptionnelle explicite (« forcer »).
+      const verifJour = await db.withIdentity(dbIdentityFrom(req), async (client) =>
+        lireEtatJour(client, schoolId, input.date),
+      );
+      if (verifJour.ferme && input.forcer !== true) {
+        return sendError(reply, 409, 'JOUR_FERME', `${libelleFermeture(verifJour)} — appel désactivé.`, {
+          jour: verifJour,
+        });
+      }
 
       const result = await runAudited(
         { db, audit },
@@ -1471,45 +1495,52 @@ export async function registerSchoolRoutes(deps: AppDependencies): Promise<void>
     const to = typeof q.au === 'string' ? q.au : new Date().toISOString().slice(0, 10);
 
     const stats = await db.withIdentity(dbIdentityFrom(req), async (client) => {
+      // Jours non scolaires (hors régime) et jours d'école fermée exclus des
+      // statistiques : ils ne comptent ni présences ni absences.
+      const joursOk = filtreJoursScolairesSql('$4');
+      const params = [schoolId, from, to, schoolId];
+
       const global = await client.query(
-        `SELECT count(*) FILTER (WHERE status <> 'non_enregistre')::int AS enregistrees,
-                count(*) FILTER (WHERE status = 'present')::int         AS presents,
-                count(*) FILTER (WHERE status = 'absent')::int          AS absents,
-                count(*) FILTER (WHERE status = 'retard')::int          AS retards,
-                count(*) FILTER (WHERE status = 'depart_anticipe')::int AS departs,
-                round(100.0 * count(*) FILTER (WHERE status IN ('present','retard'))
-                      / nullif(count(*) FILTER (WHERE status <> 'non_enregistre'),0), 2) AS taux_presence
-           FROM app.attendance
-          WHERE school_id = $1 AND attendance_date BETWEEN $2::date AND $3::date AND status <> 'non_enregistre'`,
-        [schoolId, from, to],
+        `SELECT count(*) FILTER (WHERE a.status <> 'non_enregistre')::int AS enregistrees,
+                count(*) FILTER (WHERE a.status = 'present')::int         AS presents,
+                count(*) FILTER (WHERE a.status = 'absent')::int          AS absents,
+                count(*) FILTER (WHERE a.status = 'retard')::int          AS retards,
+                count(*) FILTER (WHERE a.status = 'depart_anticipe')::int AS departs,
+                round(100.0 * count(*) FILTER (WHERE a.status IN ('present','retard'))
+                      / nullif(count(*) FILTER (WHERE a.status <> 'non_enregistre'),0), 2) AS taux_presence
+           FROM app.attendance a
+          WHERE a.school_id = $1 AND a.attendance_date BETWEEN $2::date AND $3::date
+            AND a.status <> 'non_enregistre'${joursOk}`,
+        params,
       );
 
       const byClass = await client.query(
         `SELECT cl.id AS class_id, cl.name AS classe,
                 count(*) FILTER (WHERE a.status = 'present')::int AS presents,
                 count(*) FILTER (WHERE a.status = 'absent')::int  AS absents,
-                count(*) FILTER (WHERE a.status = 'retard')::int  AS retards,
+                count(*) FILTER (WHERE a.status = 'retard')::int AS retards,
                 round(100.0 * count(*) FILTER (WHERE a.status IN ('present','retard'))
                       / nullif(count(*) FILTER (WHERE a.status <> 'non_enregistre'),0), 2) AS taux_presence
            FROM app.attendance a
            JOIN app.classes cl ON cl.id = a.class_id
-          WHERE a.school_id = $1 AND a.attendance_date BETWEEN $2::date AND $3::date
+          WHERE a.school_id = $1 AND a.attendance_date BETWEEN $2::date AND $3::date${joursOk}
           GROUP BY cl.id, cl.name
           ORDER BY taux_presence ASC NULLS LAST`,
-        [schoolId, from, to],
+        params,
       );
 
       const byDay = await client.query(
-        `SELECT attendance_date,
-                count(*) FILTER (WHERE status = 'present')::int AS presents,
-                count(*) FILTER (WHERE status = 'absent')::int  AS absents,
-                count(*) FILTER (WHERE status = 'retard')::int  AS retards,
-                round(100.0 * count(*) FILTER (WHERE status IN ('present','retard'))
-                      / nullif(count(*) FILTER (WHERE status <> 'non_enregistre'),0), 2) AS taux_presence
-           FROM app.attendance
-          WHERE school_id = $1 AND attendance_date BETWEEN $2::date AND $3::date
-          GROUP BY attendance_date ORDER BY attendance_date`,
-        [schoolId, from, to],
+        `SELECT a.attendance_date,
+                count(*) FILTER (WHERE a.status = 'present')::int AS presents,
+                count(*) FILTER (WHERE a.status = 'absent')::int  AS absents,
+                count(*) FILTER (WHERE a.status = 'retard')::int AS retards,
+                round(100.0 * count(*) FILTER (WHERE a.status IN ('present','retard'))
+                      / nullif(count(*) FILTER (WHERE a.status <> 'non_enregistre'),0), 2) AS taux_presence
+           FROM app.attendance a
+          WHERE a.school_id = $1 AND a.attendance_date BETWEEN $2::date AND $3::date
+            AND a.status <> 'non_enregistre'${joursOk}
+          GROUP BY a.attendance_date ORDER BY a.attendance_date`,
+        params,
       );
 
       const frequent = await client.query(
@@ -1519,21 +1550,21 @@ export async function registerSchoolRoutes(deps: AppDependencies): Promise<void>
            FROM app.attendance a
            JOIN app.students s ON s.id = a.student_id
            JOIN app.classes cl ON cl.id = s.class_id
-          WHERE a.school_id = $1 AND a.attendance_date BETWEEN $2::date AND $3::date
+          WHERE a.school_id = $1 AND a.attendance_date BETWEEN $2::date AND $3::date${joursOk}
           GROUP BY s.id, s.full_name, s.public_code, cl.name
          HAVING count(*) FILTER (WHERE a.status = 'absent') >= 3
           ORDER BY absences DESC, retards DESC
           LIMIT 20`,
-        [schoolId, from, to],
+        params,
       );
 
       const worstDay = await client.query(
-        `SELECT to_char(attendance_date, 'TMDay') AS jour,
-                count(*) FILTER (WHERE status = 'absent')::int AS absents
-           FROM app.attendance
-          WHERE school_id = $1 AND attendance_date BETWEEN $2::date AND $3::date
+        `SELECT to_char(a.attendance_date, 'TMDay') AS jour,
+                count(*) FILTER (WHERE a.status = 'absent')::int AS absents
+           FROM app.attendance a
+          WHERE a.school_id = $1 AND a.attendance_date BETWEEN $2::date AND $3::date${joursOk}
           GROUP BY 1 ORDER BY absents DESC LIMIT 1`,
-        [schoolId, from, to],
+        params,
       );
 
       return {
@@ -2360,7 +2391,8 @@ export async function registerSchoolRoutes(deps: AppDependencies): Promise<void>
     const rows = await db.withIdentity(dbIdentityFrom(req), async (client) => {
       const { rows } = await client.query(
         `SELECT id, kind, title, description, starts_on, ends_on, start_time, end_time,
-                all_day, location, audience_kind, audience_filter, is_published, created_by_name
+                all_day, location, audience_kind, audience_filter, is_published,
+                school_closed, created_by_name
            FROM app.calendar_events
           WHERE school_id = $1
           ORDER BY starts_on DESC
@@ -2372,29 +2404,36 @@ export async function registerSchoolRoutes(deps: AppDependencies): Promise<void>
     return noStore(reply).send({ evenements: rows });
   });
 
+  /** Schéma commun création / modification d'une entrée du calendrier. */
+  const CalendrierSchema = z.object({
+    title: z.string().trim().min(1).max(160),
+    description: optionalText(4000),
+    kind: z.enum([
+      'rentree', 'cours', 'conge', 'vacances', 'examen', 'reunion',
+      'evenement', 'journee_speciale', 'ferie', 'autre',
+    ]),
+    startsOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    endsOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+    startTime: z.string().regex(/^\d{2}:\d{2}$/).optional().nullable(),
+    endTime: z.string().regex(/^\d{2}:\d{2}$/).optional().nullable(),
+    allDay: z.boolean().default(true),
+    location: optionalText(160),
+    audienceKind: z.enum(['toute_ecole', 'niveau', 'classe', 'section']).default('toute_ecole'),
+    audienceFilter: z.object({ classIds: z.array(uuid).optional() }).default({}),
+    /** École fermée : vrai par défaut pour férié, congé et vacances. */
+    schoolClosed: z.boolean().optional(),
+  });
+
+  /** Valeur effective de « école fermée » selon le type d'entrée. */
+  const ecoleFermeeEffective = (input: z.infer<typeof CalendrierSchema>): boolean =>
+    input.schoolClosed ?? ['ferie', 'conge', 'vacances'].includes(input.kind);
+
   app.post(
     '/api/ecole/calendrier',
     { preHandler: [...guard, requirePermission('calendrier.gerer')] },
     async (req, reply) => {
       const schoolId = requireSchool(req);
-      const parsed = z
-        .object({
-          title: z.string().trim().min(1).max(160),
-          description: optionalText(4000),
-          kind: z.enum([
-            'rentree', 'cours', 'conge', 'vacances', 'examen', 'reunion',
-            'evenement', 'journee_speciale', 'ferie', 'autre',
-          ]),
-          startsOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-          endsOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
-          startTime: z.string().regex(/^\d{2}:\d{2}$/).optional().nullable(),
-          endTime: z.string().regex(/^\d{2}:\d{2}$/).optional().nullable(),
-          allDay: z.boolean().default(true),
-          location: optionalText(160),
-          audienceKind: z.enum(['toute_ecole', 'niveau', 'classe', 'section']).default('toute_ecole'),
-          audienceFilter: z.object({ classIds: z.array(uuid).optional() }).default({}),
-        })
-        .safeParse(req.body);
+      const parsed = CalendrierSchema.safeParse(req.body);
 
       if (!parsed.success) {
         return sendError(reply, 400, 'DONNEES_INVALIDES', 'Événement incomplet.');
@@ -2413,9 +2452,10 @@ export async function registerSchoolRoutes(deps: AppDependencies): Promise<void>
             const { rows } = await c.query(
               `INSERT INTO app.calendar_events
                  (school_id, academic_year_id, kind, title, description, starts_on, ends_on,
-                  start_time, end_time, all_day, location, audience_kind, audience_filter, created_by_name)
-               VALUES ($1,$2,$3,$4,$5,$6::date,$7::date,$8,$9,$10,$11,$12,$13::jsonb,$14)
-               RETURNING id, title, kind, starts_on, ends_on`,
+                  start_time, end_time, all_day, location, audience_kind, audience_filter,
+                  school_closed, created_by_name)
+               VALUES ($1,$2,$3,$4,$5,$6::date,$7::date,$8,$9,$10,$11,$12,$13::jsonb,$14,$15)
+               RETURNING id, title, kind, starts_on, ends_on, school_closed`,
               [
                 schoolId,
                 year.rows[0]?.id ?? null,
@@ -2430,6 +2470,7 @@ export async function registerSchoolRoutes(deps: AppDependencies): Promise<void>
                 input.location ?? null,
                 input.audienceKind,
                 JSON.stringify(input.audienceFilter),
+                ecoleFermeeEffective(input),
                 req.auth?.displayName ?? null,
               ],
             );
@@ -2440,6 +2481,149 @@ export async function registerSchoolRoutes(deps: AppDependencies): Promise<void>
       return noStore(reply).code(201).send({ message: 'Événement ajouté au calendrier.', evenement: created });
     },
   );
+
+  /** Modification d'une entrée existante (férié, événement, vacances…). */
+  app.put(
+    '/api/ecole/calendrier/:id',
+    { preHandler: [...guard, requirePermission('calendrier.gerer')] },
+    async (req, reply) => {
+      const schoolId = requireSchool(req);
+      const id = String((req.params as any).id);
+      const parsed = CalendrierSchema.safeParse(req.body);
+
+      if (!parsed.success) {
+        return sendError(reply, 400, 'DONNEES_INVALIDES', 'Événement incomplet.');
+      }
+      const input = parsed.data;
+
+      const updated = await runAudited(
+        { db, audit },
+        req,
+          { action: 'calendrier.modification', entityType: 'calendar_event', entityId: () => id },
+          async (_req: FastifyRequest, c: QueryableClient) => {
+            const { rows } = await c.query(
+              `UPDATE app.calendar_events SET
+                  kind = $3, title = $4, description = $5, starts_on = $6::date, ends_on = $7::date,
+                  start_time = $8, end_time = $9, all_day = $10, location = $11,
+                  audience_kind = $12, audience_filter = $13::jsonb, school_closed = $14
+                WHERE id = $1 AND school_id = $2
+                RETURNING id, title, kind, starts_on, ends_on, school_closed`,
+              [
+                id,
+                schoolId,
+                input.kind,
+                input.title,
+                input.description ?? null,
+                input.startsOn,
+                input.endsOn ?? null,
+                input.startTime ?? null,
+                input.endTime ?? null,
+                input.allDay,
+                input.location ?? null,
+                input.audienceKind,
+                JSON.stringify(input.audienceFilter),
+                ecoleFermeeEffective(input),
+              ],
+            );
+            return rows[0] ?? null;
+          },
+      );
+
+      if (!updated) {
+        return sendError(reply, 404, 'EVENEMENT_INTROUVABLE', 'Événement introuvable dans ce calendrier.');
+      }
+      return noStore(reply).send({ message: 'Événement mis à jour.', evenement: updated });
+    },
+  );
+
+  /** Suppression d'une entrée du calendrier. */
+  app.delete(
+    '/api/ecole/calendrier/:id',
+    { preHandler: [...guard, requirePermission('calendrier.gerer')] },
+    async (req, reply) => {
+      const schoolId = requireSchool(req);
+      const id = String((req.params as any).id);
+
+      const deleted = await runAudited(
+        { db, audit },
+        req,
+          { action: 'calendrier.suppression', entityType: 'calendar_event', entityId: () => id },
+          async (_req: FastifyRequest, c: QueryableClient) => {
+            const { rows } = await c.query(
+              `DELETE FROM app.calendar_events
+                WHERE id = $1 AND school_id = $2
+                RETURNING id, title`,
+              [id, schoolId],
+            );
+            return rows[0] ?? null;
+          },
+      );
+
+      if (!deleted) {
+        return sendError(reply, 404, 'EVENEMENT_INTROUVABLE', 'Événement introuvable dans ce calendrier.');
+      }
+      return noStore(reply).send({ message: `« ${deleted.title} » supprimé du calendrier.` });
+    },
+  );
+
+  /** Pré-remplissage des jours fériés officiels RDC d'une année. */
+  app.post(
+    '/api/ecole/calendrier/feries-rdc',
+    { preHandler: [...guard, requirePermission('calendrier.gerer')] },
+    async (req, reply) => {
+      const schoolId = requireSchool(req);
+      const q = (req.body as any) ?? {};
+      const annee =
+        typeof q.annee === 'number' && Number.isInteger(q.annee) && q.annee >= 2020 && q.annee <= 2100
+          ? q.annee
+          : new Date().getFullYear() + 1;
+
+      const resultat = await runAudited(
+        { db, audit },
+        req,
+          { action: 'calendrier.pre_remplissage_rdc', entityType: 'school', entityId: () => schoolId },
+          async (_req: FastifyRequest, c: QueryableClient) => {
+            const year = await c.query<{ id: string }>(
+              `SELECT id FROM app.academic_years WHERE school_id = $1 AND is_current LIMIT 1`,
+              [schoolId],
+            );
+            return insererFeriesRdc(c, {
+              schoolId,
+              annee,
+              anneeScolaireId: year.rows[0]?.id ?? null,
+              auteur: req.auth?.displayName ?? null,
+            });
+          },
+      );
+
+      return noStore(reply).send({
+        message:
+          resultat.crees > 0
+            ? `${resultat.crees} jour(s) férié(s) RDC ${annee} ajouté(s) au calendrier.`
+            : `Les jours fériés RDC ${annee} sont déjà dans le calendrier.`,
+        annee,
+        crees: resultat.crees,
+        ignores: resultat.ignores,
+      });
+    },
+  );
+
+  /** État de chaque jour d'une période (sélecteur de date de l'appel). */
+  app.get('/api/ecole/etat-jours', { preHandler: guard }, async (req, reply) => {
+    const schoolId = requireSchool(req);
+    const q = (req.query as any) ?? {};
+    const aujourdhui = new Date().toISOString().slice(0, 10);
+    const du = typeof q.du === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(q.du) ? q.du : aujourdhui;
+    const au = typeof q.au === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(q.au ? q.au : '') ? q.au : du;
+    if (au < du) {
+      return sendError(reply, 400, 'DONNEES_INVALIDES', 'Période invalide : la fin précède le début.');
+    }
+
+    const data = await db.withIdentity(dbIdentityFrom(req), async (client) =>
+      lireEtatsJours(client, schoolId, du, au),
+    );
+    return noStore(reply).send({ regime: data.regime, jours: data.jours });
+  });
 
   /* ====================================================================== */
   /*  DOCUMENTS DE L'ÉCOLE                                                  */
@@ -2530,8 +2714,8 @@ export async function registerSchoolRoutes(deps: AppDependencies): Promise<void>
         `SELECT id, slug, official_name, short_name, type, types, is_mixed, logo_url,
                 primary_color, secondary_color, address_line, commune, city, province, country,
                 phones, email, website, description, opening_hours, extra_info,
-                current_year_label, parent_link_mode, settings, signature_name, signature_title,
-                onboarded_at
+                current_year_label, parent_link_mode, activity_days, settings, signature_name,
+                signature_title, onboarded_at
            FROM app.schools WHERE id = $1`,
         [schoolId],
       );
@@ -2613,6 +2797,8 @@ export async function registerSchoolRoutes(deps: AppDependencies): Promise<void>
           description: optionalText(4000),
           openingHours: optionalText(600),
           parentLinkMode: z.enum(['automatique', 'validation']).optional(),
+          // Régime d'activité hebdomadaire : les jours hors régime sont non scolaires.
+          activityDays: z.enum(['lundi_vendredi', 'lundi_samedi']).optional(),
           signatureName: optionalText(160),
           signatureTitle: optionalText(80),
           settings: z.record(z.string(), z.unknown()).optional(),
@@ -2658,9 +2844,10 @@ export async function registerSchoolRoutes(deps: AppDependencies): Promise<void>
                  signature_title = coalesce($19, signature_title),
                  settings = coalesce($20::jsonb, settings),
                  types = coalesce($21::app.school_type[], types),
-                 is_mixed = coalesce($22, is_mixed)
+                 is_mixed = coalesce($22, is_mixed),
+                 activity_days = coalesce($23, activity_days)
                WHERE id = $1
-               RETURNING id, official_name, primary_color, parent_link_mode, settings`,
+               RETURNING id, official_name, primary_color, parent_link_mode, activity_days, settings`,
               [
                 schoolId,
                 input.officialName ?? null,
@@ -2684,6 +2871,7 @@ export async function registerSchoolRoutes(deps: AppDependencies): Promise<void>
                 input.settings ? JSON.stringify(input.settings) : null,
                 input.types ?? null,
                 input.isMixed ?? null,
+                input.activityDays ?? null,
               ],
             );
             return rows[0];

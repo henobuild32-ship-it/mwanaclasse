@@ -6,19 +6,6 @@
     </a>
 
     <div class="bandeau-actions">
-      <span
-        class="pastille-reseau"
-        [class.pastille-reseau--en-ligne]="etatReseau().niveau === 'en_ligne'"
-        [class.pastille-reseau--faible]="etatReseau().niveau === 'faible'"
-        [class.pastille-reseau--hors-ligne]="etatReseau().niveau === 'hors_ligne'"
-        [attr.title]="etatReseau().detail"
-        [attr.aria-label]="etatReseau().libelle + ' — ' + etatReseau().detail"
-        role="status"
-      >
-        <span class="pastille-reseau__point" aria-hidden="true"></span>
-        {{ etatReseau().libelle }}
-      </span>
-
       @if (sync.statutSync() === 'en_cours') {
         <span class="pastille pastille-file" aria-live="polite">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="animate-spin"><circle cx="12" cy="12" r="10" stroke-opacity="0.25"/><path d="M12 2a10 10 0 0 1 10 10"/></svg>
@@ -34,9 +21,17 @@
           [attr.aria-expanded]="menuOuvert()"
           aria-haspopup="true"
           aria-label="Ouvrir le menu du profil"
-          title="Profil"
+          [title]="connectivite.enLigne() ? 'En ligne' : 'Hors ligne'"
         >
-          <span class="avatar" style="width:32px;height:32px;font-size:0.85rem;">{{ session.profil()?.fullName?.charAt(0) ?? 'P' }}</span>
+          <span class="avatar avatar--reseau">
+            {{ session.profil()?.fullName?.charAt(0) ?? 'P' }}
+            <span
+              class="point-reseau"
+              [class.point-reseau--hors]="!connectivite.enLigne()"
+              role="status"
+              [attr.aria-label]="connectivite.enLigne() ? 'En ligne' : 'Hors ligne'"
+            ></span>
+          </span>
         </button>
         @if (menuOuvert()) {
           <div class="dropdown__menu" role="menu">

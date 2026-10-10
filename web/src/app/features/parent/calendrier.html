@@ -5,8 +5,16 @@
   </div>
 </div>
 
+@if (regimes().length) {
+  <div class="bandeau-regime">
+    @for (r of regimes(); track r.school_id) {
+      <span>{{ r.ecole ? r.ecole + ' — ' : '' }}{{ libelleRegime(r) }}</span>
+    }
+  </div>
+}
+
 @if (chargement()) {
-  <app-chargement texte="Chargement du calendrier…" />
+  <app-squelette forme="lignes" [nb]="3" />
 } @else if (erreur()) {
   <app-etat-vide texte="{{ erreur() }}" icone="📡" />
 } @else if (evenements().length === 0) {
@@ -25,9 +33,12 @@
             <div class="ligne-liste__principal">
               <div class="ligne-liste__titre">{{ e.title }}</div>
               <div class="ligne-liste__sous">
-                {{ e.kind ?? '—' }} @if (e.start_time) { · {{ e.start_time }} }
+                {{ libelleEvenement(e) }} @if (e.start_time) { · {{ e.start_time }} }
                 @if (e.location) { · {{ e.location }} } @if (e.ecole) { · {{ e.ecole }} }
               </div>
+            </div>
+            <div class="ligne-liste__fin">
+              <app-etiquette [texte]="libelleEvenement(e)" [variante]="varianteEvenement(e)" />
             </div>
           </li>
         }
@@ -47,7 +58,7 @@
           <div class="ligne-liste__principal">
             <div class="ligne-liste__titre">{{ e.title }}</div>
             <div class="ligne-liste__sous">
-              {{ e.kind ?? '—' }}
+              {{ libelleEvenement(e) }}
               @if (e.ends_on) { · jusqu'au {{ e.ends_on | slice: 0:10 }} }
               @if (e.start_time) { · {{ e.start_time }} }
               @if (e.location) { · {{ e.location }} }
@@ -64,7 +75,10 @@
             }
           </div>
           <div class="ligne-liste__fin">
-            <app-etiquette texte="prévu" variante="neutre" />
+            <app-etiquette
+              [texte]="e.school_closed ? 'sans appel' : 'prévu'"
+              [variante]="e.school_closed ? 'attention' : 'neutre'"
+            />
           </div>
         </li>
       }

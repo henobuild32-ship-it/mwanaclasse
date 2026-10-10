@@ -66,7 +66,7 @@
 }
 
 @if (chargement()) {
-  <app-chargement texte="Chargement de vos demandes…" />
+  <app-squelette forme="lignes" [nb]="4" />
 } @else if (erreur()) {
   <app-etat-vide texte="{{ erreur() }}" icone="📡" />
 } @else if (demandes().length === 0) {

@@ -102,3 +102,13 @@
 .etat-vide__titre { font-size: 1.05rem; font-weight: 700; color: var(--mc-texte); }
 .etat-vide__texte { font-size: 0.88rem; color: var(--mc-texte-2); max-width: 280px; }
 .etat-vide__action { margin-top: 8px; }
+/* Boutons d'action compacts des listes (calendrier, etc.) */
+.btn-icone {
+  width: 38px; height: 38px; border: 1px solid var(--mc-trait); border-radius: 8px;
+  background: var(--mc-fond-2); color: var(--mc-primaire); font-size: 0.95rem;
+  cursor: pointer; flex: none;
+}
+.btn-icone:hover { background: var(--mc-primaire-10); }
+.btn-icone--danger { color: var(--mc-danger); }
+.btn-icone--danger:hover { background: #fef2f2; border-color: #fecaca; }
+.ligne-liste__fin { display: flex; align-items: center; justify-content: flex-end; gap: 6px; flex-wrap: wrap; }

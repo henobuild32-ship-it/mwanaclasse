@@ -31,39 +31,6 @@ export class EspaceParentLayout {
   protected readonly _menuOuvert = signal(false);
   protected readonly menuOuvert = computed(() => this._menuOuvert());
 
-  /**
-   * État du réseau affiché en pastille :
-   *  - vert   « En ligne »          : connecté, rien en attente
-   *  - jaune  « Connexion faible »  : en ligne mais des opérations attendent
-   *  - rouge  « Hors ligne »        : aucune connexion réseau
-   */
-  protected readonly etatReseau = computed(() => {
-    if (!this.connectivite.enLigne()) {
-      return {
-        niveau: 'hors_ligne' as const,
-        libelle: 'Hors ligne',
-        detail: 'Aucune connexion réseau : les actions seront envoyées au retour du réseau.',
-      };
-    }
-    const enFile = this.sync.operationsEnFile();
-    const enErreur = this.sync.operationsEnErreur();
-    if (enErreur > 0 || enFile > 0) {
-      return {
-        niveau: 'faible' as const,
-        libelle: 'Connexion faible',
-        detail:
-          enErreur > 0
-            ? `${enErreur} opération(s) en erreur, ${enFile} en attente d’envoi.`
-            : `${enFile} opération(s) en attente d’envoi.`,
-      };
-    }
-    return {
-      niveau: 'en_ligne' as const,
-      libelle: 'En ligne',
-      detail: 'Connecté, synchronisation à jour.',
-    };
-  });
-
   protected readonly onglets: Onglet[] = [
     { chemin: '/parent', libelle: 'Accueil', icone: '🏠' },
     { chemin: '/parent/enfants', libelle: 'Enfants', icone: '👧' },

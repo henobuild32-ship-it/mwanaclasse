@@ -2,6 +2,7 @@ import { SlicePipe } from '@angular/common';
 import { Component, effect, inject, signal } from '@angular/core';
 import { ApiService, toApiError } from '../../core/api.service';
 import { EnfantActifService } from '../../core/enfant-actif.service';
+import { SyncService } from '../../core/sync.service';
 import { Chargement, EtatVide } from '../../shared/ui';
 
 interface Document {
@@ -26,6 +27,7 @@ interface Document {
 })
 export class DocumentsParent {
   private readonly api = inject(ApiService);
+  private readonly sync = inject(SyncService);
   protected readonly selection = inject(EnfantActifService);
 
   protected readonly documents = signal<Document[]>([]);
@@ -55,14 +57,16 @@ export class DocumentsParent {
     this.erreur.set('');
     try {
       await this.selection.charger();
-      const r = await this.api.lire<{ documents: Document[] }>(
-        'parent/documents',
-        this.selection.params,
+      const ecoleId = this.selection.ecoleId();
+      const cle = `parent.documents:${ecoleId ?? 'toutes'}`;
+      await this.sync.lireDabord<{ documents: Document[] }>(
+        cle,
+        () => this.api.lire<{ documents: Document[] }>('parent/documents', this.selection.params),
+        (r) => this.documents.set(r.documents ?? []),
       );
-      this.documents.set(r.documents ?? []);
     } catch (err) {
       const e = toApiError(err);
-      this.erreur.set(e.horsLigne ? 'Hors ligne : documents indisponibles.' : e.message);
+      this.erreur.set(e.horsLigne || (err as Error)?.message === 'HORS_LIGNE' ? 'Hors ligne : documents indisponibles.' : e.message);
     } finally {
       this.chargement.set(false);
     }

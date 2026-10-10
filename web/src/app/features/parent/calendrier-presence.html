@@ -1,0 +1,85 @@
+<div class="carte calendrier-mensuel">
+  <div class="carte__titre">
+    <button
+      class="cal-nav"
+      type="button"
+      aria-label="Mois précédent"
+      (click)="moisPrecedent()"
+    >‹</button>
+    <span>{{ libelleMois() }}</span>
+    <button
+      class="cal-nav"
+      type="button"
+      aria-label="Mois suivant"
+      (click)="moisSuivant()"
+    >›</button>
+  </div>
+
+  <div class="cal-resume">
+    <div class="encart"><strong>{{ resume().presents }}</strong> jours présents</div>
+    <div class="encart"><strong>{{ resume().absents }}</strong> absents</div>
+    <div class="encart"><strong>{{ resume().retards }}</strong> retards</div>
+    <div class="encart"><strong>{{ resume().departs }}</strong> départs</div>
+  </div>
+
+  @if (horsLigne()) {
+    <p class="texte-petit texte-doux">Hors ligne : données locales du dernier synchronisation.</p>
+  }
+  @if (erreur()) {
+    <p class="texte-doux">{{ erreur() }}</p>
+  }
+
+  @if (chargement() && !grille().length) {
+    <app-etiquette texte="Chargement…" variante="neutre" />
+  } @else {
+    <div class="cal-grille" role="grid" aria-label="Calendrier de présence du mois">
+      @for (j of joursSemaine; track $index) {
+        <span class="cal-jour-tete" role="columnheader">{{ j }}</span>
+      }
+      @for (cell of grille(); track cell.date) {
+        <button
+          type="button"
+          class="cal-case"
+          role="gridcell"
+          [class.cal-case--vide]="cell.vide"
+          [class.cal-case--aujourdhui]="cell.aujourdhui"
+          [class.cal-case--non-scolaire]="!cell.vide && !cell.scolaire"
+          [class.cal-case--ferme]="!cell.vide && cell.ferme && cell.scolaire"
+          [class.cal-case--selectionnee]="!cell.vide && jourSelectionne()?.date === cell.date"
+          [attr.aria-label]="cell.vide ? '' : cell.date"
+          [disabled]="cell.vide"
+          (click)="selectionner(cell)"
+        >
+          @if (!cell.vide) {
+            <span class="cal-num">{{ cell.numero }}</span>
+            @if (cell.evenements.length) {
+              <span
+                class="cal-repere"
+                [class.cal-repere--ferme]="cell.evenements[0].schoolClosed"
+              ></span>
+            }
+            @if (cell.present) {
+              <span class="cal-point cal-point--present" aria-label="Présent"></span>
+            } @else if (cell.statut && cell.statut !== 'non_enregistre') {
+              <span class="cal-point cal-point--{{ cell.statut }}" [attr.aria-label]="cell.statut"></span>
+            }
+          }
+        </button>
+      }
+    </div>
+
+    <div class="cal-legende">
+      <span><i class="cal-point cal-point--present"></i> présent</span>
+      <span><i class="cal-repere cal-repere--ferme"></i> férié / fermé</span>
+      <span><i class="cal-repere"></i> événement</span>
+      <span><i class="cal-nonscolaire"></i> non scolaire</span>
+    </div>
+
+    @if (jourSelectionne(); as j) {
+      <div class="cal-detail">
+        <strong>{{ j.date | date: 'dd/MM/yyyy' : undefined : 'fr-FR' }}</strong>
+        <app-etiquette [texte]="libelleSelection()" [variante]="varianteSelection()" />
+      </div>
+    }
+  }
+</div>

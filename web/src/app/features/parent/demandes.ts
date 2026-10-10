@@ -8,7 +8,7 @@ import { ConnectiviteService } from '../../core/connectivite.service';
 import { EnfantActifService } from '../../core/enfant-actif.service';
 import { SyncService } from '../../core/sync.service';
 import { ToastService } from '../../core/toast.service';
-import { Chargement, EtatVide, Etiquette, etiquetteStatut, OverlayFormulaire } from '../../shared/ui';
+import { EtatVide, Etiquette, etiquetteStatut, OverlayFormulaire, Squelette } from '../../shared/ui';
 
 const KINDS = [
   { valeur: 'reclamation', libelle: 'Réclamation' },
@@ -23,7 +23,7 @@ const KINDS = [
 /** Demandes / réclamations du parent (spec §6). */
 @Component({
   selector: 'app-demandes-parent',
-  imports: [FormsModule, SlicePipe, Chargement, EtatVide, Etiquette, OverlayFormulaire],
+  imports: [FormsModule, SlicePipe, EtatVide, Etiquette, OverlayFormulaire, Squelette],
   templateUrl: './demandes.html',
   styleUrl: './pages.scss',
 })
@@ -120,15 +120,15 @@ export class DemandesParent {
     this.erreur.set('');
     try {
       await this.selection.charger();
-      const r = await this.sync.lire(
-        'demandes',
+      await this.sync.lireDabord<{ demandes: Demande[] }>(
+        'parent.demandes',
         () => this.api.lire<{ demandes: Demande[] }>('parent/demandes', this.selection.params),
-        (rep) => rep.demandes ?? [],
+        (r) => this.demandes.set(r.demandes ?? []),
+        { entite: 'demandes', extraire: (r) => r.demandes ?? [] },
       );
-      this.demandes.set((r.demandes ?? []) as unknown as Demande[]);
     } catch (err) {
       const e = toApiError(err);
-      this.erreur.set(e.horsLigne ? 'Hors ligne : demandes indisponibles.' : e.message);
+      this.erreur.set(e.horsLigne || (err as Error)?.message === 'HORS_LIGNE' ? 'Hors ligne : demandes indisponibles.' : e.message);
     } finally {
       this.chargement.set(false);
     }

@@ -24,6 +24,14 @@ import {
 } from '../http/middleware.js';
 import { AUDIT_ACTIONS } from '../security/audit.js';
 import { normalizeStudentCode } from '../security/codes.js';
+import {
+  estJourDuRegime,
+  estRegime,
+  filtreJoursScolairesSql,
+  libelleFermeture,
+  lireEtatJour,
+  lireEtatsJours,
+} from '../domain/calendrier-scolaire.js';
 
 const uuid = z.string().uuid('Identifiant invalide.');
 const optionalText = (max: number) => z.string().trim().max(max).optional().nullable();
@@ -96,7 +104,7 @@ export async function registerParentRoutes(deps: AppDependencies): Promise<void>
                 cl.name AS classe, cl.id AS class_id,
                 sec.name AS section, sec.id AS section_id,
                 sch.id AS school_id, sch.official_name AS ecole,
-                sch.primary_color, sch.logo_url,
+                sch.primary_color, sch.logo_url, sch.activity_days,
                 l.id AS lien_id, l.status AS lien_statut, l.is_primary,
                 coalesce(a.status::text, 'non_enregistre') AS presence,
                 a.arrival_time, a.recorded_at, a.recorded_offline_at
@@ -140,7 +148,7 @@ export async function registerParentRoutes(deps: AppDependencies): Promise<void>
       // Prochains événements du calendrier des écoles concernées
       const calendar = await client.query(
         `SELECT e.id, e.kind, e.title, e.starts_on, e.ends_on, e.start_time, e.location,
-                sch.official_name AS ecole
+                e.school_closed, sch.official_name AS ecole
            FROM app.calendar_events e
            JOIN app.schools sch ON sch.id = e.school_id
           WHERE e.is_published
@@ -153,6 +161,22 @@ export async function registerParentRoutes(deps: AppDependencies): Promise<void>
           LIMIT 8`,
         [parentId, ecoleId],
       );
+
+      // Fermetures du jour : elles déterminent si un appel a pu être fait.
+      const fermeesAujourdhui = await client.query<{ school_id: string; title: string; kind: string }>(
+        `SELECT DISTINCT e.school_id, e.title, e.kind
+           FROM app.calendar_events e
+          WHERE e.is_published AND e.school_closed
+            AND CURRENT_DATE BETWEEN e.starts_on AND coalesce(e.ends_on, e.starts_on)
+            AND e.school_id IN (
+              SELECT DISTINCT l.school_id FROM app.parent_student_links l
+               WHERE l.parent_id = $1 AND l.status = 'actif')`,
+        [parentId],
+      );
+      const fermetureParEcole = new Map(
+        fermeesAujourdhui.rows.map((f) => [f.school_id, f]),
+      );
+      const jourIso = new Date().toISOString().slice(0, 10);
 
       // Demandes en cours
       const requests = await client.query(
@@ -175,7 +199,9 @@ export async function registerParentRoutes(deps: AppDependencies): Promise<void>
         [parentId, ecoleId],
       );
 
-      // Résumé de présence du mois en cours, par enfant
+      // Résumé de présence du mois en cours, par enfant. Les jours non
+      // scolaires (hors régime) et les jours d'école fermée sont exclus :
+      // ils ne comptent ni présence ni absence.
       const summaries = await client.query(
         `SELECT a.student_id,
                 count(*) FILTER (WHERE a.status = 'present')::int AS presents,
@@ -186,6 +212,7 @@ export async function registerParentRoutes(deps: AppDependencies): Promise<void>
           WHERE l.parent_id = $1 AND l.status = 'actif'
             AND ($2::uuid IS NULL OR l.school_id = $2)
             AND a.attendance_date >= date_trunc('month', CURRENT_DATE)
+            ${filtreJoursScolairesSql('l.school_id')}
           GROUP BY a.student_id`,
         [parentId, ecoleId],
       );
@@ -196,14 +223,36 @@ export async function registerParentRoutes(deps: AppDependencies): Promise<void>
 
       const childrenEnriched = children.rows.map((c: any) => {
         const s: any = summaryByStudent.get(c.id);
+        // Jour non scolaire (hors régime) ou école fermée aujourd'hui :
+        // aucun appel n'a eu lieu, donc aucun statut de présence à afficher.
+        const fermeture = fermetureParEcole.get(c.school_id);
+        const scolaireAujourdhui = estJourDuRegime(
+          jourIso,
+          estRegime(c.activity_days) ? c.activity_days : 'lundi_vendredi',
+        );
+        const jourFerme = !scolaireAujourdhui || !!fermeture;
         return {
           ...c,
           resumeMois: s
             ? { presents: s.presents, absents: s.absents, retards: s.retards }
             : { presents: 0, absents: 0, retards: 0 },
-          statutAujourdhui:
+          jour_non_scolaire: jourFerme && c.lien_statut === 'actif',
+          statut_presence:
             c.lien_statut !== 'actif'
-              ? { code: 'acces_en_attente', libelle: 'Accès en attente de validation par l’école', icone: '⏳' }
+              ? 'non_enregistre'
+              : jourFerme
+                ? 'jour_non_scolaire'
+                : c.presence,
+          statutAujourdhui: c.lien_statut !== 'actif'
+            ? { code: 'acces_en_attente', libelle: 'Accès en attente de validation par l’école', icone: '⏳' }
+            : jourFerme
+              ? {
+                  code: 'jour_non_scolaire',
+                  libelle: fermeture
+                    ? `École fermée : ${fermeture.title}`
+                    : 'Jour non scolaire — pas d’appel prévu',
+                  icone: '🗓️',
+                }
               : c.presence === 'present'
                 ? { code: 'present', libelle: 'Présent à l’école', icone: '🟢' }
                 : c.presence === 'absent'
@@ -502,13 +551,14 @@ export async function registerParentRoutes(deps: AppDependencies): Promise<void>
     const studentId = String((req.params as any).id);
 
     const data = await db.withIdentity(dbIdentityFrom(req), async (client) => {
-      await assertAccess(client, parentId, studentId);
+      const acces = await assertAccess(client, parentId, studentId);
 
       const info = await client.query(
         `SELECT s.id, s.full_name, s.public_code, s.gender, s.date_of_birth, s.photo_url,
                 cl.name AS classe, sec.name AS section,
                 sch.official_name AS ecole, sch.primary_color,
                 sch.logo_url, sch.phone_contact, sch.email AS email_ecole,
+                sch.activity_days, sch.id AS school_id,
                 ay.label AS annee_scolaire,
                 l.relationship, l.is_primary, l.status AS lien_statut,
                 coalesce(a.status::text,'non_enregistre') AS presence_aujourdhui,
@@ -525,14 +575,24 @@ export async function registerParentRoutes(deps: AppDependencies): Promise<void>
         [parentId, studentId],
       );
 
+      // État du jour : jour non scolaire ou férié/fermeture = aucun appel.
+      const jourEtat = await lireEtatJour(
+        client,
+        acces.school_id,
+        new Date().toISOString().slice(0, 10),
+      );
+
       const summary = await client.query(
-        `SELECT count(*) FILTER (WHERE status = 'present')::int AS presents,
-                count(*) FILTER (WHERE status = 'absent')::int  AS absents,
-                count(*) FILTER (WHERE status = 'retard')::int  AS retards,
-                count(*) FILTER (WHERE status = 'depart_anticipe')::int AS departs
-           FROM app.attendance
-          WHERE student_id = $1 AND status <> 'non_enregistre'
-            AND attendance_date >= CURRENT_DATE - INTERVAL '30 days'`,
+        `SELECT count(*) FILTER (WHERE a.status = 'present')::int AS presents,
+                count(*) FILTER (WHERE a.status = 'absent')::int  AS absents,
+                count(*) FILTER (WHERE a.status = 'retard')::int  AS retards,
+                count(*) FILTER (WHERE a.status = 'depart_anticipe')::int AS departs
+           FROM app.attendance a
+          WHERE a.student_id = $1 AND a.status <> 'non_enregistre'
+            AND a.attendance_date >= CURRENT_DATE - INTERVAL '30 days'
+            ${filtreJoursScolairesSql(
+              '(SELECT school_id FROM app.students WHERE id = $1)',
+            )}`,
         [studentId],
       );
 
@@ -548,6 +608,11 @@ export async function registerParentRoutes(deps: AppDependencies): Promise<void>
       return {
         eleve: info.rows[0],
         resume30Jours: summary.rows[0],
+        jourAujourdhui: {
+          ferme: jourEtat.ferme,
+          libelle: jourEtat.ferme ? libelleFermeture(jourEtat) : null,
+          regime: jourEtat.regime,
+        },
         communiquesNonLus: unread.rows[0]?.n ?? 0,
         clarification:
           'Ce statut reflète l’enregistrement fait par l’école. ' +
@@ -597,13 +662,16 @@ export async function registerParentRoutes(deps: AppDependencies): Promise<void>
       await assertAccess(client, parentId, studentId);
 
       const resume = await client.query(
-        `SELECT to_char(attendance_date, 'YYYY-MM') AS mois,
-                count(*) FILTER (WHERE status = 'present')::int         AS presents,
-                count(*) FILTER (WHERE status = 'absent')::int          AS absents,
-                count(*) FILTER (WHERE status = 'retard')::int          AS retards,
-                count(*) FILTER (WHERE status = 'depart_anticipe')::int AS departs
-           FROM app.attendance
-          WHERE student_id = $1 AND status <> 'non_enregistre'
+        `SELECT to_char(a.attendance_date, 'YYYY-MM') AS mois,
+                count(*) FILTER (WHERE a.status = 'present')::int         AS presents,
+                count(*) FILTER (WHERE a.status = 'absent')::int          AS absents,
+                count(*) FILTER (WHERE a.status = 'retard')::int          AS retards,
+                count(*) FILTER (WHERE a.status = 'depart_anticipe')::int AS departs
+           FROM app.attendance a
+          WHERE a.student_id = $1 AND a.status <> 'non_enregistre'
+            ${filtreJoursScolairesSql(
+              '(SELECT school_id FROM app.students WHERE id = $1)',
+            )}
           GROUP BY 1 ORDER BY 1 DESC LIMIT 24`,
         [studentId],
       );
@@ -619,6 +687,80 @@ export async function registerParentRoutes(deps: AppDependencies): Promise<void>
       );
 
       return { resumeMensuel: resume.rows, jours: details.rows };
+    });
+
+    return noStore(reply).send(data);
+  });
+
+  /* ====================================================================== */
+  /*  CALENDRIER MENSUEL DE PRÉSENCE D'UN ENFANT (B2)                       */
+  /* ====================================================================== */
+
+  /**
+   * Calendrier mois par mois : jour scolaire ou non (régime), fériés et
+   * événements de l'école, présence enregistrée le cas échéant.
+   * Alimente le calendrier mensuel de l'espace parent (point vert = présent).
+   */
+  app.get('/api/parent/enfants/:id/calendrier-mois', { preHandler: guardHooks }, async (req, reply) => {
+    const parentId = req.auth!.userId;
+    const studentId = String((req.params as any).id);
+    const brut = String((req.query as any)?.mois ?? '').trim();
+    const mois = /^\d{4}-(0[1-9]|1[0-2])$/.test(brut)
+      ? brut
+      : new Date().toISOString().slice(0, 7);
+
+    const du = `${mois}-01`;
+    const au = `${mois}-${new Date(Number(mois.slice(0, 4)), Number(mois.slice(5, 7)), 0)
+      .getDate()
+      .toString()
+      .padStart(2, '0')}`;
+
+    const data = await db.withIdentity(dbIdentityFrom(req), async (client) => {
+      const acces = await assertAccess(client, parentId, studentId);
+
+      // État de chaque jour du mois : régime + fériés/événements publiés.
+      const { regime, jours } = await lireEtatsJours(client, acces.school_id, du, au);
+
+      const presences = await client.query<{ date: string; status: string }>(
+        `SELECT to_char(attendance_date, 'YYYY-MM-DD') AS date, status::text AS status
+           FROM app.attendance
+          WHERE student_id = $1
+            AND attendance_date BETWEEN $2::date AND $3::date
+            AND status <> 'non_enregistre'`,
+        [studentId, du, au],
+      );
+      const presenceParDate = new Map(presences.rows.map((p) => [p.date, p.status]));
+
+      const resume = await client.query<{
+        presents: number;
+        absents: number;
+        retards: number;
+        departs: number;
+      }>(
+        `SELECT count(*) FILTER (WHERE a.status = 'present')::int         AS presents,
+                count(*) FILTER (WHERE a.status = 'absent')::int          AS absents,
+                count(*) FILTER (WHERE a.status = 'retard')::int          AS retards,
+                count(*) FILTER (WHERE a.status = 'depart_anticipe')::int AS departs
+           FROM app.attendance a
+          WHERE a.student_id = $1
+            AND a.attendance_date BETWEEN $2::date AND $3::date
+            AND a.status <> 'non_enregistre'
+            ${filtreJoursScolairesSql('$4')}`,
+        [studentId, du, au, acces.school_id],
+      );
+
+      return {
+        mois,
+        regime,
+        jours: jours.map((j) => ({
+          date: j.date,
+          scolaire: j.scolaire,
+          ferme: j.ferme,
+          evenements: j.evenements,
+          presence: presenceParDate.get(j.date) ?? null,
+        })),
+        resume: resume.rows[0] ?? { presents: 0, absents: 0, retards: 0, departs: 0 },
+      };
     });
 
     return noStore(reply).send(data);
@@ -755,7 +897,7 @@ export async function registerParentRoutes(deps: AppDependencies): Promise<void>
     const rows = await db.withIdentity(dbIdentityFrom(req), async (client) => {
       const { rows } = await client.query(
         `SELECT DISTINCT e.id, e.kind, e.title, e.description, e.starts_on, e.ends_on,
-                e.start_time, e.end_time, e.all_day, e.location,
+                e.start_time, e.end_time, e.all_day, e.location, e.school_closed,
                 e.school_id, sch.official_name AS ecole,
                 CASE
                   WHEN e.audience_kind = 'toute_ecole' THEN 'Toute l’école'
@@ -786,6 +928,20 @@ export async function registerParentRoutes(deps: AppDependencies): Promise<void>
       return rows;
     });
 
+    // Régime d'activité des écoles : le parent voit quels jours sont
+    // scolaires (lundi → vendredi ou lundi → samedi).
+    const regimes = await db.withIdentity(dbIdentityFrom(req), async (client) => {
+      const { rows } = await client.query(
+        `SELECT s.id AS school_id, s.official_name AS ecole, s.activity_days
+           FROM app.schools s
+          WHERE s.id IN (SELECT DISTINCT school_id FROM app.parent_student_links
+                          WHERE parent_id = $1 AND status = 'actif')
+            AND ($2::uuid IS NULL OR s.id = $2)`,
+        [parentId, ecoleId],
+      );
+      return rows;
+    });
+
     // Regroupement par semaine, comme attendu dans l'agenda parent
     const thisWeek: any[] = [];
     const later: any[] = [];
@@ -796,7 +952,12 @@ export async function registerParentRoutes(deps: AppDependencies): Promise<void>
       (start <= weekEnd ? thisWeek : later).push(e);
     }
 
-    return noStore(reply).send({ cetteSemaine: thisWeek, aVenir: later, tous: rows });
+    return noStore(reply).send({
+      cetteSemaine: thisWeek,
+      aVenir: later,
+      tous: rows,
+      regimes,
+    });
   });
 
   /* ====================================================================== */

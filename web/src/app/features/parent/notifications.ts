@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { ApiService, toApiError } from '../../core/api.service';
 import { dateHeureFr } from '../../core/format';
 import { EnfantActifService } from '../../core/enfant-actif.service';
+import { SyncService } from '../../core/sync.service';
 import { ToastService } from '../../core/toast.service';
 import { Chargement, EtatVide, Etiquette } from '../../shared/ui';
 
@@ -27,6 +28,7 @@ interface Notification {
 })
 export class NotificationsParent {
   private readonly api = inject(ApiService);
+  private readonly sync = inject(SyncService);
   private readonly toasts = inject(ToastService);
   private readonly router = inject(Router);
   protected readonly selection = inject(EnfantActifService);
@@ -61,15 +63,21 @@ export class NotificationsParent {
     this.erreur.set('');
     try {
       await this.selection.charger();
-      const r = await this.api.lire<{ notifications: Notification[]; nonLues: number }>(
-        'parent/notifications',
-        this.selection.params,
+      await this.sync.lireDabord<{ notifications: Notification[]; nonLues: number }>(
+        'parent.notifications',
+        () => this.api.lire<{ notifications: Notification[]; nonLues: number }>(
+          'parent/notifications',
+          this.selection.params,
+        ),
+        (r) => {
+          this.notifications.set(r.notifications ?? []);
+          this.nonLues.set(r.nonLues ?? 0);
+        },
+        { entite: 'notifications', extraire: (r) => r.notifications ?? [] },
       );
-      this.notifications.set(r.notifications ?? []);
-      this.nonLues.set(r.nonLues ?? 0);
     } catch (err) {
       const e = toApiError(err);
-      this.erreur.set(e.horsLigne ? 'Hors ligne : notifications indisponibles.' : e.message);
+      this.erreur.set(e.horsLigne || (err as Error)?.message === 'HORS_LIGNE' ? 'Hors ligne : notifications indisponibles.' : e.message);
     } finally {
       this.chargement.set(false);
     }

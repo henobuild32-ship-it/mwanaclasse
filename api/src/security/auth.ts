@@ -28,6 +28,7 @@ import { SessionService, type IssuedTokens, type Audience } from './sessions.js'
 import { verifyTotp, otpAuthUri, otpAuthQrDataUrl, generateTotpSecret, generateRecoveryCodes, hashRecoveryCode, type TotpConfig, DEFAULT_TOTP } from './totp.js';
 import type { BruteForceGuard } from './bruteforce.js';
 import type { AppConfig } from '../config/index.js';
+import { insererFeriesRdc } from '../domain/feries-rdc.js';
 
 /* ==========================================================================
  *  Types
@@ -1097,6 +1098,24 @@ export class AuthService {
         staffUserId,
         directorRoleId,
       ]);
+    }
+
+    // (7bis) Pré-remplissage des jours fériés officiels RDC de l'année civile
+    // courante et de la suivante : l'admin peut les modifier ou les supprimer.
+    // Une défaillance ici ne doit jamais bloquer l'inscription.
+    try {
+      const annee = new Date().getFullYear();
+      for (const a of [annee, annee + 1]) {
+        await insererFeriesRdc(client, {
+          schoolId,
+          annee: a,
+          anneeScolaireId: yearId,
+          auteur: 'Pré-remplissage RDC',
+        });
+      }
+    } catch {
+      // Calendrier non critique : l'écran Calendrier permet de rattraper
+      // manuellement (« Pré-remplir les fériés RDC »).
     }
 
     // (8) Trace d'audit

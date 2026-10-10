@@ -145,6 +145,81 @@ export class Chargement {
 }
 
 /* ==========================================================================
+ *  Squelette de chargement (shimmer) — spec C2b
+ * ========================================================================== */
+@Component({
+  selector: 'app-squelette',
+  imports: [CommonModule],
+  template: `
+    @switch (forme()) {
+      @case ('cartes') {
+        <div class="escalier">
+          @for (i of _slots; track i) {
+            <div class="carte">
+              <div class="squelette-carte__entete">
+                <div class="skeleton skeleton--avatar"></div>
+                <div style="flex: 1; min-width: 0">
+                  <div class="skeleton skeleton--titre"></div>
+                  <div class="skeleton skeleton--texte" style="width: 45%"></div>
+                </div>
+              </div>
+              <div class="skeleton skeleton--texte" style="width: 80%"></div>
+              <div class="skeleton skeleton--texte" style="width: 55%"></div>
+            </div>
+          }
+        </div>
+      }
+      @case ('tuiles') {
+        <div class="kpi-grid">
+          @for (i of _slots; track i) {
+            <div class="skeleton skeleton--tuile"></div>
+          }
+        </div>
+      }
+      @case ('calendrier') {
+        <div class="carte">
+          <div class="skeleton skeleton--titre" style="width: 40%; margin-inline: auto"></div>
+          <div class="squelette-grille">
+            @for (i of _cases; track i) {
+              <div class="skeleton skeleton--case"></div>
+            }
+          </div>
+        </div>
+      }
+      @case ('lignes') {
+        <div class="escalier">
+          @for (i of _slots; track i) {
+            <div class="skeleton skeleton--ligne"></div>
+          }
+        </div>
+      }
+      @default {
+        <div class="skeleton skeleton--texte"></div>
+      }
+    }
+  `,
+  styles: [`
+    .squelette-carte__entete { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; }
+    .squelette-grille {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 6px;
+    }
+  `],
+})
+export class Squelette {
+  readonly forme = input<'cartes' | 'tuiles' | 'calendrier' | 'lignes' | 'texte'>('cartes');
+  readonly nb = input(3);
+
+  protected get _slots(): number[] {
+    return Array.from({ length: this.nb() }, (_, i) => i);
+  }
+  protected get _cases(): number[] {
+    return Array.from({ length: 28 }, (_, i) => i);
+  }
+}
+
+/* ==========================================================================
  *  Étiquette / Badge
  * ========================================================================== */
 @Component({
@@ -325,6 +400,9 @@ export function etiquetteStatut(statut: string): {
     retard: { texte: 'Retard', variante: 'attention' },
     depart_anticipe: { texte: 'Départ anticipé', variante: 'info' },
     non_enregistre: { texte: 'Non enregistré', variante: 'neutre' },
+    jour_non_scolaire: { texte: 'Jour non scolaire', variante: 'neutre' },
+    ecole_fermee: { texte: 'École fermée', variante: 'attention' },
+    jour_ferie: { texte: 'Jour férié', variante: 'attention' },
     actif: { texte: 'Actif', variante: 'succes' },
     en_attente: { texte: 'En attente', variante: 'attention' },
     revoque: { texte: 'Révoqué', variante: 'danger' },

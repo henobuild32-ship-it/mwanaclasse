@@ -14,8 +14,8 @@
       </p>
     </div>
     <app-etiquette
-      [texte]="etiquetteStatut(e.presence_aujourdhui ?? 'non_enregistre').texte"
-      [variante]="etiquetteStatut(e.presence_aujourdhui ?? 'non_enregistre').variante"
+      [texte]="etiquetteAujourdhui().texte"
+      [variante]="etiquetteAujourdhui().variante"
     />
   </div>
 
@@ -27,6 +27,12 @@
     <div class="grille-fiche">
       <div class="carte">
         <div class="carte__titre"><span>Présence aujourd'hui</span></div>
+        @if (detail()?.jourAujourdhui?.ferme) {
+          <p class="texte-doux">
+            {{ detail()?.jourAujourdhui?.libelle }} — aucun appel n’est prévu, aucune absence
+            n’est comptée.
+          </p>
+        }
         <ul class="liste">
           <li class="ligne-liste">
             <span class="ligne-liste__libelle">Statut</span>
@@ -48,13 +54,8 @@
       </div>
 
       <div class="carte">
-        <div class="carte__titre"><span>30 derniers jours</span></div>
-        <div class="grille-stats">
-          <div class="encart"><strong>{{ detail()?.resume30Jours?.presents ?? 0 }}</strong> présents</div>
-          <div class="encart"><strong>{{ detail()?.resume30Jours?.absents ?? 0 }}</strong> absents</div>
-          <div class="encart"><strong>{{ detail()?.resume30Jours?.retards ?? 0 }}</strong> retards</div>
-          <div class="encart"><strong>{{ detail()?.resume30Jours?.departs ?? 0 }}</strong> départs</div>
-        </div>
+        <div class="carte__titre"><span>Présence mensuelle</span></div>
+        <app-calendrier-presence [enfantId]="id()" />
       </div>
 
       <div class="carte">

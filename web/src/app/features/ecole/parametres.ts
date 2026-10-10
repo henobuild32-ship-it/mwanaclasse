@@ -29,6 +29,7 @@ interface Ecole {
   opening_hours?: string | null;
   current_year_label?: string | null;
   parent_link_mode?: string | null;
+  activity_days?: string | null;
   signature_name?: string | null;
   signature_title?: string | null;
 }
@@ -98,6 +99,8 @@ export class ParametresEcole {
   openingHours = '';
   primaryColor = '#0f766e';
   parentLinkMode = 'validation';
+  /** Régime d'activité : les jours hors régime sont non scolaires. */
+  activityDays = 'lundi_vendredi';
   signatureName = '';
   signatureTitle = '';
 
@@ -136,6 +139,7 @@ export class ParametresEcole {
       this.openingHours = e.opening_hours ?? '';
       this.primaryColor = e.primary_color ?? '#0f766e';
       this.parentLinkMode = e.parent_link_mode ?? 'validation';
+      this.activityDays = e.activity_days ?? 'lundi_vendredi';
       this.signatureName = e.signature_name ?? '';
       this.signatureTitle = e.signature_title ?? '';
     } catch (err) {
@@ -177,6 +181,7 @@ export class ParametresEcole {
         openingHours: this.openingHours.trim() || null,
         primaryColor: this.primaryColor,
         parentLinkMode: this.parentLinkMode,
+        activityDays: this.activityDays,
         signatureName: this.signatureName.trim() || null,
         signatureTitle: this.signatureTitle.trim() || null,
       });

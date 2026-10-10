@@ -3,6 +3,7 @@ import { Component, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService, toApiError } from '../../core/api.service';
 import { EnfantActifService } from '../../core/enfant-actif.service';
+import { SyncService } from '../../core/sync.service';
 import { ToastService } from '../../core/toast.service';
 import { Chargement, EtatVide, Etiquette } from '../../shared/ui';
 
@@ -34,6 +35,7 @@ interface Communique {
 })
 export class CommuniquesParent {
   private readonly api = inject(ApiService);
+  private readonly sync = inject(SyncService);
   private readonly toasts = inject(ToastService);
   protected readonly selection = inject(EnfantActifService);
 
@@ -67,15 +69,23 @@ export class CommuniquesParent {
     this.erreur.set('');
     try {
       await this.selection.charger();
-      const r = await this.api.lire<{ communiques: Communique[]; nonLus: number }>(
-        'parent/communiques',
-        this.selection.params,
+      const ecoleId = this.selection.ecoleId();
+      const cle = `parent.communiques:${ecoleId ?? 'toutes'}`;
+      await this.sync.lireDabord<{ communiques: Communique[]; nonLus: number }>(
+        cle,
+        () => this.api.lire<{ communiques: Communique[]; nonLus: number }>(
+          'parent/communiques',
+          this.selection.params,
+        ),
+        (r) => {
+          this.communiques.set(r.communiques ?? []);
+          this.nonLus.set(r.nonLus ?? 0);
+        },
+        { entite: 'communiques', extraire: (r) => r.communiques ?? [] },
       );
-      this.communiques.set(r.communiques ?? []);
-      this.nonLus.set(r.nonLus ?? 0);
     } catch (err) {
       const e = toApiError(err);
-      this.erreur.set(e.horsLigne ? 'Hors ligne : communiqués indisponibles.' : e.message);
+      this.erreur.set(e.horsLigne || (err as Error)?.message === 'HORS_LIGNE' ? 'Hors ligne : communiqués indisponibles.' : e.message);
     } finally {
       this.chargement.set(false);
     }

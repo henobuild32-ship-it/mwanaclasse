@@ -13,7 +13,9 @@
 </div>
 
 @if (chargement()) {
-  <app-chargement texte="Chargement de votre tableau de bord…" />
+  <app-squelette forme="cartes" [nb]="2" />
+  <div style="height: 14px"></div>
+  <app-squelette forme="tuiles" [nb]="4" />
 } @else if (erreur()) {
   <app-etat-vide texte="{{ erreur() }}" icone="📡" actionTexte="Réessayer" [actionLien]="['/parent']" />
 } @else {
@@ -40,8 +42,8 @@
                   <div class="carte-enfant__sous">{{ e.classe }} · {{ e.ecole }}</div>
                 </div>
                 <app-etiquette
-                  [texte]="etiquetteStatut(e.presence ?? 'non_enregistre').texte"
-                  [variante]="etiquetteStatut(e.presence ?? 'non_enregistre').variante"
+                  [texte]="etiquetteStatut(e.statut_presence ?? e.presence ?? 'non_enregistre').texte"
+                  [variante]="etiquetteStatut(e.statut_presence ?? e.presence ?? 'non_enregistre').variante"
                 />
               </div>
 
@@ -56,9 +58,9 @@
                 </div>
               </div>
 
-              <a class="btn btn--secondaire" [routerLink]="['/parent/enfants', e.id]">
+              <button class="btn btn--secondaire" type="button" (click)="ouvrirSuivi(e.id)">
                 Voir le suivi complet
-              </a>
+              </button>
             </div>
           }
         </div>
@@ -81,6 +83,9 @@
                   <div class="ligne-liste__titre">{{ ev.title }}</div>
                   <div class="ligne-liste__sous">{{ dateFr(ev.starts_on) }}{{ ev.location ? ' · ' + ev.location : '' }}</div>
                 </div>
+                @if (ev.school_closed) {
+                  <app-etiquette texte="École fermée" variante="attention" />
+                }
               </li>
             }
           </ul>
@@ -113,4 +118,8 @@
       </div>
     </div>
   </section>
+}
+
+@if (suiviOuvert(); as id) {
+  <app-suivi-enfant [enfantId]="id" (fermeture)="suiviOuvert.set(null)" />
 }

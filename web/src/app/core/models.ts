@@ -270,6 +270,8 @@ export interface EvenementCalendrier {
   location?: string | null;
   audience_kind?: string;
   is_published?: boolean;
+  /** Vrai = l'école est fermée ce jour / cette période (férié, vacances…). */
+  school_closed?: boolean;
 }
 
 export interface Notification {
@@ -357,6 +359,11 @@ export interface Enfant {
   presence_aujourdhui?: string;
   arrival_time?: string | null;
   recorded_at?: string | null;
+  /** Statut affiché aujourd'hui, tenu compte du régime et des fermetures. */
+  statut_presence?: string;
+  /** Vrai si aujourd'hui est non scolaire ou si l'école est fermée. */
+  jour_non_scolaire?: boolean;
+  resumeMois?: { presents: number; absents: number; retards: number };
 }
 
 export interface TableauBordParent {

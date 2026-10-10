@@ -86,3 +86,257 @@
 @media (min-width: 720px) {
   .kpi-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
+
+/* Régime d'activité des écoles (calendrier parent) */
+.bandeau-regime {
+  display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px;
+}
+.bandeau-regime span {
+  background: var(--mc-fond-2);
+  border: 1px solid var(--mc-trait);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 0.8rem; color: var(--mc-texte-2);
+}
+
+/* ==========================================================================
+ *  B1 — Feuille « Suivi complet » (bottom sheet / modal centré)
+ * ========================================================================== */
+
+.feuille-voile {
+  position: fixed;
+  inset: 0;
+  z-index: var(--mc-z-overlay);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgb(15 23 42 / 0.45);
+  backdrop-filter: blur(2px);
+  animation: feuille-voile-in 0.2s ease;
+}
+
+.feuille {
+  position: relative;
+  width: 100%;
+  max-width: 680px;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--mc-fond);
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -10px 40px rgb(15 23 42 / 0.22);
+  padding: 8px 16px calc(16px + env(safe-area-inset-bottom));
+  animation: feuille-in 0.25s cubic-bezier(0.2, 0.8, 0.3, 1);
+  overflow: hidden;
+}
+
+.feuille--en-mouvement { animation: none; transition: transform 0.05s linear; }
+
+/* Centrage sur tablette et plus (bottom sheet sur mobile). */
+@media (min-width: 720px) {
+  .feuille-voile { align-items: center; padding: 24px; }
+  .feuille { border-radius: 20px; max-height: 88vh; }
+  .feuille__tirette { display: none; }
+}
+
+.feuille__tirette {
+  width: 40px; height: 4px; border-radius: 999px;
+  background: var(--mc-trait);
+  margin: 4px auto 10px;
+  flex: 0 0 auto;
+}
+
+.feuille__fermer {
+  position: absolute;
+  top: 10px; right: 12px;
+  width: 36px; height: 36px;
+  border: none; border-radius: 50%;
+  background: var(--mc-fond-2);
+  color: var(--mc-texte-2);
+  font-size: 1rem;
+  cursor: pointer;
+  z-index: 1;
+}
+.feuille__fermer:hover { background: var(--mc-trait); }
+
+.feuille__entete {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 4px 40px 12px 0;
+  border-bottom: 1px solid var(--mc-trait);
+  flex: 0 0 auto;
+}
+.feuille__entete h2 { font-size: 1.05rem; margin: 0; }
+.feuille__entete p { margin: 2px 0 0; font-size: 0.82rem; color: var(--mc-texte-2); }
+
+.feuille__corps {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+@keyframes feuille-voile-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes feuille-in {
+  from { transform: translateY(100%); opacity: 0.4; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* ==========================================================================
+ *  B2 — Calendrier mensuel de présence
+ * ========================================================================== */
+
+.calendrier-mensuel .carte__titre {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+
+.cal-nav {
+  width: 32px; height: 32px;
+  border: 1px solid var(--mc-trait);
+  border-radius: 50%;
+  background: var(--mc-fond-2);
+  color: var(--mc-texte);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.cal-nav:hover { border-color: var(--mc-primaire); }
+
+.cal-resume {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+@media (min-width: 560px) {
+  .cal-resume { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+.cal-grille {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.cal-jour-tete {
+  text-align: center;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--mc-texte-3);
+  padding-bottom: 4px;
+}
+
+.cal-case {
+  position: relative;
+  aspect-ratio: 1;
+  min-height: 38px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: var(--mc-fond-2);
+  color: var(--mc-texte);
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  transition: border-color 0.12s, background 0.12s;
+}
+.cal-case:hover:not(:disabled) { border-color: var(--mc-primaire-30); }
+
+.cal-case--vide {
+  background: transparent;
+  cursor: default;
+  pointer-events: none;
+}
+
+.cal-case--aujourdhui {
+  border-color: var(--mc-primaire);
+  background: color-mix(in srgb, var(--mc-primaire) 8%, var(--mc-fond-2));
+  color: var(--mc-primaire);
+}
+
+.cal-case--non-scolaire {
+  background: transparent;
+  border-color: var(--mc-trait);
+  color: var(--mc-texte-3);
+  opacity: 0.55;
+}
+
+.cal-case--ferme {
+  background: color-mix(in srgb, var(--mc-alerte) 10%, var(--mc-fond-2));
+  color: var(--mc-texte-2);
+}
+
+.cal-case--selectionnee {
+  border-color: var(--mc-primaire);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--mc-primaire) 25%, transparent);
+}
+
+.cal-num { line-height: 1; }
+
+/* Point de présence sous le numéro. */
+.cal-point {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  display: block;
+}
+.cal-point--present { background: var(--mc-succes, #059669); }
+.cal-point--absent { background: var(--mc-danger, #dc2626); }
+.cal-point--retard { background: var(--mc-alerte, #d97706); }
+.cal-point--depart_anticipe { background: var(--mc-primaire); }
+
+/* Repère d'événement / férié. */
+.cal-repere {
+  width: 6px; height: 6px;
+  border-radius: 2px;
+  background: var(--mc-primaire);
+  display: block;
+}
+.cal-repere--ferme { background: var(--mc-danger, #dc2626); }
+
+.cal-legende {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  margin-top: 12px;
+  font-size: 0.72rem;
+  color: var(--mc-texte-3);
+}
+.cal-legende span { display: inline-flex; align-items: center; gap: 5px; }
+.cal-legende i {
+  width: 8px; height: 8px; border-radius: 50%;
+  display: inline-block;
+}
+.cal-legende i.cal-repere { border-radius: 2px; }
+.cal-nonscolaire {
+  width: 10px; height: 10px;
+  border: 1px solid var(--mc-trait);
+  border-radius: 3px;
+  opacity: 0.6;
+}
+
+.cal-detail {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--mc-trait);
+  font-size: 0.85rem;
+}

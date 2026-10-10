@@ -11,6 +11,8 @@ export type TypeEntiteLocale =
   | 'demandes'
   | 'documents'
   | 'calendrier'
+  | 'ecoles'
+  | 'etat-jours'
   | 'notifications';
 
 export interface OperationFile {
@@ -34,10 +36,11 @@ export interface MetadonneesSync {
 }
 
 const DB_NAME = 'mwana-classe';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_DONNEES = 'donnees';
 const STORE_OPERATIONS = 'operations';
 const STORE_META = 'meta';
+const STORE_REPONSES = 'reponses';
 
 const ENTITES_PULL = [
   'attendance',
@@ -48,6 +51,7 @@ const ENTITES_PULL = [
   'request',
   'notification',
   'calendar',
+  'school',
 ] as const;
 
 /**
@@ -117,6 +121,9 @@ export class SyncService {
         }
         if (!db.objectStoreNames.contains(STORE_META)) {
           db.createObjectStore(STORE_META, { keyPath: 'cle' });
+        }
+        if (!db.objectStoreNames.contains(STORE_REPONSES)) {
+          db.createObjectStore(STORE_REPONSES, { keyPath: 'cle' });
         }
       };
       req.onsuccess = () => {
@@ -201,6 +208,10 @@ export class SyncService {
         this.progressionPreparation.set(35);
         await this.synchroniser();
         this.progressionPreparation.set(95);
+        // Pré-téléchargement des données principales (spec C1) : les
+        // réponses agrégées sont mises en cache pour un affichage
+        // instantané au prochain démarrage.
+        void this.prechargerReponsesParent();
       }
       this.progressionPreparation.set(100);
     } finally {
@@ -358,6 +369,74 @@ export class SyncService {
   }
 
   /* ---------------------------------------------------------------- */
+  /*  Cache de réponses agrégées (offline-first)                       */
+  /* ---------------------------------------------------------------- */
+
+  /**
+   * Relit une réponse agrégée (tableau de bord, fiche enfant…) mise en
+   * cache localement. Retourne `null` si rien n'a encore été vu.
+   */
+  async lireReponseCachee<T>(cle: string): Promise<T | null> {
+    const db = await this.ouvrir();
+    const brut = await this.promettre<{ donnees: T } | undefined>(
+      db.transaction(STORE_REPONSES, 'readonly').objectStore(STORE_REPONSES).get(cle),
+    );
+    return brut?.donnees ?? null;
+  }
+
+  /** Range une réponse agrégée dans le cache local. */
+  async ecrireReponseCachee<T>(cle: string, donnees: T): Promise<void> {
+    const db = await this.ouvrir();
+    await this.promettre(
+      db
+        .transaction(STORE_REPONSES, 'readwrite')
+        .objectStore(STORE_REPONSES)
+        .put({ cle, donnees, maj: Date.now() }),
+    );
+  }
+
+  /**
+   * Lecture « cache d'abord » : affiche immédiatement la réponse locale
+   * (si elle existe) puis rafraîchit en arrière-plan quand le réseau est
+   * là. L'écran n'est jamais bloqué par le réseau.
+   *
+   * @param cle       clé de cache (ex. `parent.tableau-de-bord`)
+   * @param appel     promesse API
+   * @param afficher  appelé avec la donnée fraîche ou le cache local
+   * @param options   entité secondaire à aussi mettre en cache (pull détaillé)
+   */
+  async lireDabord<T>(
+    cle: string,
+    appel: () => Promise<T>,
+    afficher: (donnees: T, depuisCache: boolean) => void,
+    options?: { entite?: TypeEntiteLocale; extraire?: (r: T) => unknown[] },
+  ): Promise<void> {
+    const cache = await this.lireReponseCachee<T>(cle);
+    if (cache != null) afficher(cache, true);
+
+    if (this.connectivite.enLigne()) {
+      try {
+        const frais = await appel();
+        await this.ecrireReponseCachee(cle, frais);
+        if (options?.entite && options?.extraire) {
+          await this.mettreEnCache(options.entite, options.extraire(frais));
+        }
+        afficher(frais, false);
+        this.message.set(null);
+      } catch (err) {
+        const status = (err as { status?: number })?.status;
+        // Reseau tombé pendant le refresh : on garde le cache déjà affiché.
+        if (cache == null) {
+          if (status && status !== 0) throw err;
+          throw err;
+        }
+      }
+    } else if (cache == null) {
+      throw new Error('HORS_LIGNE');
+    }
+  }
+
+  /* ---------------------------------------------------------------- */
   /*  Pull serveur                                                     */
   /* ---------------------------------------------------------------- */
 
@@ -416,6 +495,8 @@ export class SyncService {
         notifications: 'notifications',
         calendar: 'calendrier',
         calendrier: 'calendrier',
+        school: 'ecoles',
+        ecoles: 'ecoles',
       };
       const entite = mapping[lot.entite];
       if (entite && lignes.length) await this.mettreEnCache(entite, lignes);
@@ -423,6 +504,37 @@ export class SyncService {
     if (reponse.curseur ?? reponse.derniereMaj) {
       this.meta.curseurPull = (reponse.curseur ?? reponse.derniereMaj)!;
       await this.ecrireMeta();
+    }
+  }
+
+  /* ---------------------------------------------------------------- */
+  /*  Préchargement des réponses parent (spec C1)                      */
+  /* ---------------------------------------------------------------- */
+
+  /**
+   * Met en cache les réponses agrégées principales de l'espace parent
+   * (enfants, présences du jour, calendrier, demandes, contacts) afin
+   * que le prochain démarrage affiche tout instantanément, hors ligne.
+   */
+  private async prechargerReponsesParent(): Promise<void> {
+    if (this.session.interface() !== 'parent') return;
+    if (!this.connectivite.enLigne() || !this.session.connecte()) return;
+    const appels: [string, () => Promise<unknown>][] = [
+      ['parent.enfants', () => this.api.lire('parent/enfants')],
+      ['parent.tableau-de-bord', () => this.api.lire('parent/tableau-de-bord')],
+      ['parent.calendrier', () => this.api.lire('parent/calendrier')],
+      ['parent.demandes', () => this.api.lire('parent/demandes')],
+      ['parent.communiques', () => this.api.lire('parent/communiques')],
+      ['parent.notifications', () => this.api.lire('parent/notifications')],
+      ['parent.documents', () => this.api.lire('parent/documents')],
+    ];
+    for (const [cle, appel] of appels) {
+      try {
+        const reponse = await appel();
+        await this.ecrireReponseCachee(cle, reponse);
+      } catch {
+        /* préchargement best-effort : sans conséquence */
+      }
     }
   }
 

@@ -35,6 +35,7 @@ import {
   type QueryableClient,
 } from '../http/middleware.js';
 import { AUDIT_ACTIONS } from '../security/audit.js';
+import { libelleFermeture, lireEtatJour } from '../domain/calendrier-scolaire.js';
 
 /* ==========================================================================
  *  Schémas
@@ -77,7 +78,7 @@ const PullSchema = z.object({
   /** Curseur : date du dernier changement reçu (ISO) */
   since: z.string().datetime().optional().nullable(),
   entities: z
-    .array(z.enum(['attendance', 'student', 'class', 'section', 'announcement', 'request', 'notification', 'calendar']))
+    .array(z.enum(['attendance', 'student', 'class', 'section', 'announcement', 'request', 'notification', 'calendar', 'school']))
     .optional(),
   limit: z.coerce.number().int().min(1).max(5000).default(1000),
 });
@@ -605,7 +606,7 @@ export async function registerSyncRoutes(deps: AppDependencies): Promise<void> {
         );
 
         const calendar = await client.query(
-          `SELECT id, kind, title, starts_on, ends_on, start_time, location, updated_at
+          `SELECT id, kind, title, starts_on, ends_on, start_time, location, school_closed, updated_at
              FROM app.calendar_events
             WHERE school_id = $1 AND updated_at > $2
             ORDER BY updated_at LIMIT $3`,
@@ -636,6 +637,24 @@ export async function registerSyncRoutes(deps: AppDependencies): Promise<void> {
       //  Delta pour un parent
       // -----------------------------------------------------------------
       const parentId = auth.userId;
+
+      // Fiches des enfants rattachés : nécessaires à l'affichage hors ligne
+      // (liste, contacts, code élève) — le régime de l'école vient via ecoles.
+      const students = await client.query(
+        `SELECT s.id, s.full_name, s.public_code, s.gender, s.date_of_birth,
+                s.photo_url, s.phone_contact, s.email_ecole, s.annee_scolaire,
+                s.status, l.relationship, l.status AS lien_statut, l.school_id,
+                sch.official_name AS ecole, sch.primary_color,
+                cl.name AS classe, sec.name AS section, s.updated_at
+           FROM app.parent_student_links l
+           JOIN app.students s ON s.id = l.student_id
+           LEFT JOIN app.schools sch ON sch.id = l.school_id
+           LEFT JOIN app.classes cl ON cl.id = s.class_id
+           LEFT JOIN app.sections sec ON sec.id = s.section_id
+          WHERE l.parent_id = $1 AND l.status = 'actif' AND s.updated_at > $2
+          ORDER BY s.updated_at LIMIT $3`,
+        [parentId, since, input.limit],
+      );
 
       const attendance = await client.query(
         `SELECT a.id, a.student_id, a.attendance_date, a.status, a.arrival_time, a.departure_time,
@@ -675,7 +694,8 @@ export async function registerSyncRoutes(deps: AppDependencies): Promise<void> {
       );
 
       const calendar = await client.query(
-        `SELECT e.id, e.kind, e.title, e.starts_on, e.ends_on, e.start_time, e.location, e.updated_at
+        `SELECT e.id, e.kind, e.title, e.starts_on, e.ends_on, e.start_time, e.location,
+                e.school_closed, e.school_id, e.updated_at
            FROM app.calendar_events e
           WHERE e.is_published AND e.school_id IN (
                   SELECT DISTINCT school_id FROM app.parent_student_links
@@ -685,17 +705,35 @@ export async function registerSyncRoutes(deps: AppDependencies): Promise<void> {
         [parentId, since, input.limit],
       );
 
+      // Régime d'activité des écoles rattachées : le parent doit savoir quels
+      // jours sont scolaires (lundi → vendredi ou lundi → samedi) — le régime
+      // suit la même synchronisation incrémentale que le reste.
+      const ecoles = await client.query(
+        `SELECT s.id, s.official_name, s.activity_days, s.updated_at
+           FROM app.schools s
+          WHERE s.id IN (SELECT DISTINCT school_id FROM app.parent_student_links
+                          WHERE parent_id = $1 AND status = 'actif')
+            AND s.updated_at > $2
+          ORDER BY s.updated_at LIMIT $3`,
+        [parentId, since, input.limit],
+      );
+
       return {
         curseur: cursor.rows[0]?.last_pull_cursor ?? since.toISOString(),
         heureServeur: serverTime.toISOString(),
         parent: {
+          eleves: students.rows,
           presences: attendance.rows,
           communiques: announcements.rows,
           notifications: notifications.rows,
           demandes: requests.rows,
           calendrier: calendar.rows,
+          ecoles: ecoles.rows,
         },
-        termine: attendance.rows.length < input.limit,
+        termine:
+          students.rows.length < input.limit &&
+          attendance.rows.length < input.limit &&
+          ecoles.rows.length < input.limit,
       };
     });
 
@@ -971,9 +1009,17 @@ async function applyOperation(
       if (entries.length === 0) {
         return { status: 'rejected', message: 'Aucune présence dans l’opération.' };
       }
+      if (!schoolId) {
+        return { status: 'rejected', message: 'Aucune école associée à cet appareil.' };
+      }
 
       const appliedIds: string[] = [];
       let lastVersion = 0;
+
+      // Jours non scolaires ou fermés déjà vérifiés dans ce lot (le régime et
+      // le calendrier ne changent pas pendant la reprise d'un lot).
+      const etatsJours = new Map<string, Awaited<ReturnType<typeof lireEtatJour>>>();
+      const forcer = payload.forcer === true;
 
       for (const entry of entries) {
         const studentId = String(entry.studentId ?? '').trim();
@@ -991,6 +1037,19 @@ async function applyOperation(
             status: 'rejected',
             message: 'Un retard doit comporter une heure d’arrivée.',
           };
+        }
+
+        // Jour non scolaire ou école fermée : aucune absence ne peut être
+        // comptée, même en reprise hors ligne — sauf ouverture exceptionnelle.
+        if (!forcer) {
+          let etat = etatsJours.get(date);
+          if (!etat) {
+            etat = await lireEtatJour(client, schoolId, date);
+            etatsJours.set(date, etat);
+          }
+          if (etat.ferme) {
+            return { status: 'rejected', message: `${libelleFermeture(etat)} — appel désactivé.` };
+          }
         }
 
         // L'élève doit appartenir à l'école de l'appareil : c'est la garantie

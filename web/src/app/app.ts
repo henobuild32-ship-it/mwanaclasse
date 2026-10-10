@@ -2,6 +2,7 @@ import { Component, computed, effect, inject, signal } from '@angular/core';
 import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
 import { ConnectiviteService } from './core/connectivite.service';
+import { MajApplicationService } from './core/maj-application.service';
 import { SessionService } from './core/session.service';
 import { SyncService } from './core/sync.service';
 import { Confirmation, ToastContainerComponent } from './shared/ui';
@@ -23,6 +24,7 @@ export class App {
   protected readonly session = inject(SessionService);
   protected readonly connectivite = inject(ConnectiviteService);
   protected readonly sync = inject(SyncService);
+  protected readonly majApp = inject(MajApplicationService);
   private readonly router = inject(Router);
   private readonly synchronisationSession = effect(() => {
     if (this.session.connecte()) void this.sync.demarrer().catch(() => undefined);

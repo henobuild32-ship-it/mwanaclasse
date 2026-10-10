@@ -1,0 +1,98 @@
+<div
+  class="feuille-voile"
+  role="dialog"
+  aria-modal="true"
+  aria-label="Suivi complet de l’enfant"
+  (click)="fermer()"
+  (keydown.escape)="fermer()"
+>
+  <section
+    class="feuille"
+    [style.transform]="glissement() > 0 ? 'translateY(' + glissement() + 'px)' : null"
+    [class.feuille--en-mouvement]="glissement() > 0"
+    (click)="$event.stopPropagation()"
+    (touchstart)="toucheDebut($event)"
+    (touchmove)="toucheMove($event)"
+    (touchend)="toucheFin()"
+    (touchcancel)="toucheFin()"
+  >
+    <div class="feuille__tirette" aria-hidden="true"></div>
+    <button class="feuille__fermer" type="button" aria-label="Fermer" (click)="fermer()">✕</button>
+
+    @if (chargement()) {
+      <app-chargement texte="Chargement du suivi…" />
+    } @else if (erreur()) {
+      <app-etat-vide texte="{{ erreur() }}" icone="📡" />
+    } @else if (fiche(); as f) {
+      <header class="feuille__entete">
+        <span class="avatar">{{ f.eleve.full_name[0] }}</span>
+        <div>
+          <h2>{{ f.eleve.full_name }}</h2>
+          <p>
+            {{ f.eleve.classe }}@if (f.eleve.section) { · {{ f.eleve.section }}} · {{ f.eleve.ecole }}
+          </p>
+          <p class="texte-petit">Code élève : {{ f.eleve.public_code }}</p>
+        </div>
+        <app-etiquette [texte]="statutAujourdhui().texte" [variante]="statutAujourdhui().variante" />
+      </header>
+
+      <div class="feuille__corps">
+        <app-calendrier-presence [enfantId]="enfantId()" />
+
+        <div class="carte">
+          <div class="carte__titre"><span>Contacts école</span></div>
+          <ul class="liste">
+            <li class="ligne-liste">
+              <span class="ligne-liste__libelle">Téléphone</span>
+              <span class="ligne-liste__valeur">{{ f.eleve.phone_contact ?? '—' }}</span>
+            </li>
+            <li class="ligne-liste">
+              <span class="ligne-liste__libelle">Courriel</span>
+              <span class="ligne-liste__valeur">{{ f.eleve.email_ecole ?? '—' }}</span>
+            </li>
+            <li class="ligne-liste">
+              <span class="ligne-liste__libelle">Lien</span>
+              <span class="ligne-liste__valeur">
+                {{ f.eleve.relationship ?? '—' }} · {{ f.eleve.lien_statut ?? '—' }}
+              </span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="carte">
+          <div class="carte__titre"><span>Historique récent</span></div>
+          @if (!historique().length) {
+            <p class="texte-doux">Aucune présence enregistrée.</p>
+          } @else {
+            <ul class="liste">
+              @for (j of historique(); track j.attendance_date) {
+                <li class="ligne-liste">
+                  <div class="ligne-liste__principal">
+                    <div class="ligne-liste__titre">{{ j.attendance_date | slice: 0:10 }}</div>
+                    <div class="ligne-liste__sous">
+                      arrivée {{ j.arrival_time ?? '—' }} · départ {{ j.departure_time ?? '—' }}
+                      @if (j.reason) { · {{ j.reason }} }
+                    </div>
+                  </div>
+                  <app-etiquette
+                    [texte]="etiquetteStatut(j.status).texte"
+                    [variante]="etiquetteStatut(j.status).variante"
+                  />
+                </li>
+              }
+            </ul>
+          }
+        </div>
+
+        <div class="barre-outils">
+          <button class="btn btn--primaire btn--ligne" type="button" (click)="ouvrirDemandes()">
+            Voir les demandes
+          </button>
+          <button class="btn btn--contour btn--ligne" type="button" (click)="demanderClarification()">
+            Demander une clarification
+          </button>
+        </div>
+      </div>
+    }
+  </section>
+</div>

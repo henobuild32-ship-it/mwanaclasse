@@ -23,7 +23,13 @@
   </head>
   <body>
     <app-root>
-      <div class="chargement-demarrage">Chargement de MwanaClasse…</div>
+      <div class="chargement-demarrage" role="status" aria-live="polite">
+        <div class="chargement-demarrage__logo">
+          <img src="logo-mwana-classe.png" alt="" />
+          <span class="chargement-demarrage__anneau" aria-hidden="true"></span>
+        </div>
+        <p>MwanaClasse</p>
+      </div>
     </app-root>
     <noscript>
       MwanaClasse nécessite JavaScript pour fonctionner.

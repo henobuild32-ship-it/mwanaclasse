@@ -1057,6 +1057,139 @@ img {
 .skeleton--avatar { width: 40px; height: 40px; border-radius: 50%; }
 .skeleton--carte { height: 80px; }
 .skeleton--ligne { height: 56px; }
+.skeleton--tuile { height: 64px; border-radius: var(--mc-rayon); }
+.skeleton--case { aspect-ratio: 1; border-radius: 10px; }
+
+/* ------------------------------------------------------------------ */
+/*  Écran de démarrage (splash) — spec C2a                             */
+/* ------------------------------------------------------------------ */
+
+.chargement-demarrage {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  background: var(--mc-fond);
+}
+.chargement-demarrage p {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--mc-texte-2);
+  letter-spacing: 0.02em;
+  animation: splash-fade 1.2s ease-in-out infinite alternate;
+}
+.chargement-demarrage__logo {
+  position: relative;
+  width: 88px;
+  height: 88px;
+  display: grid;
+  place-items: center;
+}
+.chargement-demarrage__logo img {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  animation: splash-pulse 2s ease-in-out infinite;
+}
+.chargement-demarrage__anneau {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  border-top-color: #1d4ed8;
+  border-right-color: color-mix(in srgb, #1d4ed8 35%, transparent);
+  animation: splash-spin 0.9s linear infinite;
+}
+@keyframes splash-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes splash-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.85; }
+  50% { transform: scale(1.08); opacity: 1; }
+}
+@keyframes splash-fade {
+  from { opacity: 0.6; }
+  to { opacity: 1; }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Bandeau de mise à jour discrète — spec C1d                         */
+/* ------------------------------------------------------------------ */
+
+.bandeau-maj {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--mc-z-overlay, 1200);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--mc-fond-2);
+  border: 1px solid var(--mc-trait);
+  border-radius: 999px;
+  box-shadow: 0 8px 30px rgb(15 23 42 / 0.14);
+  font-size: 0.85rem;
+  color: var(--mc-texte);
+  animation: bandeau-maj-in 0.3s ease;
+}
+@keyframes bandeau-maj-in {
+  from { opacity: 0; transform: translate(-50%, 12px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Fine barre de progression synchro — spec C2c                       */
+/* ------------------------------------------------------------------ */
+
+.barre-synchro {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  z-index: calc(var(--mc-z-overlay, 1200) + 1);
+  overflow: hidden;
+  background: color-mix(in srgb, #1d4ed8 18%, transparent);
+}
+.barre-synchro::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  background: #1d4ed8;
+  border-radius: 999px;
+  animation: barre-synchro-glisse 1.1s ease-in-out infinite;
+}
+@keyframes barre-synchro-glisse {
+  0% { transform: translateX(-110%); }
+  100% { transform: translateX(280%); }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Respect de prefers-reduced-motion — spec C2                        */
+/* ------------------------------------------------------------------ */
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; }
+  .chargement-demarrage__logo img,
+  .chargement-demarrage__anneau,
+  .chargement-demarrage p,
+  .bandeau-maj,
+  .barre-synchro::after {
+    animation: none;
+  }
+  .feuille,
+  .feuille-voile {
+    animation: none;
+  }
+}
 
 /* ------------------------------------------------------------------ */
 /*  États vides                                                        */
