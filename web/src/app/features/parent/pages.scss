@@ -13,13 +13,17 @@
   display: flex; flex-direction: column; gap: 12px;
 }
 .carte-enfant__entete { display: flex; align-items: center; gap: 12px; }
+.carte-enfant__texte { flex: 1; min-width: 0; }
 .carte-enfant__avatar {
   width: 48px; height: 48px; border-radius: 50%;
   background: var(--mc-primaire-10); color: var(--mc-primaire);
   display: grid; place-items: center; font-weight: 700; font-size: 1.1rem;
 }
-.carte-enfant__nom { font-weight: 600; font-size: 1rem; line-height: 1.3; }
-.carte-enfant__sous { font-size: 0.82rem; color: var(--mc-texte-2); }
+.carte-enfant__nom {
+  font-weight: 600; font-size: 1rem; line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.carte-enfant__sous { font-size: 0.82rem; color: var(--mc-texte-2); overflow-wrap: anywhere; }
 
 .carte-enfant__stats {
   display: grid;
@@ -217,7 +221,8 @@
   background: var(--mc-fond);
   border-radius: 20px 20px 0 0;
   box-shadow: 0 -10px 40px rgb(15 23 42 / 0.22);
-  padding: 8px 16px calc(16px + env(safe-area-inset-bottom));
+  /* La zone tactile du bas est portée par .feuille__actions (safe-area). */
+  padding: 8px 16px 16px;
   animation: feuille-in 0.25s cubic-bezier(0.2, 0.8, 0.3, 1);
   overflow: hidden;
 }
@@ -276,14 +281,6 @@
   color: var(--mc-texte-2);
   overflow-wrap: anywhere;
 }
-.feuille__entete .feuille__code {
-  margin: 3px 0 0;
-  font-size: 0.76rem;
-  color: var(--mc-texte-3);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
 
 /* Avatar du suivi : pastille d'état (vert enregistré / rouge absent). */
 .avatar--suivi {
@@ -323,6 +320,56 @@
   flex-direction: column;
   gap: 14px;
 }
+
+/* Deux boutons d'action finaux : strictement identiques en dimensions,
+   50 % chacun, empilés sur écran très étroit. */
+.feuille__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  /* Ne jamais être coupé par la barre du bas (iPhone / Android). */
+  padding-bottom: calc(4px + env(safe-area-inset-bottom));
+}
+.feuille__actions .btn {
+  width: 100%;
+  min-height: 48px;
+  padding: 8px 12px;
+  font-size: 0.9rem;
+  line-height: 1.25;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+/* Texte trop long pour deux colonnes : l'un passe sous l'autre,
+   toujours même hauteur et pleine largeur. */
+@media (max-width: 359px) {
+  .feuille__actions { grid-template-columns: 1fr; }
+}
+
+/* Pastille ronde de présence (sans texte). */
+.pastille-presence {
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--mc-texte-3);
+  border: 2px solid var(--mc-fond-2);
+  flex: 0 0 auto;
+  vertical-align: middle;
+}
+.pastille-presence--present { background: var(--mc-succes); border-color: #ecfdf5; }
+.pastille-presence--absent { background: var(--mc-danger); border-color: #fef2f2; }
+.ligne-liste__valeur--pastille { display: inline-flex; align-items: center; gap: 8px; }
+
+/* Identité de la fiche : nom + pastille de présence alignés, nom qui passe
+   à la ligne sans déborder (même en colonne sur mobile). */
+.fiche-identite {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.fiche-identite h1 { min-width: 0; overflow-wrap: anywhere; }
 
 @keyframes feuille-voile-in {
   from { opacity: 0; }

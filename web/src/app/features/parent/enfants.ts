@@ -5,14 +5,14 @@ import { ConfirmationService } from '../../core/confirmation.service';
 import { EnfantActifService } from '../../core/enfant-actif.service';
 import { Enfant } from '../../core/models';
 import { SyncService } from '../../core/sync.service';
-import { EtatVide, Etiquette, etiquetteStatut, OverlayFormulaire, Squelette } from '../../shared/ui';
+import { EtatVide, OverlayFormulaire, Squelette, pastillePresence } from '../../shared/ui';
 import { AjouterEnfant } from './enfants-ajouter';
 import { SuiviEnfant } from './suivi-enfant';
 
 /** Liste des enfants rattachés au compte parent (spec §6). */
 @Component({
   selector: 'app-enfants-parent',
-  imports: [EtatVide, Etiquette, OverlayFormulaire, AjouterEnfant, SuiviEnfant, Squelette],
+  imports: [EtatVide, OverlayFormulaire, AjouterEnfant, SuiviEnfant, Squelette],
   templateUrl: './enfants.html',
   styleUrl: './pages.scss',
 })
@@ -22,7 +22,6 @@ export class EnfantsParent {
   private readonly route = inject(ActivatedRoute);
   private readonly confirmation = inject(ConfirmationService);
   protected readonly selection = inject(EnfantActifService);
-  protected readonly etiquetteStatut = etiquetteStatut;
 
   protected readonly chargement = signal(true);
   protected readonly erreur = signal('');
@@ -45,6 +44,11 @@ export class EnfantsParent {
 
   protected ouvrirAjout(): void {
     this.ajout.set(true);
+  }
+
+  /** Pastille ronde de présence du jour (vert / rouge / gris). */
+  protected pastille(e: Enfant): { classe: string; titre: string } {
+    return pastillePresence(e.statut_presence ?? e.presence_aujourdhui, e.jour_non_scolaire);
   }
 
   /**

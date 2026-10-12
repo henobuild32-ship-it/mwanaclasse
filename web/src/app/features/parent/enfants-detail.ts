@@ -3,7 +3,7 @@ import { Component, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ApiService, toApiError } from '../../core/api.service';
 import { ToastService } from '../../core/toast.service';
-import { Chargement, EtatVide, Etiquette, etiquetteStatut } from '../../shared/ui';
+import { Chargement, EtatVide, Etiquette, etiquetteStatut, pastillePresence } from '../../shared/ui';
 import { CalendrierPresence } from './calendrier-presence';
 
 interface SuiviEnfant {
@@ -75,17 +75,24 @@ export class DetailEnfant {
     return this.detail()?.eleve ?? null;
   }
 
-  /** Statut du jour : jour férié / école fermée / jour non scolaire d'abord. */
-  protected etiquetteAujourdhui(): { texte: string; variante: 'neutre' | 'succes' | 'danger' | 'attention' | 'info' } {
+  /** Pastille ronde de présence d'aujourd'hui (vert / rouge / gris). */
+  protected pastille(): { classe: string; titre: string } {
     const jour = this.detail()?.jourAujourdhui;
     const e = this.detail()?.eleve;
-    if (jour?.ferme) {
-      const libelle = jour.libelle ?? '';
-      if (libelle.startsWith('Jour férié')) return { texte: libelle, variante: 'danger' };
-      if (libelle.startsWith('École fermée')) return { texte: libelle, variante: 'attention' };
-      return { texte: libelle || 'Jour non scolaire', variante: 'neutre' };
-    }
-    return etiquetteStatut(e?.presence_aujourdhui ?? 'non_enregistre');
+    return pastillePresence(e?.presence_aujourdhui, jour?.ferme);
+  }
+
+  /**
+   * Libellé du statut du jour, affiché à côté de la pastille.
+   * Renvoie une chaîne vide quand rien n'est enregistré : la pastille
+   * grise suffit, on n'affiche plus « Non enregistré ».
+   */
+  protected libelleAujourdhui(): string {
+    const jour = this.detail()?.jourAujourdhui;
+    if (jour?.ferme) return jour.libelle ?? 'Jour non scolaire';
+    const statut = this.detail()?.eleve?.presence_aujourdhui;
+    if (!statut || statut === 'non_enregistre') return '';
+    return etiquetteStatut(statut).texte;
   }
 
   protected async charger(): Promise<void> {

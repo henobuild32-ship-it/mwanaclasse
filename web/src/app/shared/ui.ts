@@ -419,3 +419,21 @@ export function etiquetteStatut(statut: string): {
   };
   return map[statut] ?? { texte: statut, variante: 'neutre' };
 }
+
+/**
+ * Pastille ronde SANS TEXTE indiquant la présence d'aujourd'hui.
+ * Verte si présent, rouge si absent, grise si rien n'est enregistré
+ * (jour non scolaire, férié, ou pas encore pointé).
+ */
+export function pastillePresence(
+  statut?: string | null,
+  ferme?: boolean,
+): { classe: string; titre: string } {
+  if (!ferme && (statut === 'present' || statut === 'retard' || statut === 'depart_anticipe')) {
+    return { classe: 'pastille-presence pastille-presence--present', titre: 'Présent aujourd’hui' };
+  }
+  if (!ferme && statut === 'absent') {
+    return { classe: 'pastille-presence pastille-presence--absent', titre: 'Absent aujourd’hui' };
+  }
+  return { classe: 'pastille-presence', titre: 'Présence non enregistrée' };
+}

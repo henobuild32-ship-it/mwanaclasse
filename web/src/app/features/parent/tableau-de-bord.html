@@ -37,24 +37,9 @@
             <div class="carte-enfant">
               <div class="carte-enfant__entete">
                 <span class="avatar">{{ e.full_name[0] }}</span>
-                <div style="flex: 1; min-width: 0">
+                <div class="carte-enfant__texte">
                   <div class="carte-enfant__nom">{{ e.full_name }}</div>
-                  <div class="carte-enfant__sous">{{ e.classe }} · {{ e.ecole }}</div>
-                </div>
-                <app-etiquette
-                  [texte]="etiquetteStatut(e.statut_presence ?? e.presence ?? 'non_enregistre').texte"
-                  [variante]="etiquetteStatut(e.statut_presence ?? e.presence ?? 'non_enregistre').variante"
-                />
-              </div>
-
-              <div class="carte-enfant__stats">
-                <div class="encart">
-                  <strong>{{ e.public_code ?? '—' }}</strong>
-                  Code élève
-                </div>
-                <div class="encart">
-                  <strong>{{ e.lien_statut === 'actif' ? 'Actif' : 'En attente' }}</strong>
-                  Lien parent
+                  <div class="carte-enfant__sous">{{ e.classe }}</div>
                 </div>
               </div>
 

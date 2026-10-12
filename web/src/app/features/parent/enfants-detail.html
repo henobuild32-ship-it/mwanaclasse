@@ -7,16 +7,20 @@
 } @else if (eleve(); as e) {
   <div class="page-entete">
     <div>
-      <h1>{{ e.full_name }}</h1>
+      <div class="fiche-identite">
+        <h1>{{ e.full_name }}</h1>
+        <span
+          [class]="pastille().classe"
+          role="img"
+          [attr.title]="pastille().titre"
+          [attr.aria-label]="pastille().titre"
+        ></span>
+      </div>
       <p>
         {{ e.classe }}@if (e.section) { · {{ e.section }}} · {{ e.ecole }}
         @if (e.annee_scolaire) { · {{ e.annee_scolaire }} }
       </p>
     </div>
-    <app-etiquette
-      [texte]="etiquetteAujourdhui().texte"
-      [variante]="etiquetteAujourdhui().variante"
-    />
   </div>
 
   @if (detail()?.clarification) {
@@ -36,7 +40,15 @@
         <ul class="liste">
           <li class="ligne-liste">
             <span class="ligne-liste__libelle">Statut</span>
-            <span class="ligne-liste__valeur">{{ e.presence_aujourdhui ?? 'non enregistré' }}</span>
+            <span class="ligne-liste__valeur ligne-liste__valeur--pastille">
+              <i
+                [class]="pastille().classe"
+                role="img"
+                [attr.title]="pastille().titre"
+                [attr.aria-label]="pastille().titre"
+              ></i>
+              @if (libelleAujourdhui()) { {{ libelleAujourdhui() }} }
+            </span>
           </li>
           <li class="ligne-liste">
             <span class="ligne-liste__libelle">Arrivée</span>
@@ -63,8 +75,6 @@
         <ul class="liste">
           <li class="ligne-liste"><span class="ligne-liste__libelle">Téléphone</span><span class="ligne-liste__valeur">{{ e.phone_contact ?? '—' }}</span></li>
           <li class="ligne-liste"><span class="ligne-liste__libelle">Courriel</span><span class="ligne-liste__valeur">{{ e.email_ecole ?? '—' }}</span></li>
-          <li class="ligne-liste"><span class="ligne-liste__libelle">Code enfant</span><span class="ligne-liste__valeur">{{ e.public_code }}</span></li>
-          <li class="ligne-liste"><span class="ligne-liste__libelle">Lien avec l'école</span><span class="ligne-liste__valeur">{{ e.lien_statut === 'actif' ? 'Actif' : e.lien_statut === 'en_attente' ? 'En attente' : '—' }}</span></li>
         </ul>
       </div>
     </div>

@@ -24,29 +24,18 @@
       <div class="carte-enfant">
         <div class="carte-enfant__entete">
           <span class="avatar">{{ e.full_name[0] }}</span>
-          <div style="flex: 1; min-width: 0">
+          <div class="carte-enfant__texte">
             <div class="carte-enfant__nom">{{ e.full_name }}</div>
             <div class="carte-enfant__sous">
               {{ e.classe }}@if (e.section) { · {{ e.section }}} · {{ e.ecole }}
             </div>
           </div>
-          <app-etiquette
-            [texte]="etiquetteStatut(e.lien_statut ?? 'actif').texte"
-            [variante]="etiquetteStatut(e.lien_statut ?? 'actif').variante"
-          />
-        </div>
-
-        <div class="carte-enfant__stats">
-          <div class="encart">
-            <strong>
-              {{ etiquetteStatut(e.presence_aujourdhui ?? 'non_enregistre').texte }}
-            </strong>
-            Présence aujourd'hui
-          </div>
-          <div class="encart">
-            <strong>{{ e.public_code ?? '—' }}</strong>
-            Code élève
-          </div>
+          <span
+            [class]="pastille(e).classe"
+            role="img"
+            [attr.title]="pastille(e).titre"
+            [attr.aria-label]="pastille(e).titre"
+          ></span>
         </div>
 
         <button class="btn btn--secondaire" type="button" (click)="suiviOuvert.set(e.id)">
