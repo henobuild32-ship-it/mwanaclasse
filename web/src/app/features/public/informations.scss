@@ -1,4 +1,4 @@
-.informations { min-height: 100vh; background: var(--mc-fond); color: var(--mc-texte); }
+.informations { min-height: 100vh; min-height: 100dvh; background: var(--mc-fond); color: var(--mc-texte); }
 .informations__barre, .informations__pied { display: flex; align-items: center; justify-content: space-between; gap: 16px; max-width: 1180px; width: calc(100% - 40px); margin: 0 auto; }
 .informations__barre { min-height: 72px; border-bottom: 1px solid var(--mc-trait); }
 .informations__marque { display: inline-flex; align-items: center; gap: 10px; color: var(--mc-texte); font-size: 1rem; font-weight: 750; text-decoration: none; }

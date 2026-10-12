@@ -25,15 +25,25 @@
       <app-etat-vide texte="{{ erreur() }}" icone="📡" />
     } @else if (fiche(); as f) {
       <header class="feuille__entete">
-        <span class="avatar">{{ f.eleve.full_name[0] }}</span>
-        <div>
-          <h2>{{ f.eleve.full_name }}</h2>
-          <p>
+        <span
+          class="avatar avatar--suivi"
+          [class.avatar--suivi-vert]="etatAvatar().vert"
+          [class.avatar--suivi-rouge]="etatAvatar().rouge"
+          role="img"
+          [attr.title]="statutAujourdhui().texte"
+          [attr.aria-label]="'Présence aujourd’hui : ' + statutAujourdhui().texte"
+        >
+          {{ f.eleve.full_name[0] }}
+        </span>
+        <div class="feuille__identite">
+          <h2 class="feuille__nom">{{ f.eleve.full_name }}</h2>
+          <p class="feuille__sous">
             {{ f.eleve.classe }}@if (f.eleve.section) { · {{ f.eleve.section }}} · {{ f.eleve.ecole }}
           </p>
-          <p class="texte-petit">Code élève : {{ f.eleve.public_code }}</p>
+          <p class="feuille__code" title="Code élève : {{ f.eleve.public_code }}">
+            Code élève : {{ f.eleve.public_code }}
+          </p>
         </div>
-        <app-etiquette [texte]="statutAujourdhui().texte" [variante]="statutAujourdhui().variante" />
       </header>
 
       <div class="feuille__corps">
@@ -49,12 +59,6 @@
             <li class="ligne-liste">
               <span class="ligne-liste__libelle">Courriel</span>
               <span class="ligne-liste__valeur">{{ f.eleve.email_ecole ?? '—' }}</span>
-            </li>
-            <li class="ligne-liste">
-              <span class="ligne-liste__libelle">Lien</span>
-              <span class="ligne-liste__valeur">
-                {{ f.eleve.relationship ?? '—' }} · {{ f.eleve.lien_statut ?? '—' }}
-              </span>
             </li>
           </ul>
         </div>

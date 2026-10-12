@@ -112,3 +112,12 @@
 .btn-icone--danger { color: var(--mc-danger); }
 .btn-icone--danger:hover { background: #fef2f2; border-color: #fecaca; }
 .ligne-liste__fin { display: flex; align-items: center; justify-content: flex-end; gap: 6px; flex-wrap: wrap; }
+
+/* Liste des enfants rattaches a un compte parent */
+.parents-enfants { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.parents-enfants__pilule {
+  display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  padding: 3px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 600;
+  background: var(--mc-fond-2); color: var(--mc-texte-2); border: 1px solid var(--mc-trait);
+}
+.parents-enfants__pilule--attente { background: #fffbeb; color: #92400e; border-color: #fde68a; }

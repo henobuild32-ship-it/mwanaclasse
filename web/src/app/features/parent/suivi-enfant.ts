@@ -16,7 +16,6 @@ interface FicheEnfant {
     ecole?: string | null;
     phone_contact?: string | null;
     email_ecole?: string | null;
-    relationship?: string | null;
     lien_statut?: string | null;
     presence_aujourdhui?: string | null;
   };
@@ -205,6 +204,21 @@ export class SuiviEnfant implements OnInit, OnDestroy {
       return { texte: libelle || 'Jour non scolaire', variante: 'neutre' };
     }
     return etiquetteStatut(this.fiche()?.eleve?.presence_aujourdhui ?? 'non_enregistre');
+  }
+
+  /**
+   * Pastille d'état posée sur l'avatar (remplace l'étiquette texte) :
+   * vert = l'enfant est enregistré aujourd'hui, rouge = absent / non
+   * enregistré, gris = jour fermé ou non scolaire.
+   */
+  protected etatAvatar(): { vert: boolean; rouge: boolean } {
+    const jour = this.fiche()?.jourAujourdhui;
+    if (jour?.ferme) return { vert: false, rouge: false };
+    const statut = this.fiche()?.eleve?.presence_aujourdhui ?? 'non_enregistre';
+    if (statut === 'present' || statut === 'retard' || statut === 'depart_anticipe') {
+      return { vert: true, rouge: false };
+    }
+    return { vert: false, rouge: true };
   }
 
   protected ouvrirDemandes(): void {

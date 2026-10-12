@@ -20,7 +20,6 @@ interface SuiviEnfant {
     phone_contact?: string | null;
     email_ecole?: string | null;
     annee_scolaire?: string | null;
-    relationship?: string | null;
     lien_statut?: string | null;
     presence_aujourdhui?: string | null;
     arrival_time?: string | null;

@@ -49,8 +49,16 @@ export class PageTableauBordParent {
     void this.charger();
   }
 
+  /**
+   * Cartes des enfants à afficher : un enfant choisi dans la barre supérieure
+   * n'affiche que lui ; « Tous » regroupe tous les enfants.
+   */
   protected enfants(): Enfant[] {
-    return this.donnees()?.enfants ?? [];
+    const liste = this.donnees()?.enfants ?? [];
+    const actif = this.selection.enfantActif();
+    if (!actif) return liste;
+    const filtre = liste.filter((e) => e.id === actif.id);
+    return filtre.length ? filtre : liste;
   }
 
   protected calendrier(): EvenementCalendrier[] {

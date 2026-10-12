@@ -1,7 +1,11 @@
 <div class="page-entete">
   <div>
     <h1>Mes enfants</h1>
-    <p>{{ enfants().length }} enfant(s) rattaché(s) à votre compte</p>
+    @if (selection.enfantActif(); as actif) {
+      <p>{{ actif.full_name }}@if (actif.classe) { · {{ actif.classe }}}</p>
+    } @else {
+      <p>{{ enfants().length }} enfant(s) rattaché(s) à votre compte</p>
+    }
   </div>
   <button class="btn btn--primaire btn--ligne" type="button" (click)="ouvrirAjout()">+ Ajouter</button>
 </div>
@@ -16,7 +20,7 @@
   </app-etat-vide>
 } @else {
   <div class="escalier">
-    @for (e of enfants(); track e.id) {
+      @for (e of enfantsAffiches(); track e.id) {
       <div class="carte-enfant">
         <div class="carte-enfant__entete">
           <span class="avatar">{{ e.full_name[0] }}</span>

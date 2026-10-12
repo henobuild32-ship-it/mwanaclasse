@@ -109,6 +109,40 @@ export class CalendrierPresence {
     this.jourSelectionne.set(this.jourSelectionne()?.date === j.date ? null : j);
   }
 
+  /** Libellé accessible d'une case (lecteur d'écran) : date + état du jour. */
+  protected libelleJour(cell: JourMois): string {
+    if (cell.vide) return '';
+    const d = new Date(`${cell.date}T12:00:00`);
+    const date = d.toLocaleDateString('fr-FR', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
+    const morceaux: string[] = [];
+    if (!cell.scolaire) {
+      morceaux.push('jour non scolaire');
+    } else if (cell.ferme) {
+      morceaux.push('école fermée ou jour férié');
+    }
+    if (cell.evenements.length) {
+      morceaux.push(...cell.evenements.map((e) => e.titre));
+    }
+    if (cell.statut && cell.statut !== 'non_enregistre') {
+      const etats: Record<string, string> = {
+        present: 'présent',
+        absent: 'absent',
+        retard: 'retard',
+        depart_anticipe: 'départ anticipé',
+      };
+      morceaux.push(etats[cell.statut] ?? cell.statut);
+    } else if (cell.scolaire && !cell.ferme) {
+      morceaux.push('aucune présence enregistrée');
+    }
+    if (cell.aujourdhui) morceaux.push('aujourd’hui');
+    return `${date} — ${morceaux.join(', ')}`;
+  }
+
   protected libelleSelection(): string {
     const j = this.jourSelectionne();
     if (!j) return '';

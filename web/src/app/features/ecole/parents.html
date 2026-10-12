@@ -35,6 +35,18 @@
               @if (p.relationship) { · {{ p.relationship }} }
               @if (p.last_seen_at) { · vu le {{ p.last_seen_at | slice: 0:10 }} }
             </div>
+            @if (p.enfants?.length) {
+              <div class="parents-enfants">
+                @for (e of p.enfants; track e.studentId) {
+                  <span
+                    class="parents-enfants__pilule"
+                    [class.parents-enfants__pilule--attente]="e.statut === 'en_attente'"
+                  >
+                    {{ e.nom }}@if (e.classe) { · {{ e.classe }}}
+                  </span>
+                }
+              </div>
+            }
           </div>
           <div class="ligne-liste__fin">
             <strong>{{ p.enfants_actifs ?? 0 }}</strong> enfant(s)

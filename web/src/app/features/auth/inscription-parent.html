@@ -105,15 +105,6 @@
           Au moins un e-mail ou un numéro de téléphone est obligatoire.
         </p>
 
-        <div class="champ">
-          <label for="relation-parent">Votre lien avec l'enfant</label>
-          <select id="relation-parent" name="relationship" [(ngModel)]="relationship">
-            @for (r of relations; track r.valeur) {
-              <option [value]="r.valeur">{{ r.libelle }}</option>
-            }
-          </select>
-        </div>
-
         <div class="champ" [class.champ--erreur]="champEnErreur('password')">
           <label for="mdp-parent-inscription">Mot de passe *</label>
           <input

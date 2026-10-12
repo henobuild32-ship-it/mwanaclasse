@@ -64,7 +64,7 @@
           <li class="ligne-liste"><span class="ligne-liste__libelle">Téléphone</span><span class="ligne-liste__valeur">{{ e.phone_contact ?? '—' }}</span></li>
           <li class="ligne-liste"><span class="ligne-liste__libelle">Courriel</span><span class="ligne-liste__valeur">{{ e.email_ecole ?? '—' }}</span></li>
           <li class="ligne-liste"><span class="ligne-liste__libelle">Code enfant</span><span class="ligne-liste__valeur">{{ e.public_code }}</span></li>
-          <li class="ligne-liste"><span class="ligne-liste__libelle">Lien</span><span class="ligne-liste__valeur">{{ e.relationship ?? '—' }} · {{ e.lien_statut ?? '—' }}</span></li>
+          <li class="ligne-liste"><span class="ligne-liste__libelle">Lien avec l'école</span><span class="ligne-liste__valeur">{{ e.lien_statut === 'actif' ? 'Actif' : e.lien_statut === 'en_attente' ? 'En attente' : '—' }}</span></li>
         </ul>
       </div>
     </div>

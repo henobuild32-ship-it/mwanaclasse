@@ -486,7 +486,7 @@ export async function registerParentRoutes(deps: AppDependencies): Promise<void>
         ? result.autoApprove
           ? `${s.full_name} a été connecté à votre compte.`
           : `Demande envoyée à ${s.ecole}. Vous serez prévenu dès la validation.`
-        : `${s.full_name} est déjà connecté à votre compte.`,
+        : `Cet enfant est déjà dans votre compte.`,
       eleve: {
         id: s.student_id,
         nomComplet: s.full_name,
@@ -501,6 +501,7 @@ export async function registerParentRoutes(deps: AppDependencies): Promise<void>
         couleurEcole: s.primary_color,
         logo: s.logo_url,
       },
+      created: result.created,
       liaison: {
         id: result.link.id,
         statut: result.link.status,
@@ -523,7 +524,7 @@ export async function registerParentRoutes(deps: AppDependencies): Promise<void>
                 sec.name AS section, sec.id AS section_id,
                 sch.id AS school_id,
                 sch.official_name AS ecole, sch.primary_color, sch.logo_url,
-                l.status AS lien_statut, l.relationship, l.is_primary, l.requested_at,
+                l.status AS lien_statut, l.is_primary, l.requested_at,
                 coalesce(a.status::text,'non_enregistre') AS presence_aujourdhui,
                 a.arrival_time
            FROM app.parent_student_links l
@@ -560,7 +561,7 @@ export async function registerParentRoutes(deps: AppDependencies): Promise<void>
                 sch.logo_url, sch.phone_contact, sch.email AS email_ecole,
                 sch.activity_days, sch.id AS school_id,
                 ay.label AS annee_scolaire,
-                l.relationship, l.is_primary, l.status AS lien_statut,
+                l.is_primary, l.status AS lien_statut,
                 coalesce(a.status::text,'non_enregistre') AS presence_aujourdhui,
                 a.arrival_time, a.departure_time, a.recorded_at, a.recorded_offline_at,
                 a.method, a.reason

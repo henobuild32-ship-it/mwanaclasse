@@ -16,10 +16,10 @@
   </div>
 
   <div class="cal-resume">
-    <div class="encart"><strong>{{ resume().presents }}</strong> jours présents</div>
-    <div class="encart"><strong>{{ resume().absents }}</strong> absents</div>
-    <div class="encart"><strong>{{ resume().retards }}</strong> retards</div>
-    <div class="encart"><strong>{{ resume().departs }}</strong> départs</div>
+    <div class="encart encart--succes"><strong>{{ resume().presents }}</strong> présents</div>
+    <div class="encart encart--danger"><strong>{{ resume().absents }}</strong> absents</div>
+    <div class="encart encart--attention"><strong>{{ resume().retards }}</strong> retards</div>
+    <div class="encart encart--info"><strong>{{ resume().departs }}</strong> départs</div>
   </div>
 
   @if (horsLigne()) {
@@ -45,34 +45,32 @@
           [class.cal-case--aujourdhui]="cell.aujourdhui"
           [class.cal-case--non-scolaire]="!cell.vide && !cell.scolaire"
           [class.cal-case--ferme]="!cell.vide && cell.ferme && cell.scolaire"
+          [class.cal-case--present]="!cell.vide && cell.statut === 'present'"
+          [class.cal-case--absent]="!cell.vide && cell.statut === 'absent'"
+          [class.cal-case--retard]="!cell.vide && cell.statut === 'retard'"
+          [class.cal-case--depart]="!cell.vide && cell.statut === 'depart_anticipe'"
+          [class.cal-case--evenement]="!cell.vide && cell.evenements.length > 0 && !cell.statut && !cell.ferme && cell.scolaire"
           [class.cal-case--selectionnee]="!cell.vide && jourSelectionne()?.date === cell.date"
-          [attr.aria-label]="cell.vide ? '' : cell.date"
+          [attr.aria-label]="libelleJour(cell)"
           [disabled]="cell.vide"
           (click)="selectionner(cell)"
         >
           @if (!cell.vide) {
             <span class="cal-num">{{ cell.numero }}</span>
-            @if (cell.evenements.length) {
-              <span
-                class="cal-repere"
-                [class.cal-repere--ferme]="cell.evenements[0].schoolClosed"
-              ></span>
-            }
-            @if (cell.present) {
-              <span class="cal-point cal-point--present" aria-label="Présent"></span>
-            } @else if (cell.statut && cell.statut !== 'non_enregistre') {
-              <span class="cal-point cal-point--{{ cell.statut }}" [attr.aria-label]="cell.statut"></span>
-            }
           }
         </button>
       }
     </div>
 
     <div class="cal-legende">
-      <span><i class="cal-point cal-point--present"></i> présent</span>
-      <span><i class="cal-repere cal-repere--ferme"></i> férié / fermé</span>
-      <span><i class="cal-repere"></i> événement</span>
-      <span><i class="cal-nonscolaire"></i> non scolaire</span>
+      <span><i class="cal-case-legende cal-case--present"></i> présent</span>
+      <span><i class="cal-case-legende cal-case--absent"></i> absent</span>
+      <span><i class="cal-case-legende cal-case--retard"></i> retard</span>
+      <span><i class="cal-case-legende cal-case--depart"></i> départ</span>
+      <span><i class="cal-case-legende cal-case--ferme"></i> férié / fermé</span>
+      <span><i class="cal-case-legende cal-case--evenement"></i> événement</span>
+      <span><i class="cal-case-legende cal-case--non-scolaire"></i> non scolaire</span>
+      <span><i class="cal-legende-aujourdhui"></i> aujourd’hui</span>
     </div>
 
     @if (jourSelectionne(); as j) {

@@ -47,6 +47,18 @@ export class EnfantsParent {
     this.ajout.set(true);
   }
 
+  /**
+   * Cartes à afficher : l'enfant choisi dans la barre supérieure n'affiche
+   * que lui ; « Tous » regroupe tous les enfants du compte.
+   */
+  protected enfantsAffiches(): Enfant[] {
+    const liste = this.enfants();
+    const actif = this.selection.enfantActif();
+    if (!actif) return liste;
+    const filtre = liste.filter((e) => e.id === actif.id);
+    return filtre.length ? filtre : liste;
+  }
+
   protected fermerAjout(): void {
     void this.fermerAjoutAsync();
   }
@@ -88,6 +100,8 @@ export class EnfantsParent {
     this.chargement.set(true);
     this.erreur.set('');
     try {
+      // La sélection (Tous / un enfant) a besoin de la liste pour se valider.
+      await this.selection.charger();
       await this.sync.lireDabord<{ enfants: Enfant[] }>(
         'parent.enfants',
         () => this.api.lire<{ enfants: Enfant[] }>('parent/enfants'),

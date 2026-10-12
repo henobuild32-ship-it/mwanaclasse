@@ -459,7 +459,7 @@ img {
   width: 100%;
   max-width: var(--mc-largeur);
   margin: 0 auto;
-  padding: 0 14px;
+  padding: 0 max(14px, env(safe-area-inset-right, 0px)) 0 max(14px, env(safe-area-inset-left, 0px));
 }
 
 .bandeau-haut {
@@ -474,7 +474,8 @@ img {
 .bandeau-haut__interieur {
   max-width: var(--mc-largeur);
   margin: 0 auto;
-  padding: 10px 14px;
+  padding: calc(10px + env(safe-area-inset-top, 0px)) max(14px, env(safe-area-inset-right, 0px)) 10px
+    max(14px, env(safe-area-inset-left, 0px));
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -535,6 +536,58 @@ img {
   font-size: 0.84rem;
   font-weight: 600;
   text-decoration: none;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Anti-débordement global (aucun texte ne doit « dépasser »)         */
+/* ------------------------------------------------------------------ */
+
+/* Enfants flex/grid contenant du texte : doivent pouvoir rétrécir. */
+.carte > *,
+.carte-enfant > *,
+.lien-carte > *,
+.page-entete > *,
+.overlay__entete > *,
+.feuille__entete > *,
+.ligne-liste > *,
+.grille-2 > *,
+.grille-fiche > *,
+.grille-stats > *,
+.kpi-grid > *,
+.escalier > * {
+  min-width: 0;
+}
+
+/* Noms, codes et textes longs : coupure partout, jamais de scroll. */
+.carte-enfant__nom,
+.carte-enfant__sous,
+.encart,
+.encart strong,
+.lien-carte__titre,
+.lien-carte__sous,
+.ligne-liste__sous,
+.page-entete h1,
+.page-entete p,
+.page-header__sous,
+.texte-doux,
+.texte-petit,
+.toast__texte,
+.formulaire-erreur,
+.etat-vide__texte {
+  overflow-wrap: anywhere;
+}
+
+/* Badges / étiquettes sur une seule ligne : ellipsis au lieu de déborder. */
+.badge,
+.pastille {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Titres qui pouvaient déborder sur petit écran : taille interpolée. */
+.page-entete h1 {
+  font-size: clamp(1.15rem, 4.6vw, 1.3rem);
 }
 
 /* ------------------------------------------------------------------ */
@@ -681,9 +734,10 @@ img {
 /* ------------------------------------------------------------------ */
 
 .badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
   padding: 3px 10px;
   border-radius: 999px;
   font-size: 0.7rem;
@@ -692,6 +746,7 @@ img {
   text-transform: uppercase;
   line-height: 1;
   white-space: nowrap;
+  vertical-align: middle;
 }
 
 .badge--primaire { background: var(--mc-primaire-10); color: var(--mc-primaire); }
@@ -706,7 +761,7 @@ img {
   border-radius: 50%;
   padding: 0; gap: 6px;
 }
-.badge--point::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.badge--point::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
 
 /* ------------------------------------------------------------------ */
 /*  Alertes / Toasts                                                   */
@@ -746,7 +801,9 @@ img {
 /* Toast (notifications temporaires) */
 .toast-conteneur {
   position: fixed;
-  left: 12px; right: 12px; bottom: 90px;
+  left: max(12px, env(safe-area-inset-left, 0px));
+  right: max(12px, env(safe-area-inset-right, 0px));
+  bottom: calc(90px + env(safe-area-inset-bottom, 0px));
   z-index: 1000;
   display: flex;
   flex-direction: column;
@@ -814,6 +871,7 @@ img {
   /* svh : hauteur stable quand la barre d'URL mobile se rétracte. */
   max-height: 92vh;
   max-height: 92svh;
+  max-height: 92dvh;
   background: var(--mc-fond-2);
   border: 1px solid var(--mc-trait);
   border-radius: 20px 20px 0 0;
@@ -974,6 +1032,7 @@ img {
   box-shadow: 0 24px 48px rgb(15 23 42 / 0.18);
   animation: modal-in 0.25s ease;
   max-height: 85vh;
+  max-height: 85dvh;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -1131,7 +1190,7 @@ img {
 
 .bandeau-maj {
   position: fixed;
-  bottom: 16px;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
   left: 50%;
   transform: translateX(-50%);
   z-index: var(--mc-z-overlay, 1200);

@@ -35,6 +35,7 @@ import {
   type QueryableClient,
 } from '../http/middleware.js';
 import { AUDIT_ACTIONS } from '../security/audit.js';
+import { normalizeStudentCode } from '../security/codes.js';
 import { libelleFermeture, lireEtatJour } from '../domain/calendrier-scolaire.js';
 
 /* ==========================================================================
@@ -51,6 +52,7 @@ const OperationSchema = z.object({
     'request.message',
     'announcement.draft',
     'student.draft',
+    'student.link',
     'notification.read',
   ]),
   opType: z.enum(['create', 'update', 'delete', 'upsert', 'action']),
@@ -643,7 +645,7 @@ export async function registerSyncRoutes(deps: AppDependencies): Promise<void> {
       const students = await client.query(
         `SELECT s.id, s.full_name, s.public_code, s.gender, s.date_of_birth,
                 s.photo_url, s.phone_contact, s.email_ecole, s.annee_scolaire,
-                s.status, l.relationship, l.status AS lien_statut, l.school_id,
+                s.status, l.status AS lien_statut, l.school_id,
                 sch.official_name AS ecole, sch.primary_color,
                 cl.name AS classe, sec.name AS section, s.updated_at
            FROM app.parent_student_links l
@@ -1290,6 +1292,145 @@ async function applyOperation(
         ],
       );
       return { status: 'applied', entityId: requestId };
+    }
+
+    /* ==================================================================== */
+    /*  Rattachement d'un enfant par code unique (hors ligne)               */
+    /* ==================================================================== */
+    case 'student.link': {
+      if (auth.identity.audience !== 'parent') {
+        return { status: 'rejected', message: 'Seul un parent peut rattacher un enfant.' };
+      }
+
+      const parentId = auth.identity.parentId ?? auth.userId;
+      const studentCode = normalizeStudentCode(String(payload.codeEnfant ?? ''));
+
+      // Même garde-fou que le lien direct : le code ne s'explore pas sans limite.
+      const quota = await deps.guard.consume(client, 'code_lookup', { kind: 'parent', key: parentId });
+      if (!quota.allowed) {
+        return { status: 'rejected', message: 'Trop de tentatives. Patientez avant de réessayer.' };
+      }
+
+      const { rows } = await client.query<{
+        student_id: string;
+        full_name: string;
+        public_code: string;
+        classe: string;
+        section: string | null;
+        school_id: string;
+        ecole: string;
+        parent_link_mode: string;
+        existing_link_id: string | null;
+        existing_status: string | null;
+      }>(
+        `SELECT s.id AS student_id, s.full_name, s.public_code, cl.name AS classe,
+                sec.name AS section, sch.id AS school_id, sch.official_name AS ecole,
+                sch.parent_link_mode,
+                l.id AS existing_link_id, l.status::text AS existing_status
+           FROM app.students s
+           JOIN app.classes cl ON cl.id = s.class_id
+           LEFT JOIN app.sections sec ON sec.id = s.section_id
+           JOIN app.schools sch ON sch.id = s.school_id
+           LEFT JOIN app.parent_student_links l
+                  ON l.student_id = s.id AND l.parent_id = $1
+          WHERE s.public_code = $2 AND sch.is_active`,
+        [parentId, studentCode],
+      );
+
+      const student = rows[0];
+      if (!student) {
+        return {
+          status: 'rejected',
+          message:
+            'Aucun élève ne correspond à ce code. Vérifiez le code unique de votre enfant ' +
+            'tel qu’il figure sur la fiche remise par l’établissement.',
+        };
+      }
+
+      // Déjà rattaché : opération acceptée (donc retirée de la file) sans doublon.
+      if (student.existing_link_id) {
+        return {
+          status: 'applied',
+          entityId: student.existing_link_id,
+          message: 'Cet enfant est déjà dans votre compte.',
+        };
+      }
+
+      const autoApprove = student.parent_link_mode === 'automatique';
+      const status = autoApprove ? 'actif' : 'en_attente';
+      const isPrimary =
+        (
+          await client.query<{ n: string }>(
+            `SELECT count(*)::text AS n FROM app.parent_student_links
+              WHERE student_id = $1 AND is_primary AND status IN ('actif','en_attente')`,
+            [student.student_id],
+          )
+        ).rows[0]!.n === '0';
+
+      const { rows: linkRows } = await client.query<{ id: string }>(
+        `INSERT INTO app.parent_student_links
+           (school_id, parent_id, student_id, relationship, status, is_primary,
+            requested_ip, requested_device, requested_method,
+            decided_at, decision_note)
+         VALUES ($1,$2,$3,'parent',$4::app.link_status,$5,$6,$7,'code_enfant',
+                 CASE WHEN $4 = 'actif' THEN now() ELSE NULL END,
+                 CASE WHEN $4 = 'actif' THEN 'Validation automatique (configuration de l''école)' ELSE NULL END)
+         ON CONFLICT (parent_id, student_id) DO UPDATE SET
+           status = EXCLUDED.status,
+           relationship = EXCLUDED.relationship
+         RETURNING id`,
+        [
+          student.school_id,
+          parentId,
+          student.student_id,
+          status,
+          isPrimary && autoApprove,
+          ctx.ip,
+          payload.deviceId ?? null,
+        ],
+      );
+
+      await deps.audit.write(
+        client,
+        {
+          actorKind: 'parent',
+          actorId: parentId,
+          actorLabel: auth.displayName,
+          actorIp: ctx.ip,
+          schoolId: student.school_id,
+        },
+        {
+          action: autoApprove ? AUDIT_ACTIONS.LINK_AUTO_APPROVED : AUDIT_ACTIONS.LINK_REQUESTED,
+          severity: autoApprove ? 'info' : 'notice',
+          result: 'succes',
+          entityType: 'student',
+          entityId: student.student_id,
+          entityLabel: student.full_name,
+          payload: { mode: student.parent_link_mode, relation: 'parent', source: 'sync_offline' },
+        },
+      );
+
+      if (!autoApprove) {
+        await client.query(
+          `INSERT INTO app.notifications
+             (school_id, audience, kind, title, body, severity, entity_type, entity_id, action_url)
+           VALUES ($1,'ecole','parent_a_valider',$2,$3,'attention','student',$4,'/ecole/parents')`,
+          [
+            student.school_id,
+            'Nouvelle demande de connexion parent',
+            `${auth.displayName} souhaite accéder au suivi de ${student.full_name} (${student.classe}).`,
+            student.student_id,
+          ],
+        );
+      }
+
+      return {
+        status: 'applied',
+        entityId: linkRows[0]!.id,
+        message: autoApprove
+          ? `${student.full_name} a été connecté à votre compte.`
+          : `Demande envoyée à ${student.ecole}. Vous serez prévenu dès la validation.`,
+      };
     }
 
     /* ==================================================================== */

@@ -164,6 +164,14 @@ export interface TableauBordEcole {
   activite: { dernieresPresences: unknown[]; derniersEleves: unknown[] };
 }
 
+export interface EnfantLienParent {
+  studentId: string;
+  nom: string;
+  classe?: string | null;
+  section?: string | null;
+  statut?: string;
+}
+
 export interface ParentEcole {
   id: string;
   full_name: string;
@@ -174,7 +182,7 @@ export interface ParentEcole {
   last_seen_at?: string | null;
   enfants_actifs?: number;
   en_attente?: number;
-  enfants?: unknown[];
+  enfants?: EnfantLienParent[];
 }
 
 export interface Liaison {
@@ -353,7 +361,6 @@ export interface Enfant {
   primary_color?: string | null;
   lien_statut?: string;
   lien_id?: string;
-  relationship?: string | null;
   is_primary?: boolean;
   presence?: string;
   presence_aujourdhui?: string;

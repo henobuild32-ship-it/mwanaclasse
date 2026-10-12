@@ -821,7 +821,7 @@ export async function registerAuthRoutes(deps: AppDependencies): Promise<void> {
     const profile = await db.withIdentity(dbIdentityFrom(req), async (client) => {
       if (auth.identity.audience === 'parent') {
         const { rows } = await client.query(
-          `SELECT p.id, p.full_name, p.email, p.phone, p.relationship, p.photo_url,
+          `SELECT p.id, p.full_name, p.email, p.phone, p.photo_url,
                   p.notification_prefs, p.public_code,
                   c.totp_enabled,
                   (SELECT count(*) FROM app.parent_student_links l

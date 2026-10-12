@@ -5,19 +5,6 @@ import { ApiService, toApiError } from '../../core/api.service';
 import { SessionService } from '../../core/session.service';
 import { ToastService } from '../../core/toast.service';
 
-const RELATIONS = [
-  { valeur: 'pere', libelle: 'Père' },
-  { valeur: 'mere', libelle: 'Mère' },
-  { valeur: 'tuteur', libelle: 'Tuteur / Tutrice' },
-  { valeur: 'parent', libelle: 'Parent' },
-  { valeur: 'grand_parent', libelle: 'Grand-parent' },
-  { valeur: 'oncle', libelle: 'Oncle' },
-  { valeur: 'tante', libelle: 'Tante' },
-  { valeur: 'frere', libelle: 'Frère' },
-  { valeur: 'soeur', libelle: 'Sœur' },
-  { valeur: 'autre', libelle: 'Autre' },
-];
-
 interface DetailErreur {
   champ: string;
   message: string;
@@ -39,7 +26,6 @@ export class InscriptionParent {
   private readonly session = inject(SessionService);
   private readonly toasts = inject(ToastService);
 
-  protected readonly relations = RELATIONS;
   protected readonly enCours = signal(false);
   protected readonly erreur = signal('');
   protected readonly details = signal<DetailErreur[]>([]);
@@ -49,7 +35,6 @@ export class InscriptionParent {
   email = '';
   phone = '';
   codeEleve = '';
-  relationship = 'parent';
   password = '';
   confirmation = '';
   acceptTerms = false;
@@ -107,7 +92,6 @@ export class InscriptionParent {
         email: this.email.trim() || null,
         phone: this.phone.trim() || null,
         codeEleve: this.codeEleve.trim(),
-        relationship: this.relationship,
         password: this.password,
         acceptTerms: this.acceptTerms,
       });
