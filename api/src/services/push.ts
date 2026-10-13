@@ -11,10 +11,23 @@
  * ============================================================================
  */
 
-import webpush from 'web-push';
 import type { PoolClient } from 'pg';
 import type { AppConfig } from '../config/index.js';
 import type { Database } from '../db/pool.js';
+
+// web-push est chargé dynamiquement pour ne pas casser le tracing des
+// dépendances de Vercel (NFT) — son package contient des require non statiques.
+type WebPushModule = typeof import('web-push');
+let webpushModule: WebPushModule | null = null;
+async function chargerWebPush(): Promise<WebPushModule | null> {
+  if (webpushModule) return webpushModule;
+  try {
+    webpushModule = await import('web-push');
+    return webpushModule;
+  } catch {
+    return null;
+  }
+}
 
 /* ==========================================================================
  *  Types
@@ -103,19 +116,30 @@ export function kindPresence(statut: string): { kind: string; titre: string } {
 
 export class PushService {
   private actif = false;
+  private vapidConfigure = false;
 
   constructor(
     private readonly config: AppConfig,
     private readonly db: Database,
   ) {
-    if (config.VAPID_PUBLIC_KEY && config.VAPID_PRIVATE_KEY && config.PUSH_ENABLED) {
-      webpush.setVapidDetails(
-        config.VAPID_SUBJECT,
-        config.VAPID_PUBLIC_KEY,
-        config.VAPID_PRIVATE_KEY,
+    this.actif = Boolean(
+      config.VAPID_PUBLIC_KEY && config.VAPID_PRIVATE_KEY && config.PUSH_ENABLED,
+    );
+  }
+
+  /** Configure les détails VAPID (une seule fois) via le module chargé dynamiquement. */
+  private async preparerWebPush(): Promise<WebPushModule | null> {
+    const wp = await chargerWebPush();
+    if (!wp) return null;
+    if (!this.vapidConfigure) {
+      wp.setVapidDetails(
+        this.config.VAPID_SUBJECT,
+        this.config.VAPID_PUBLIC_KEY!,
+        this.config.VAPID_PRIVATE_KEY!,
       );
-      this.actif = true;
+      this.vapidConfigure = true;
     }
+    return wp;
   }
 
   get disponible(): boolean {
@@ -133,6 +157,8 @@ export class PushService {
   async envoyer(notification: NotificationPush): Promise<void> {
     if (!this.actif) return;
     try {
+      const wp = await this.preparerWebPush();
+      if (!wp) return;
       const clePreference = PREFERENCE_PAR_KIND[notification.kind] ?? null;
       const abonnements = await this.chargerAbonnements(notification, clePreference);
       if (abonnements.length === 0) return;
@@ -141,7 +167,7 @@ export class PushService {
 
       // Envoi en parallèle, borné (limite le nombre de requêtes simultanées).
       const resultats = await Promise.allSettled(
-        abonnements.map((abo) => this.envoyerAbo(abo, corps)),
+        abonnements.map((abo) => this.envoyerAbo(wp, abo, corps)),
       );
 
       for (const [i, r] of resultats.entries()) {
@@ -238,9 +264,9 @@ export class PushService {
     };
   }
 
-  private async envoyerAbo(abo: AbonnementRow, corps: string): Promise<void> {
+  private async envoyerAbo(wp: WebPushModule, abo: AbonnementRow, corps: string): Promise<void> {
     try {
-      await webpush.sendNotification(
+      await wp.sendNotification(
         { endpoint: abo.endpoint, keys: { p256dh: abo.p256dh, auth: abo.auth } },
         corps,
         { TTL: 24 * 3600, urgency: 'normal' },

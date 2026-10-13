@@ -20,3 +20,6 @@ api/.env.secrets
 web/dist/
 api/lib/
 coverage/
+
+.vercel
+.env*
