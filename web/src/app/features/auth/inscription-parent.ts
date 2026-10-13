@@ -2,8 +2,10 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { ApiService, toApiError } from '../../core/api.service';
+import { QrService } from '../../core/qr.service';
 import { SessionService } from '../../core/session.service';
 import { ToastService } from '../../core/toast.service';
+import { ScanQr } from '../../shared/scan-qr';
 
 interface DetailErreur {
   champ: string;
@@ -16,7 +18,7 @@ interface DetailErreur {
  */
 @Component({
   selector: 'app-inscription-parent',
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, ScanQr],
   templateUrl: './inscription-parent.html',
   styleUrl: './connexion.scss',
 })
@@ -25,11 +27,14 @@ export class InscriptionParent {
   private readonly router = inject(Router);
   private readonly session = inject(SessionService);
   private readonly toasts = inject(ToastService);
+  private readonly qr = inject(QrService);
 
   protected readonly enCours = signal(false);
   protected readonly erreur = signal('');
   protected readonly details = signal<DetailErreur[]>([]);
   protected readonly forceMotDePasse = signal<string>('');
+  /** Scanner de la carte de l'enfant (QR du code unique). */
+  protected readonly scannerOuvert = signal(false);
 
   fullName = '';
   email = '';
@@ -41,6 +46,27 @@ export class InscriptionParent {
 
   protected champEnErreur(cle: string): boolean {
     return this.details().some((d) => d.champ === cle || d.champ.startsWith(cle + '.'));
+  }
+
+  protected ouvrirScanner(): void {
+    this.erreur.set('');
+    this.scannerOuvert.set(true);
+  }
+
+  protected fermerScanner(): void {
+    this.scannerOuvert.set(false);
+  }
+
+  /** QR lu sur la carte de l'enfant : le code est normalisé puis proposé. */
+  protected surCodeScanne(brut: string): void {
+    const code = this.qr.extraireCode(brut);
+    this.scannerOuvert.set(false);
+    if (!code) {
+      this.erreur.set('QR illisible. Saisissez le code imprimé sur la carte.');
+      return;
+    }
+    this.codeEleve = this.qr.normaliser(code);
+    this.erreur.set('');
   }
 
   /** Vérifie la robustesse du mot de passe côté API. */

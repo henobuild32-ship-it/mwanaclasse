@@ -7,12 +7,14 @@ import { Enfant } from '../../core/models';
 import { SyncService } from '../../core/sync.service';
 import { EtatVide, OverlayFormulaire, Squelette, pastillePresence } from '../../shared/ui';
 import { AjouterEnfant } from './enfants-ajouter';
+import { CarteEnfantModal } from './carte-enfant';
+import { OptionsEnfant } from './options-enfant';
 import { SuiviEnfant } from './suivi-enfant';
 
 /** Liste des enfants rattachés au compte parent (spec §6). */
 @Component({
   selector: 'app-enfants-parent',
-  imports: [EtatVide, OverlayFormulaire, AjouterEnfant, SuiviEnfant, Squelette],
+  imports: [EtatVide, OverlayFormulaire, AjouterEnfant, SuiviEnfant, OptionsEnfant, CarteEnfantModal, Squelette],
   templateUrl: './enfants.html',
   styleUrl: './pages.scss',
 })
@@ -29,6 +31,10 @@ export class EnfantsParent {
   protected readonly ajout = signal(false);
   /** Enfant dont le suivi complet est ouvert en modal (spec B1). */
   protected readonly suiviOuvert = signal<string | null>(null);
+  /** Menu d'options (carte / suivi) ouvert au-dessus de la liste. */
+  protected readonly optionsOuvert = signal<string | null>(null);
+  /** Carte élève (QR) affichée en plein écran. */
+  protected readonly carteOuvert = signal<Enfant | null>(null);
 
   @ViewChild(AjouterEnfant) private formAjout?: AjouterEnfant;
 
@@ -49,6 +55,23 @@ export class EnfantsParent {
   /** Pastille ronde de présence du jour (vert / rouge / gris). */
   protected pastille(e: Enfant): { classe: string; titre: string } {
     return pastillePresence(e.statut_presence ?? e.presence_aujourdhui, e.jour_non_scolaire);
+  }
+
+  protected nomEnfant(id: string): string {
+    return this.enfantsAffiches().find((e) => e.id === id)?.full_name ?? '';
+  }
+
+  /** Ouvre le suivi complet depuis le menu d'options de la carte. */
+  protected ouvrirSuivi(id: string): void {
+    this.optionsOuvert.set(null);
+    this.suiviOuvert.set(id);
+  }
+
+  /** Ouvre la carte élève (QR) en plein écran depuis le menu d'options. */
+  protected ouvrirCarte(id: string): void {
+    const enfant = this.enfantsAffiches().find((e) => e.id === id);
+    this.optionsOuvert.set(null);
+    if (enfant) this.carteOuvert.set(enfant);
   }
 
   /**

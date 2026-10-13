@@ -7,12 +7,14 @@ import { Demande, Enfant, EvenementCalendrier, TableauBordParent as TableauBordP
 import { SessionService } from '../../core/session.service';
 import { SyncService } from '../../core/sync.service';
 import { EtatVide, Etiquette, etiquetteStatut, Squelette } from '../../shared/ui';
+import { CarteEnfantModal } from './carte-enfant';
+import { OptionsEnfant } from './options-enfant';
 import { SuiviEnfant } from './suivi-enfant';
 
 /** Tableau de bord du parent (spec §6). */
 @Component({
   selector: 'app-tableau-bord-parent',
-  imports: [RouterLink, EtatVide, Etiquette, SuiviEnfant, Squelette],
+  imports: [RouterLink, EtatVide, Etiquette, SuiviEnfant, OptionsEnfant, CarteEnfantModal, Squelette],
   templateUrl: './tableau-de-bord.html',
   styleUrl: './pages.scss',
 })
@@ -30,6 +32,10 @@ export class PageTableauBordParent {
   protected readonly donnees = signal<TableauBordParentDTO | null>(null);
   /** Enfant dont le suivi complet est ouvert en modal (spec B1). */
   protected readonly suiviOuvert = signal<string | null>(null);
+  /** Menu d'options (carte / suivi) ouvert au-dessus de l'accueil. */
+  protected readonly optionsOuvert = signal<string | null>(null);
+  /** Carte élève (QR) affichée en plein écran. */
+  protected readonly carteOuvert = signal<Enfant | null>(null);
 
   private premier = true;
 
@@ -76,7 +82,19 @@ export class PageTableauBordParent {
 
   /** Ouvre le suivi complet en modal par-dessus l'accueil (spec B1). */
   protected ouvrirSuivi(id: string): void {
+    this.optionsOuvert.set(null);
     this.suiviOuvert.set(id);
+  }
+
+  protected nomEnfant(id: string): string {
+    return this.enfants().find((e) => e.id === id)?.full_name ?? '';
+  }
+
+  /** Ouvre la carte élève (QR) en plein écran depuis le menu d'options. */
+  protected ouvrirCarte(id: string): void {
+    const enfant = this.enfants().find((e) => e.id === id);
+    this.optionsOuvert.set(null);
+    if (enfant) this.carteOuvert.set(enfant);
   }
 
   protected async charger(): Promise<void> {

@@ -33,6 +33,10 @@ export const ECOLE_ROUTES: Routes = [
         loadComponent: () => import('./classes').then((m) => m.ClassesEcole),
       },
       {
+        path: 'cartes',
+        loadComponent: () => import('./cartes').then((m) => m.CartesEleves),
+      },
+      {
         path: 'parents',
         loadComponent: () => import('./parents').then((m) => m.ParentsEcole),
       },

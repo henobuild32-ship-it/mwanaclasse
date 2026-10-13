@@ -2,19 +2,43 @@
   <div class="formulaire-erreur" role="alert">{{ erreur() }}</div>
 }
 
-<form (ngSubmit)="ajouter()">
-  <div class="champ">
-    <label for="code-enfant">Code de l'enfant *</label>
-    <input
-      id="code-enfant"
-      name="codeEnfant"
-      required
-      minlength="6"
-      maxlength="32"
-      placeholder="MC-ELV-XXXXXX"
-      [(ngModel)]="codeEnfant"
-      autocomplete="off"
-    />
-    <span class="champ__aide">Imprimé sur la fiche de rentrée de l'élève.</span>
+@if (!modeSaisie() && !codeEnfant) {
+  <div class="choix-ajout">
+    <p class="choix-ajout__intro">
+      Deux façons de rattacher l'enfant : scannez le QR imprimé sur sa carte,
+      ou tapez le code à la main.
+    </p>
+    <button class="btn btn--primaire" type="button" (click)="ouvrirScanner()">Scanner la carte</button>
+    <button class="btn btn--secondaire" type="button" (click)="modeSaisir()">Saisir le code</button>
   </div>
-</form>
+}
+
+@if (modeSaisie() || codeEnfant) {
+  <form (ngSubmit)="ajouter()">
+    <div class="champ">
+      <label for="code-enfant">Code de l'enfant *</label>
+      <input
+        id="code-enfant"
+        name="codeEnfant"
+        required
+        minlength="6"
+        maxlength="32"
+        placeholder="MC-ELV-XXXXXX"
+        [(ngModel)]="codeEnfant"
+        autocomplete="off"
+      />
+      <span class="champ__aide">Imprimé sur la carte PVC de l'élève, sous le QR code.</span>
+    </div>
+    <button class="btn btn--contour" type="button" (click)="ouvrirScanner()">
+      Scanner la carte à la place
+    </button>
+  </form>
+}
+
+@if (scannerOuvert()) {
+  <app-scan-qr
+    titre="Scanner la carte de l’enfant"
+    (code)="surCodeScanne($event)"
+    (fermeture)="fermerScanner()"
+  />
+}

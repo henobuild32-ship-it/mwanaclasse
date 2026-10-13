@@ -71,9 +71,12 @@
             class="champ__code"
           />
           <span class="champ__aide">
-            Code unique imprimé sur la fiche de l'élève (ex. <strong>MC-ELV-URFDG8</strong>).
+            Code unique imprimé sur la carte de l'élève (ex. <strong>MC-ELV-URFDG8</strong>).
             Il rattache votre compte à son école. Obligatoire.
           </span>
+          <button class="btn btn--contour btn--ligne" type="button" (click)="ouvrirScanner()">
+            Scanner la carte de l'enfant
+          </button>
         </div>
 
         <div class="grille-2">
@@ -158,4 +161,13 @@
       </div>
     </div>
   </div>
+
+  @if (scannerOuvert()) {
+    <app-scan-qr
+      titre="Scanner la carte de l’enfant"
+      consigne="Placez le QR code imprimé sur la carte dans le cadre."
+      (code)="surCodeScanne($event)"
+      (fermeture)="fermerScanner()"
+    />
+  }
 </section>

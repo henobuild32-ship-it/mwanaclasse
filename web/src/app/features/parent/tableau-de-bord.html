@@ -41,11 +41,14 @@
                   <div class="carte-enfant__nom">{{ e.full_name }}</div>
                   <div class="carte-enfant__sous">{{ e.classe }}</div>
                 </div>
+                <button
+                  class="carte-enfant__plus"
+                  type="button"
+                  (click)="optionsOuvert.set(e.id)"
+                  [attr.aria-label]="'Plus d’options pour ' + e.full_name"
+                  aria-haspopup="dialog"
+                >+</button>
               </div>
-
-              <button class="btn btn--secondaire" type="button" (click)="ouvrirSuivi(e.id)">
-                Voir le suivi complet
-              </button>
             </div>
           }
         </div>
@@ -103,6 +106,19 @@
       </div>
     </div>
   </section>
+}
+
+@if (optionsOuvert(); as id) {
+  <app-options-enfant
+    [nom]="nomEnfant(id)"
+    (carte)="ouvrirCarte(id)"
+    (suivi)="ouvrirSuivi(id)"
+    (fermeture)="optionsOuvert.set(null)"
+  />
+}
+
+@if (carteOuvert(); as enfant) {
+  <app-carte-enfant [enfant]="enfant" (fermeture)="carteOuvert.set(null)" />
 }
 
 @if (suiviOuvert(); as id) {

@@ -73,6 +73,7 @@
   }
 
   <div class="presence__outils" aria-label="Actions sur la feuille">
+    <button class="outil outil--scanner" type="button" (click)="ouvrirScanner()" [disabled]="verrouille() || !eleves().length" title="Scanner la carte d'un élève (QR code)"><span aria-hidden="true">▣</span><small>Scanner</small></button>
     <button class="outil" type="button" (click)="actualiser()" title="Actualiser la feuille"><span aria-hidden="true">↻</span><small>Actualiser</small></button>
     <button class="outil" type="button" (click)="toutPresent()" [disabled]="!eleves().length || verrouille()" title="Marquer tous les élèves présents"><span aria-hidden="true">✓</span><small>Tout présent</small></button>
     <span class="presence__separateur" aria-hidden="true"></span>
@@ -162,4 +163,14 @@
     <span><strong>{{ nombreModifications() }}</strong> modification(s)</span>
     <button class="btn btn--primaire btn--ligne" type="button" (click)="enregistrer()" [disabled]="sauvegardeEnCours()">{{ sauvegardeEnCours() ? 'Enregistrement…' : 'Enregistrer la feuille' }}</button>
   </div>
+}
+
+@if (scannerOuvert()) {
+  <app-scan-qr
+    titre="Appel par carte"
+    consigne="Scannez le QR code imprimé sur la carte de l’élève."
+    [retour]="retourScan()"
+    (code)="surCodeScanne($event)"
+    (fermeture)="fermerScanner()"
+  />
 }

@@ -56,6 +56,9 @@
 .outil:disabled { opacity: 0.45; cursor: not-allowed; }
 .outil > span { font-size: 1.15rem; line-height: 1.2; }
 .outil small { font-size: 0.67rem; font-weight: 650; }
+/* Bouton d'appel par scan : mis en avant dans la barre d'outils. */
+.outil--scanner { background: var(--mc-primaire); color: #fff; border-radius: 10px; }
+.outil--scanner:hover:not(:disabled) { background: var(--mc-primaire-fonce); color: #fff; }
 .presence__separateur { width: 1px; margin: 8px 4px; background: var(--mc-trait); }
 .presence__selection { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 8px; margin-bottom: 8px; border-radius: 8px; background: var(--mc-primaire-10); font-size: 0.8rem; }
 .presence__selection > span:first-child { font-weight: 700; margin-right: 4px; }

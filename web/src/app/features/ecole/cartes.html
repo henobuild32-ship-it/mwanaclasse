@@ -1,0 +1,117 @@
+<div class="zone-ecran">
+  <div class="page-entete">
+    <div>
+      <h1>Carte des élèves</h1>
+      <p>
+        {{ nomEcole() }} · {{ affiches().length }} carte(s) ·
+        {{ selectionnees().length }} sélectionnée(s)
+      </p>
+    </div>
+    <div class="cartes-actions">
+      <button
+        class="btn btn--secondaire btn--ligne"
+        type="button"
+        (click)="imprimer()"
+        [disabled]="!cartesImprimees().length"
+      >
+        @if (cartesImprimees().length === 1) { Imprimer la carte }
+        @else { Imprimer ({{ cartesImprimees().length }}) }
+      </button>
+      <button
+        class="btn btn--primaire btn--ligne"
+        type="button"
+        (click)="exporterPdf()"
+        [disabled]="!cartesImprimees().length || pdfEnCours()"
+      >
+        {{ pdfEnCours() ? 'Génération du PDF…' : 'Exporter en PDF' }}
+      </button>
+    </div>
+  </div>
+
+  <div class="cartes-outils">
+    <input
+      type="search"
+      placeholder="Rechercher un nom ou un code"
+      aria-label="Rechercher un élève"
+      [ngModel]="recherche()"
+      (ngModelChange)="changerRecherche($event)"
+    />
+    <select
+      [ngModel]="classeId()"
+      (ngModelChange)="changerClasse($event)"
+      aria-label="Classe"
+    >
+      <option value="">Toutes les classes</option>
+      @for (c of classes(); track c.id) {
+        <option [value]="c.id">{{ c.name }}</option>
+      }
+    </select>
+    <label class="cartes-outils__case">
+      <input
+        type="checkbox"
+        [checked]="toutesSelectionnees()"
+        (change)="toutSelectionner($any($event.target).checked)"
+      />
+      <span>Tout sélectionner</span>
+    </label>
+  </div>
+
+  <div class="cartes-aide">
+    <strong>Comment bien découper les cartes</strong>
+    <ul>
+      <li>Imprimez en A4, à 100 % (sans réduction ni marge ajoutée par le navigateur).</li>
+      <li>Découpez sur les traits pointillés : chaque carte mesure 85,6 × 54 mm.</li>
+      <li>Gardez la zone blanche autour du QR code : elle est indispensable à la lecture.</li>
+      <li>Scannez le QR côté école pour l'appel, ou côté parent pour rattacher l'enfant.</li>
+    </ul>
+  </div>
+
+  @if (chargement()) {
+    <app-chargement texte="Chargement des cartes…" />
+  } @else if (erreur()) {
+    <app-etat-vide [texte]="erreur()" icone="📡" actionTexte="Réessayer" [actionLien]="['/ecole/cartes']" />
+  } @else if (affiches().length === 0) {
+    <app-etat-vide texte="Aucun élève pour cette classe ou cette recherche." icone="🪪" />
+  } @else {
+    <div class="cartes-liste">
+      @for (e of affiches(); track e.id) {
+        <div class="cartes-liste__case" [class.cartes-liste__case--non]="!estSelectionne(e.id)">
+          <label class="cartes-liste__coche">
+            <input
+              type="checkbox"
+              [checked]="estSelectionne(e.id)"
+              (change)="basculer(e.id, $any($event.target).checked)"
+            />
+            <span>Sélectionner {{ e.full_name }}</span>
+          </label>
+          <app-carte-eleve
+            [nom]="e.full_name"
+            [code]="e.public_code"
+            [ecole]="nomEcole()"
+            [classe]="libelleClasse(e)"
+          />
+          <div class="cartes-liste__actions">
+            <button class="btn btn--discret" type="button" (click)="imprimerCarteSeule(e)">
+              Imprimer cette carte
+            </button>
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>
+
+<!-- Zone réservée à l'impression : invisible à l'écran, remplie uniquement
+     quand `body.impression-cartes` est posé avant `window.print()`. -->
+<div class="zone-impression" aria-hidden="true">
+  @for (c of cartesImprimees(); track c.id) {
+    <div class="zone-impression__case">
+      <app-carte-eleve
+        [nom]="c.full_name"
+        [code]="c.public_code"
+        [ecole]="nomEcole()"
+        [classe]="libelleClasse(c)"
+      />
+    </div>
+  }
+</div>

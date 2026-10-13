@@ -23,6 +23,7 @@ export class PlusEcole {
     { chemin: '/ecole/classes', icone: '🏫', titre: 'Classes & sections', sous: 'Structure pédagogique' },
     { chemin: '/ecole/parents', icone: '👨‍👩‍👧', titre: 'Parents', sous: 'Comptes et enfants rattachés' },
     { chemin: '/ecole/liaisons', icone: '🔗', titre: 'Demandes de liaison', sous: 'Valider ou refuser les liens' },
+    { chemin: '/ecole/cartes', icone: '🪪', titre: 'Carte des élèves', sous: 'QR code, impression et PDF' },
     { chemin: '/ecole/communiques', icone: '📢', titre: 'Communiqués', sous: 'Rédiger et publier' },
     { chemin: '/ecole/demandes', icone: '📨', titre: 'Demandes des parents', sous: 'Répondre aux réclamations' },
     { chemin: '/ecole/documents', icone: '📄', titre: 'Documents', sous: 'Fichiers mis à disposition' },

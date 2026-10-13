@@ -25,6 +25,19 @@
 }
 .carte-enfant__sous { font-size: 0.82rem; color: var(--mc-texte-2); overflow-wrap: anywhere; }
 
+/* Deux chemins pour rattacher un enfant : scanner ou saisie manuelle. */
+.choix-ajout {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.choix-ajout__intro {
+  margin: 0 0 4px;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--mc-texte-2);
+}
+
 .carte-enfant__stats {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -344,6 +357,152 @@
    toujours même hauteur et pleine largeur. */
 @media (max-width: 359px) {
   .feuille__actions { grid-template-columns: 1fr; }
+}
+
+/* Bouton « + » (options) d'une carte enfant, et feuilles de menus. */
+
+/* Bouton rond « Plus d'options » posé sur la carte d'un enfant (min. 44 px). */
+.carte-enfant__plus {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--mc-trait);
+  border-radius: 50%;
+  background: var(--mc-fond);
+  color: var(--mc-primaire);
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.carte-enfant__plus:hover { background: var(--mc-primaire-10); }
+.carte-enfant__plus:active { transform: translateY(1px); }
+
+/* Feuille d'options (Voir la carte / Voir le suivi). */
+.menu-actions {
+  position: relative;
+  width: 100%;
+  max-width: 680px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 8px 16px calc(16px + env(safe-area-inset-bottom));
+  background: var(--mc-fond);
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -10px 40px rgb(15 23 42 / 0.22);
+  animation: feuille-in 0.25s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+@media (min-width: 720px) {
+  .menu-actions {
+    max-width: 460px;
+    margin-bottom: auto;
+    margin-top: auto;
+    border-radius: 20px;
+  }
+}
+.menu-actions__tirette {
+  width: 40px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--mc-trait);
+  margin: 4px auto 6px;
+  flex: 0 0 auto;
+}
+@media (min-width: 720px) {
+  .menu-actions__tirette { display: none; }
+}
+.menu-actions__titre {
+  margin: 0;
+  padding: 0 4px 6px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  border-bottom: 1px solid var(--mc-trait);
+  overflow-wrap: anywhere;
+}
+.menu-actions__item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 12px 14px;
+  border: 1px solid var(--mc-trait);
+  border-radius: 14px;
+  background: var(--mc-fond-2);
+  color: var(--mc-texte);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.menu-actions__item:hover { border-color: var(--mc-primaire-30); background: var(--mc-primaire-10); }
+.menu-actions__icone { font-size: 1.35rem; line-height: 1; flex: 0 0 auto; }
+.menu-actions__libelle { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.menu-actions__libelle strong { font-size: 0.95rem; overflow-wrap: anywhere; }
+.menu-actions__libelle small { font-size: 0.78rem; color: var(--mc-texte-2); overflow-wrap: anywhere; }
+
+/* Aperçu plein écran de la carte élève. */
+
+.carte-apercu {
+  position: relative;
+  width: 100%;
+  max-width: 680px;
+  max-height: 92svh;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 8px 16px calc(16px + env(safe-area-inset-bottom));
+  background: var(--mc-fond);
+  border-radius: 20px 20px 0 0;
+  box-shadow: 0 -10px 40px rgb(15 23 42 / 0.22);
+  animation: feuille-in 0.25s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+@media (min-width: 720px) {
+  .carte-apercu {
+    margin: auto;
+    border-radius: 20px;
+    max-height: 88svh;
+  }
+  .carte-apercu .feuille__tirette { display: none; }
+}
+.carte-apercu__entete {
+  padding-right: 44px;
+}
+.carte-apercu__entete h2 {
+  margin: 0;
+  font-size: clamp(1.05rem, 4.6vw, 1.3rem);
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.carte-apercu__entete p {
+  margin: 4px 0 0;
+  font-size: 0.82rem;
+  color: var(--mc-texte-2);
+}
+.carte-apercu__zone {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 4px 0;
+}
+.carte-apercu__surface {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: zoom-in;
+}
+.carte-apercu__surface--zoom { width: 190%; cursor: zoom-out; }
+.carte-apercu__aide {
+  margin: 0;
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--mc-texte-3);
 }
 
 /* Pastille ronde de présence (sans texte). */

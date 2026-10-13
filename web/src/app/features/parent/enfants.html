@@ -36,11 +36,14 @@
             [attr.title]="pastille(e).titre"
             [attr.aria-label]="pastille(e).titre"
           ></span>
+          <button
+            class="carte-enfant__plus"
+            type="button"
+            (click)="optionsOuvert.set(e.id)"
+            [attr.aria-label]="'Plus d’options pour ' + e.full_name"
+            aria-haspopup="dialog"
+          >+</button>
         </div>
-
-        <button class="btn btn--secondaire" type="button" (click)="suiviOuvert.set(e.id)">
-          Voir le suivi complet
-        </button>
       </div>
     }
   </div>
@@ -57,6 +60,19 @@
   >
     <app-ajouter-enfant (enregistre)="onEnfantAjoute()" />
   </app-overlay>
+}
+
+@if (optionsOuvert(); as id) {
+  <app-options-enfant
+    [nom]="nomEnfant(id)"
+    (carte)="ouvrirCarte(id)"
+    (suivi)="ouvrirSuivi(id)"
+    (fermeture)="optionsOuvert.set(null)"
+  />
+}
+
+@if (carteOuvert(); as enfant) {
+  <app-carte-enfant [enfant]="enfant" (fermeture)="carteOuvert.set(null)" />
 }
 
 @if (suiviOuvert(); as id) {

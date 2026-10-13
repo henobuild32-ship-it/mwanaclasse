@@ -2,8 +2,10 @@ import { Component, inject, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService, toApiError } from '../../core/api.service';
 import { ConnectiviteService } from '../../core/connectivite.service';
+import { QrService } from '../../core/qr.service';
 import { SyncService } from '../../core/sync.service';
 import { ToastService } from '../../core/toast.service';
+import { ScanQr } from '../../shared/scan-qr';
 
 interface ReponseAjout {
   message?: string;
@@ -31,7 +33,7 @@ interface ReponseAjout {
  */
 @Component({
   selector: 'app-ajouter-enfant',
-  imports: [FormsModule],
+  imports: [FormsModule, ScanQr],
   templateUrl: './enfants-ajouter.html',
   styleUrl: './pages.scss',
 })
@@ -40,12 +42,16 @@ export class AjouterEnfant {
   private readonly toasts = inject(ToastService);
   private readonly sync = inject(SyncService);
   private readonly connectivite = inject(ConnectiviteService);
+  private readonly qr = inject(QrService);
 
   /** Enfant rattaché : la liste parente referme l'overlay et recharge. */
   readonly enregistre = output<void>();
 
   readonly enCours = signal(false);
   protected readonly erreur = signal('');
+  /** Deux chemins équivalents : scanner la carte ou saisir le code. */
+  protected readonly modeSaisie = signal(false);
+  protected readonly scannerOuvert = signal(false);
 
   codeEnfant = '';
 
@@ -65,10 +71,48 @@ export class AjouterEnfant {
     return JSON.stringify([this.codeEnfant]);
   }
 
+  /* ---------------------------------------------------------------- */
+  /*  Scan de la carte ou saisie manuelle                              */
+  /* ---------------------------------------------------------------- */
+
+  protected ouvrirScanner(): void {
+    this.erreur.set('');
+    this.scannerOuvert.set(true);
+  }
+
+  protected fermerScanner(): void {
+    this.scannerOuvert.set(false);
+  }
+
+  protected modeSaisir(): void {
+    this.modeSaisie.set(true);
+    this.scannerOuvert.set(false);
+  }
+
+  /** QR lu : le code est normalisé puis l'enfant est rattaché. */
+  protected surCodeScanne(brut: string): void {
+    const code = this.qr.extraireCode(brut);
+    if (!code) {
+      this.scannerOuvert.set(false);
+      this.modeSaisie.set(true);
+      this.erreur.set('QR illisible. Saisissez le code imprimé sur la carte.');
+      return;
+    }
+    this.codeEnfant = this.qr.normaliser(code);
+    this.scannerOuvert.set(false);
+    this.modeSaisie.set(true);
+    void this.ajouter();
+  }
+
   /** Validation + enregistrement (appelée par le pied de l'overlay). */
   async ajouter(): Promise<void> {
     this.erreur.set('');
     const code = this.codeEnfant.trim();
+    if (!code) {
+      this.modeSaisie.set(true);
+      this.erreur.set('Saisissez le code de l’enfant ou scannez sa carte.');
+      return;
+    }
     if (code.length < 6) {
       this.erreur.set('Le code enfant doit contenir au moins 6 caractères.');
       return;

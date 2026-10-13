@@ -1,0 +1,129 @@
+/* Module « Carte des élèves » — aperçu, sélection et actions. */
+
+.cartes-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.cartes-actions .btn {
+  width: auto;
+  min-width: 160px;
+}
+
+.cartes-outils {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+.cartes-outils input[type='search'],
+.cartes-outils select {
+  flex: 1 1 200px;
+  min-width: 0;
+  min-height: 46px;
+  padding: 10px 14px;
+  border: 1px solid var(--mc-trait);
+  border-radius: 12px;
+  background: var(--mc-fond-2);
+  font-size: 1rem;
+  font-family: inherit;
+  color: var(--mc-texte);
+}
+.cartes-outils__case {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  font-size: 0.87rem;
+  color: var(--mc-texte-2);
+  cursor: pointer;
+}
+.cartes-outils__case input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--mc-primaire);
+}
+
+/* Bloc d'aide à la découpe (spec). */
+.cartes-aide {
+  background: var(--mc-primaire-10);
+  border: 1px solid var(--mc-primaire-30);
+  border-radius: var(--mc-rayon);
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: var(--mc-texte-2);
+}
+.cartes-aide strong {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--mc-primaire-fonce);
+}
+.cartes-aide ul {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 4px;
+}
+
+/* Grille d'aperçu : 1 colonne sur mobile, jusqu'à 4 sur grand écran. */
+.cartes-liste {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+}
+@media (min-width: 600px) {
+  .cartes-liste {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (min-width: 900px) {
+  .cartes-liste {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (min-width: 1200px) {
+  .cartes-liste {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.cartes-liste__case {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  background: var(--mc-fond-2);
+  border: 1px solid var(--mc-trait);
+  border-radius: var(--mc-rayon);
+  box-shadow: var(--mc-ombre);
+}
+.cartes-liste__case--non {
+  opacity: 0.45;
+}
+.cartes-liste__coche {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  font-size: 0.8rem;
+  color: var(--mc-texte-2);
+  cursor: pointer;
+}
+.cartes-liste__coche input {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  accent-color: var(--mc-primaire);
+}
+.cartes-liste__coche span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cartes-liste__actions {
+  display: flex;
+  justify-content: flex-end;
+}

@@ -6,9 +6,11 @@ import { ConfirmationService } from '../../core/confirmation.service';
 import { ExportService } from '../../core/export.service';
 import { Classe, PresencesEleve, RecapPresence } from '../../core/models';
 import { ConnectiviteService } from '../../core/connectivite.service';
+import { QrService } from '../../core/qr.service';
 import { SessionService } from '../../core/session.service';
 import { SyncService } from '../../core/sync.service';
 import { ToastService } from '../../core/toast.service';
+import { ScanQr } from '../../shared/scan-qr';
 import { Chargement, EtatVide } from '../../shared/ui';
 
 type Statut = 'present' | 'absent' | 'retard' | 'depart_anticipe';
@@ -87,7 +89,7 @@ interface ReponsePresences {
 /** Feuille de présence (spec §18 — mode hors ligne) + export PDF/DOCX. */
 @Component({
   selector: 'app-presences-ecole',
-  imports: [FormsModule, RouterLink, Chargement, EtatVide],
+  imports: [FormsModule, RouterLink, Chargement, EtatVide, ScanQr],
   templateUrl: './presences.html',
   styleUrl: './presences.scss',
 })
@@ -98,6 +100,7 @@ export class PresencesEcole {
   private readonly connectivite = inject(ConnectiviteService);
   private readonly toasts = inject(ToastService);
   private readonly confirmation = inject(ConfirmationService);
+  private readonly qr = inject(QrService);
   protected readonly session = inject(SessionService);
   protected readonly statuts = STATUTS;
   protected readonly raisonsAbsence = RAISONS_ABSENCE;
@@ -126,6 +129,12 @@ export class PresencesEcole {
   protected readonly appelExceptionnel = signal(false);
   /** États des jours autour d'aujourd'hui, pour le sélecteur de date. */
   protected readonly joursPeriode = signal<Map<string, JourEtat>>(new Map());
+  /** Appel par scan de QR : scanner ouvert + retour affiché au cadre. */
+  protected readonly scannerOuvert = signal(false);
+  protected readonly retourScan = signal<{ texte: string; ok: boolean } | null>(null);
+  /** La feuille courante contient au moins un pointage fait par scan. */
+  private readonly scanUtilise = signal(false);
+  private minuterieRetour: ReturnType<typeof setTimeout> | null = null;
   private readonly base = signal<Record<string, EntreeBrouillon>>({});
   private derniereSyncTraitee = 0;
 
@@ -362,6 +371,7 @@ export class PresencesEcole {
     }
     this.date.set(valeur);
     this.appelExceptionnel.set(false);
+    this.scanUtilise.set(false);
     // Hors ligne, l'état vient du cache de période ; en ligne la feuille
     // renverra l'état à jour. On affiche immédiatement ce que l'on connaît.
     const connu = this.joursPeriode().get(valeur);
@@ -396,6 +406,7 @@ export class PresencesEcole {
       return;
     }
     this.classeId.set(valeur);
+    this.scanUtilise.set(false);
     void this.chargerFeuille();
   }
 
@@ -405,6 +416,101 @@ export class PresencesEcole {
 
   protected choisir(eleve: PresencesEleve, statut: Statut): void {
     this.choisirStatut(eleve.student_id, statut);
+  }
+
+  /* ---------------------------------------------------------------- */
+  /*  Appel par scan de QR (carte élève)                               */
+  /* ---------------------------------------------------------------- */
+
+  protected ouvrirScanner(): void {
+    if (this.verrouille()) {
+      this.toasts.info(`${this.bandeau()?.texte ?? 'Jour fermé'} — l'appel est désactivé.`);
+      return;
+    }
+    if (!this.eleves().length) {
+      this.toasts.info('Choisissez d’abord une classe pour faire l’appel.');
+      return;
+    }
+    this.retourScan.set(null);
+    this.scannerOuvert.set(true);
+  }
+
+  protected fermerScanner(): void {
+    this.scannerOuvert.set(false);
+    this.retourScan.set(null);
+  }
+
+  /** Un QR lu : on retrouve l'élève de la classe et on le pointe présent. */
+  protected async surCodeScanne(brut: string): Promise<void> {
+    const code = this.qr.extraireCode(brut);
+    if (!code) {
+      this.montrerRetour('QR illisible', false);
+      this.signaler(false);
+      return;
+    }
+    const normalise = this.qr.normaliser(code);
+    const eleve = this.eleves().find((e) => this.qr.normaliser(e.public_code) === normalise);
+    if (!eleve) {
+      this.montrerRetour(await this.messageCodeInconnu(normalise), false);
+      this.signaler(false);
+      return;
+    }
+    if (this.verrouille()) {
+      this.fermerScanner();
+      return;
+    }
+    if (this.brouillon()[eleve.student_id]?.status === 'present') {
+      this.montrerRetour(`Déjà présent · ${eleve.full_name}`, false);
+      this.signaler(false);
+      return;
+    }
+    this.choisir(eleve, 'present');
+    this.scanUtilise.set(true);
+    this.montrerRetour(`Présent · ${eleve.full_name}`, true);
+    this.signaler(true);
+  }
+
+  /** Motif affiché quand le code ne correspond à aucun élève de la classe. */
+  private async messageCodeInconnu(code: string): Promise<string> {
+    try {
+      const autres = await this.sync.depuisLeCache<EleveCachePresence>('eleves');
+      const trouve = autres.find((e) => this.qr.normaliser(e.public_code) === code);
+      if (trouve) {
+        return `Élève d’une autre classe : ${trouve.full_name} (${trouve.classe}).`;
+      }
+    } catch {
+      /* pas de cache local : on s'arrête sur « code inconnu » */
+    }
+    return `Code inconnu : ${code}`;
+  }
+
+  private montrerRetour(texte: string, ok: boolean): void {
+    this.retourScan.set({ texte, ok });
+    if (this.minuterieRetour) clearTimeout(this.minuterieRetour);
+    this.minuterieRetour = setTimeout(() => this.retourScan.set(null), 2400);
+  }
+
+  /** Bip court (succès) ou double impulsion (échec) + vibration. */
+  private signaler(ok: boolean): void {
+    try {
+      navigator.vibrate?.(ok ? 70 : [50, 60, 50]);
+    } catch {
+      /* vibration indisponible */
+    }
+    try {
+      const contexte = new AudioContext();
+      const oscillateur = contexte.createOscillator();
+      const gain = contexte.createGain();
+      oscillateur.frequency.value = ok ? 1180 : 320;
+      gain.gain.value = 0.05;
+      oscillateur.connect(gain);
+      gain.connect(contexte.destination);
+      oscillateur.start();
+      oscillateur.stop(contexte.currentTime + (ok ? 0.09 : 0.14));
+      oscillateur.onended = () => void contexte.close();
+    } catch {
+      /* audio indisponible */
+    }
   }
 
   protected toutPresent(): void {
@@ -539,7 +645,7 @@ export class PresencesEcole {
     const feuille = {
       classId: this.classeId(),
       date: this.date(),
-      method: this.enLigne ? 'manuel_classe' : 'sync_offline',
+      method: this.enLigne ? (this.scanUtilise() ? 'qr_code' : 'manuel_classe') : 'sync_offline',
       entries,
       deviceId: this.session.profil()?.id ?? undefined,
     };
@@ -677,14 +783,24 @@ export class PresencesEcole {
 
   private choisirStatut(id: string, status: Statut): void {
     if (this.verrouille()) return;
-    this.brouillon.update((b) => ({
-      ...b,
-      [id]: {
-        ...b[id],
-        status,
-        ...(status === 'retard' && !b[id]?.arrivalTime ? { arrivalTime: this.heureActuelle() } : {}),
-      },
-    }));
+    this.brouillon.update((b) => {
+      const entree = b[id] ?? {};
+      // Re-cliquer sur le statut déjà actif retire le pointage : l'élève
+      // revient à « non enregistré » (une seule présence par jour).
+      if (entree.status === status) {
+        const sansStatut: EntreeBrouillon = { ...entree };
+        delete sansStatut.status;
+        return { ...b, [id]: sansStatut };
+      }
+      return {
+        ...b,
+        [id]: {
+          ...entree,
+          status,
+          ...(status === 'retard' && !entree.arrivalTime ? { arrivalTime: this.heureActuelle() } : {}),
+        },
+      };
+    });
   }
 
   private installerFeuille(eleves: PresencesEleve[], recap: RecapPresence): void {
