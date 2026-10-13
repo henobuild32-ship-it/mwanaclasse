@@ -2,6 +2,8 @@ import { Component, inject, signal } from '@angular/core';
 import { ApiService, toApiError } from '../../core/api.service';
 import { dateHeureFr } from '../../core/format';
 import { ToastService } from '../../core/toast.service';
+import { PushService } from '../../core/push.service';
+import { ReglagesPushComponent } from '../../shared/reglages-push';
 import { Chargement, EtatVide, Etiquette, etiquetteStatut } from '../../shared/ui';
 
 interface Notification {
@@ -20,13 +22,14 @@ interface Notification {
 /** Notifications d'administration de l'école. */
 @Component({
   selector: 'app-notifications-ecole',
-  imports: [Chargement, EtatVide, Etiquette],
+  imports: [Chargement, EtatVide, Etiquette, ReglagesPushComponent],
   templateUrl: './notifications.html',
   styleUrl: './pages.scss',
 })
 export class NotificationsEcole {
   private readonly api = inject(ApiService);
   private readonly toasts = inject(ToastService);
+  protected readonly push = inject(PushService);
   protected readonly etiquetteStatut = etiquetteStatut;
   protected readonly dateHeureFr = dateHeureFr;
 

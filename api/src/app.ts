@@ -29,11 +29,14 @@ import { AuditLogger } from './security/audit.js';
 import { BruteForceGuard } from './security/bruteforce.js';
 import { SessionService } from './security/sessions.js';
 import { AuthService } from './security/auth.js';
+import { PushService } from './services/push.js';
 import { registerAuthRoutes } from './routes/auth.js';
 import { registerSchoolRoutes } from './routes/school.js';
 import { registerParentRoutes } from './routes/parent.js';
 import { registerSyncRoutes } from './routes/sync.js';
 import { registerSecurityRoutes } from './routes/security-routes.js';
+import { registerPushRoutes } from './routes/push.js';
+import { registerCronRoutes } from './routes/cron.js';
 import { clientIp } from './http/middleware.js';
 
 export interface AppDependencies {
@@ -45,6 +48,7 @@ export interface AppDependencies {
   guard: BruteForceGuard;
   sessions: SessionService;
   authService: AuthService;
+  push: PushService;
 }
 
 /**
@@ -401,7 +405,14 @@ export async function buildApp(overrides: Record<string, string | undefined> = {
 
   const authService = new AuthService(config, secrets, audit, guard, signAccessToken);
 
-  const deps: AppDependencies = { app, config, db, secrets, audit, guard, sessions, authService };
+  const push = new PushService(config, db);
+  if (!push.disponible) {
+    app.log.warn(
+      'Notifications push désactivées : VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY absentes ou PUSH_ENABLED=false.',
+    );
+  }
+
+  const deps: AppDependencies = { app, config, db, secrets, audit, guard, sessions, authService, push };
 
   /* ---------------------------------------------------------------------- */
   /*  Routes                                                                */
@@ -430,6 +441,8 @@ export async function buildApp(overrides: Record<string, string | undefined> = {
   await registerParentRoutes(deps);
   await registerSyncRoutes(deps);
   await registerSecurityRoutes(deps);
+  await registerPushRoutes(deps);
+  await registerCronRoutes(deps);
 
   return deps;
 }

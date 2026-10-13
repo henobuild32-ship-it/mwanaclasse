@@ -6,14 +6,26 @@
 </div>
 
 <div class="escalier">
-  @for (d of destinations(); track d.chemin) {
-    <a class="lien-carte" [routerLink]="d.chemin">
-      <span class="lien-carte__icone">{{ d.icone }}</span>
-      <span class="lien-carte__texte">
-        <span class="lien-carte__titre">{{ d.titre }}</span>
-        <span class="lien-carte__sous">{{ d.sous }}</span>
-      </span>
-      <span aria-hidden="true">›</span>
-    </a>
+  @for (s of sections(); track s.titre) {
+    <section class="menu-section">
+      <h2 class="menu-section__titre">{{ s.titre }}</h2>
+      <div class="menu-section__lignes">
+        @for (d of s.destinations; track d.chemin) {
+          <a class="menu-ligne" [routerLink]="d.chemin">
+            <span class="menu-ligne__icone" aria-hidden="true">{{ d.icone }}</span>
+            <span class="menu-ligne__texte">
+              <span class="menu-ligne__titre">{{ d.titre }}</span>
+              <span class="menu-ligne__sous">{{ d.sous }}</span>
+            </span>
+            @if (d.nonLus && d.nonLus() > 0) {
+              <span class="menu-ligne__badge" [attr.aria-label]="d.nonLus() + ' non lu(s)'">
+                {{ d.nonLus() > 99 ? '99+' : d.nonLus() }}
+              </span>
+            }
+            <span class="menu-ligne__chevron" aria-hidden="true">›</span>
+          </a>
+        }
+      </div>
+    </section>
   }
 </div>

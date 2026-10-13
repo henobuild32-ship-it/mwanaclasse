@@ -23,7 +23,7 @@ export const appConfig: ApplicationConfig = {
     ...(isDevMode()
       ? []
       : [
-          provideServiceWorker('ngsw-worker.js', {
+          provideServiceWorker('sw.js', {
             registrationStrategy: 'registerImmediately',
           }),
         ]),

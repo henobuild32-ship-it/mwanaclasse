@@ -34,6 +34,8 @@ import {
   lireEtatsJours,
 } from '../domain/calendrier-scolaire.js';
 import { insererFeriesRdc } from '../domain/feries-rdc.js';
+import { notifier } from '../services/notifier.js';
+import { kindPresence } from '../services/push.js';
 
 /* ==========================================================================
  *  Schémas
@@ -144,7 +146,7 @@ const LinkDecisionSchema = z.object({
  * ========================================================================== */
 
 export async function registerSchoolRoutes(deps: AppDependencies): Promise<void> {
-  const { app, db, audit, config } = deps;
+  const { app, db, audit, config, push } = deps;
 
   const authDeps = {
     db,
@@ -1471,6 +1473,34 @@ export async function registerSchoolRoutes(deps: AppDependencies): Promise<void>
               });
             }
 
+            // Notifications aux parents pour les absences / retards / départs.
+            for (const a of applied) {
+              if (!['absent', 'retard', 'depart_anticipe'].includes(a.status)) continue;
+              const { kind, titre } = kindPresence(a.status);
+              const { rows: notifs } = await c.query(
+                `INSERT INTO app.notifications
+                   (school_id, audience, parent_id, kind, title, body, severity,
+                    entity_type, entity_id, action_url, channels)
+                 SELECT $1, 'parent', l.parent_id, $2, $3, $4, $5,
+                        'attendance', $6, '/parent/enfants/' || $6::uuid::text,
+                        ARRAY['interne','push']::sec.notification_channel[]
+                   FROM app.parent_student_links l
+                   JOIN app.students s ON s.id = l.student_id
+                  WHERE l.student_id = $6 AND l.status = 'actif'
+                  RETURNING id, school_id, audience, parent_id, staff_user_id, kind, title, body,
+                            severity, entity_type, entity_id, action_url`,
+                [
+                  schoolId,
+                  kind,
+                  `${titre} — ${a.status === 'absent' ? 'Absence' : a.status === 'retard' ? 'Retard' : 'Départ anticipé'}`,
+                  `La présence de votre enfant a été signalée comme « ${a.status} » pour le ${input.date}.`,
+                  a.status === 'absent' ? 'attention' : 'info',
+                  a.studentId,
+                ],
+              );
+              for (const n of notifs) push.envoyerEnArrierePlan(n as any);
+            }
+
             return { applied, rejected, date: input.date, classId: input.classId };
           },
       );
@@ -1773,13 +1803,16 @@ export async function registerSchoolRoutes(deps: AppDependencies): Promise<void>
               await c.query(
                 `INSERT INTO app.notifications
                    (school_id, audience, parent_id, kind, title, body, severity,
-                    entity_type, entity_id, action_url)
+                    entity_type, entity_id, action_url, channels)
                  SELECT DISTINCT $1::uuid, 'parent', r.parent_id,
                         $3, $4, $5,
                         CASE WHEN $6::boolean THEN 'urgent' ELSE 'info' END,
-                        'announcement', $2::uuid, '/parent/communiques/' || $2::uuid::text
+                        'announcement', $2::uuid, '/parent/communiques/' || $2::uuid::text,
+                        ARRAY['interne','push']::sec.notification_channel[]
                    FROM app.announcement_recipients r
-                  WHERE r.announcement_id = $2::uuid`,
+                  WHERE r.announcement_id = $2::uuid
+                  RETURNING id, school_id, audience, parent_id, staff_user_id, kind, title, body,
+                            severity, entity_type, entity_id, action_url`,
                 [
                   schoolId,
                   announcement.id,
@@ -1788,7 +1821,9 @@ export async function registerSchoolRoutes(deps: AppDependencies): Promise<void>
                   input.summary ?? input.subject ?? 'Nouveau communiqué de votre école',
                   input.isUrgent,
                 ],
-              );
+              ).then(async (res) => {
+                for (const n of res.rows) push.envoyerEnArrierePlan(n);
+              });
             }
 
             return { ...announcement, destinataires };
@@ -1917,16 +1952,19 @@ export async function registerSchoolRoutes(deps: AppDependencies): Promise<void>
               audienceFilter: ann.audience_filter ?? {},
             });
 
-            await c.query(
+            const resNotifs = await c.query(
               `INSERT INTO app.notifications
                  (school_id, audience, parent_id, kind, title, body, severity,
-                  entity_type, entity_id, action_url)
+                  entity_type, entity_id, action_url, channels)
                SELECT DISTINCT $1::uuid, 'parent', r.parent_id,
                       $3, $4, $5,
                       CASE WHEN $6::boolean THEN 'urgent' ELSE 'info' END,
-                      'announcement', $2::uuid, '/parent/communiques/' || $2::uuid::text
+                      'announcement', $2::uuid, '/parent/communiques/' || $2::uuid::text,
+                      ARRAY['interne','push']::sec.notification_channel[]
                  FROM app.announcement_recipients r
-                WHERE r.announcement_id = $2::uuid`,
+                WHERE r.announcement_id = $2::uuid
+                RETURNING id, school_id, audience, parent_id, staff_user_id, kind, title, body,
+                          severity, entity_type, entity_id, action_url`,
               [
                 schoolId,
                 ann.id,
@@ -1936,6 +1974,7 @@ export async function registerSchoolRoutes(deps: AppDependencies): Promise<void>
                 ann.is_urgent,
               ],
             );
+            for (const n of resNotifs.rows) push.envoyerEnArrierePlan(n as any);
 
             return { ...ann, destinataires: count };
           },
@@ -2213,15 +2252,18 @@ export async function registerSchoolRoutes(deps: AppDependencies): Promise<void>
 
             if (target === 'actif') {
               // Le parent est prévenu que l'accès est ouvert.
-              await c.query(
-                `INSERT INTO app.notifications
-                   (school_id, audience, parent_id, kind, title, body, severity,
-                    entity_type, entity_id, action_url)
-                 VALUES ($1,'parent',$2,'liaison_validee','Accès à votre enfant confirmé',
-                         'L’école a validé votre accès. Vous pouvez consulter les présences et les communiqués.',
-                         'succes','student',$3,'/parent/enfants/' || $3::uuid::text)`,
-                [schoolId, link.parent_id, link.student_id],
-              );
+              await notifier(c as any, push, {
+                schoolId,
+                audience: 'parent',
+                parentId: link.parent_id,
+                kind: 'liaison_validee',
+                title: 'Accès à votre enfant confirmé',
+                body: 'L’école a validé votre accès. Vous pouvez consulter les présences et les communiqués.',
+                severity: 'succes',
+                entityType: 'student',
+                entityId: link.student_id,
+                actionUrl: `/parent/enfants/${link.student_id}`,
+              });
             }
 
             return link;
@@ -2353,20 +2395,18 @@ export async function registerSchoolRoutes(deps: AppDependencies): Promise<void>
             );
 
             // Le parent est notifié de la réponse.
-            await c.query(
-              `INSERT INTO app.notifications
-                 (school_id, audience, parent_id, kind, title, body, severity,
-                  entity_type, entity_id, action_url)
-               VALUES ($1,'parent',$2,'reponse_administration',$3,$4,'info','request',$5::uuid,
-                       '/parent/demandes/' || $5::uuid::text)`,
-              [
-                schoolId,
-                request.parent_id,
-                `Réponse à votre demande : ${request.subject}`,
-                parsed.data.message.slice(0, 500),
-                id,
-              ],
-            );
+            await notifier(c as any, push, {
+              schoolId,
+              audience: 'parent',
+              parentId: request.parent_id,
+              kind: 'reponse_administration',
+              title: `Réponse à votre demande : ${request.subject}`,
+              body: parsed.data.message.slice(0, 500),
+              severity: 'info',
+              entityType: 'request',
+              entityId: id,
+              actionUrl: `/parent/demandes/${id}`,
+            });
 
             return { id, status: newStatus };
           },
@@ -2477,6 +2517,31 @@ export async function registerSchoolRoutes(deps: AppDependencies): Promise<void>
             return rows[0];
           },
       );
+
+      // Notification aux parents de l'école (évènement publié).
+      if (created?.id) {
+        await db.withIdentity(dbIdentityFrom(req), async (c) => {
+          const { rows: notifs } = await c.query(
+            `INSERT INTO app.notifications
+               (school_id, audience, parent_id, kind, title, body, severity,
+                entity_type, entity_id, action_url, channels)
+             SELECT $1, 'parent', l.parent_id, 'evenement_calendrier', $2, $3, 'info',
+                    'calendar_event', $4, '/parent/calendrier',
+                    ARRAY['interne','push']::sec.notification_channel[]
+               FROM app.parent_student_links l
+              WHERE l.school_id = $1 AND l.status = 'actif'
+              RETURNING id, school_id, audience, parent_id, staff_user_id, kind, title, body,
+                        severity, entity_type, entity_id, action_url`,
+            [
+              schoolId,
+              `Nouvel événement : ${created.title}`,
+              `L’école a ajouté un événement au calendrier le ${created.starts_on}.`,
+              created.id,
+            ],
+          );
+          for (const n of notifs) push.envoyerEnArrierePlan(n as any);
+        });
+      }
 
       return noStore(reply).code(201).send({ message: 'Événement ajouté au calendrier.', evenement: created });
     },

@@ -92,6 +92,18 @@ const EnvSchema = z.object({
   APP_TIMEZONE: z.string().default('Africa/Kinshasa'),
   /** Active le contenu de démonstration */
   SEED_DEMO_DATA: booleanish.default(false),
+
+  /* --- Notifications push (Web Push / VAPID) ---------------------------- */
+  /** Clé publique VAPID (base64url) — exposée au client pour s'abonner. */
+  VAPID_PUBLIC_KEY: z.string().optional(),
+  /** Clé privée VAPID — STRICTEMENT serveur, jamais exposée au client. */
+  VAPID_PRIVATE_KEY: z.string().optional(),
+  /** Contact du mainteneur push (mailto: ou https:), exigé par les services push. */
+  VAPID_SUBJECT: z.string().default('mailto:contact@mwanaclasse.cd'),
+  /** Active l'envoi push (désactivé si les clés sont absentes). */
+  PUSH_ENABLED: booleanish.default(true),
+  /** Jeton partagé protégeant les tâches planifiées (cron Vercel). */
+  CRON_SECRET: z.string().optional(),
 });
 
 export type AppConfig = z.infer<typeof EnvSchema> & {

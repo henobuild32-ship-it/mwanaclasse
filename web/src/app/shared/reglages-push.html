@@ -1,0 +1,152 @@
+<section class="carte carte--reglages-push" aria-labelledby="titre-reglages-push">
+  <h2 id="titre-reglages-push" class="titre-section">Notifications push</h2>
+
+  @if (!supportePush) {
+    <p class="texte-doux">
+      Ce navigateur ne supporte pas les notifications push. Vous pouvez installer
+      l’application sur votre écran d’accueil pour une meilleure expérience.
+    </p>
+  } @else {
+    @if (!abonne() && permission !== 'granted') {
+      <p class="texte-doux">
+        Activez les notifications pour recevoir les absences, les demandes et les
+        communiqués même quand l’application est fermée.
+      </p>
+      <button class="btn" type="button" [disabled]="enCours()" (click)="activer()">
+        Activer les notifications
+      </button>
+    } @else if (abonne() && permission === 'granted') {
+      <div class="ligne-reglages">
+        <span class="vignette-icone" aria-hidden="true">🔔</span>
+        <div class="ligne-reglages__principal">
+          <div class="ligne-reglages__titre">Cet appareil reçoit les notifications</div>
+          <div class="texte-doux">Vous pouvez les désactiver à tout moment.</div>
+        </div>
+        <button class="btn btn--secondaire" type="button" [disabled]="enCours()" (click)="desactiver()">
+          Désactiver
+        </button>
+      </div>
+      <button class="btn btn--secondaire" type="button" [disabled]="enCours()" (click)="envoyerTest()">
+        Envoyer une notification de test
+      </button>
+    } @else {
+      <p class="texte-doux">
+        La permission est refusée. Ouvrez les réglages de votre navigateur pour
+        autoriser les notifications de MwanaClasse.
+      </p>
+      <button class="btn" type="button" [disabled]="enCours()" (click)="activer()">
+        Réessayer
+      </button>
+    }
+
+    @if (message()) {
+      <p class="texte-doux" style="margin-top: 12px">{{ message() }}</p>
+    }
+
+    <hr class="separateur" />
+
+    <h3 class="titre-sous-section">Choisir ce que je reçois</h3>
+    <ul class="liste">
+      <li class="ligne-liste">
+        <div class="ligne-liste__principal">
+          <div class="ligne-liste__titre">Push général</div>
+          <div class="texte-doux">Désactive tout push sur cet appareil.</div>
+        </div>
+        <label class="interrupteur">
+          <input
+            type="checkbox"
+            [checked]="reglages().push"
+            [disabled]="!abonne()"
+            (change)="basculer('push', $any($event.target).checked)"
+          />
+          <span class="interrupteur__curseur" aria-hidden="true"></span>
+          <span class="sr-only">Push général</span>
+        </label>
+      </li>
+      <li class="ligne-liste">
+        <div class="ligne-liste__principal">
+          <div class="ligne-liste__titre">Demandes et messages</div>
+        </div>
+        <label class="interrupteur">
+          <input
+            type="checkbox"
+            [checked]="reglages().demandes"
+            [disabled]="!abonne() || !reglages().push"
+            (change)="basculer('demandes', $any($event.target).checked)"
+          />
+          <span class="interrupteur__curseur" aria-hidden="true"></span>
+          <span class="sr-only">Demandes et messages</span>
+        </label>
+      </li>
+      <li class="ligne-liste">
+        <div class="ligne-liste__principal">
+          <div class="ligne-liste__titre">Communiqués</div>
+        </div>
+        <label class="interrupteur">
+          <input
+            type="checkbox"
+            [checked]="reglages().communiques"
+            [disabled]="!abonne() || !reglages().push"
+            (change)="basculer('communiques', $any($event.target).checked)"
+          />
+          <span class="interrupteur__curseur" aria-hidden="true"></span>
+          <span class="sr-only">Communiqués</span>
+        </label>
+      </li>
+      <li class="ligne-liste">
+        <div class="ligne-liste__principal">
+          <div class="ligne-liste__titre">Présences (absence, retard)</div>
+        </div>
+        <label class="interrupteur">
+          <input
+            type="checkbox"
+            [checked]="reglages().presences"
+            [disabled]="!abonne() || !reglages().push"
+            (change)="basculer('presences', $any($event.target).checked)"
+          />
+          <span class="interrupteur__curseur" aria-hidden="true"></span>
+          <span class="sr-only">Présences</span>
+        </label>
+      </li>
+      <li class="ligne-liste">
+        <div class="ligne-liste__principal">
+          <div class="ligne-liste__titre">Calendrier et rappels</div>
+        </div>
+        <label class="interrupteur">
+          <input
+            type="checkbox"
+            [checked]="reglages().calendrier"
+            [disabled]="!abonne() || !reglages().push"
+            (change)="basculer('calendrier', $any($event.target).checked)"
+          />
+          <span class="interrupteur__curseur" aria-hidden="true"></span>
+          <span class="sr-only">Calendrier</span>
+        </label>
+      </li>
+      <li class="ligne-liste">
+        <div class="ligne-liste__principal">
+          <div class="ligne-liste__titre">Documents</div>
+        </div>
+        <label class="interrupteur">
+          <input
+            type="checkbox"
+            [checked]="reglages().documents"
+            [disabled]="!abonne() || !reglages().push"
+            (change)="basculer('documents', $any($event.target).checked)"
+          />
+          <span class="interrupteur__curseur" aria-hidden="true"></span>
+          <span class="sr-only">Documents</span>
+        </label>
+      </li>
+    </ul>
+
+    @if (estIos && !estInstallee) {
+      <hr class="separateur" />
+      <h3 class="titre-sous-section">iPhone / iPad</h3>
+      <p class="texte-doux">
+        Sur Safari, ouvrez le menu <strong>Partager</strong> puis
+        <strong>« Sur l’écran d’accueil »</strong> avant d’activer les notifications.
+      </p>
+    }
+  }
+</section>

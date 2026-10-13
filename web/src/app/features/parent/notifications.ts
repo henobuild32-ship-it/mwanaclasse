@@ -5,6 +5,8 @@ import { dateHeureFr } from '../../core/format';
 import { EnfantActifService } from '../../core/enfant-actif.service';
 import { SyncService } from '../../core/sync.service';
 import { ToastService } from '../../core/toast.service';
+import { PushService } from '../../core/push.service';
+import { ReglagesPushComponent } from '../../shared/reglages-push';
 import { Chargement, EtatVide, Etiquette } from '../../shared/ui';
 
 interface Notification {
@@ -22,7 +24,7 @@ interface Notification {
 /** Centre de notifications du parent (spec §6). */
 @Component({
   selector: 'app-notifications-parent',
-  imports: [Chargement, EtatVide],
+  imports: [Chargement, EtatVide, ReglagesPushComponent],
   templateUrl: './notifications.html',
   styleUrl: './pages.scss',
 })
@@ -32,6 +34,7 @@ export class NotificationsParent {
   private readonly toasts = inject(ToastService);
   private readonly router = inject(Router);
   protected readonly selection = inject(EnfantActifService);
+  protected readonly push = inject(PushService);
   protected readonly dateHeureFr = dateHeureFr;
 
   protected readonly notifications = signal<Notification[]>([]);

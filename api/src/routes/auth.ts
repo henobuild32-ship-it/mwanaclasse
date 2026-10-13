@@ -15,6 +15,7 @@ import { clientIp, dbIdentityFrom, requireAuth, sendError, noStore } from '../ht
 import { refreshCookieOptions, REFRESH_COOKIE } from '../security/sessions.js';
 import { AUDIT_ACTIONS } from '../security/audit.js';
 import { normalizeStudentCode } from '../security/codes.js';
+import { desactiverAbonnement } from '../services/push.js';
 
 /* ==========================================================================
  *  Schémas de validation
@@ -773,6 +774,13 @@ export async function registerAuthRoutes(deps: AppDependencies): Promise<void> {
     const auth = req.auth!;
     await db.withIdentity(dbIdentityFrom(req), async (client) => {
       await sessions.revoke(client, auth.identity.sessionId, 'déconnexion volontaire');
+      // L'abonnement push de l'appareil courant est désactivé.
+      await desactiverAbonnement(client, {
+        audience: auth.identity.audience as 'parent' | 'ecole',
+        parentId: auth.identity.parentId ?? null,
+        staffUserId: auth.identity.staffUserId ?? null,
+        deviceId: auth.identity.deviceId ?? null,
+      });
       await audit.write(client, {
         actorKind: auth.identity.audience === 'parent' ? 'parent' : 'staff',
         actorId: auth.userId,
@@ -793,16 +801,23 @@ export async function registerAuthRoutes(deps: AppDependencies): Promise<void> {
   /** Déconnexion de tous les appareils. */
   app.post('/api/auth/deconnexion-partout', { preHandler: requireAuth(authDeps) }, async (req, reply) => {
     const auth = req.auth!;
-    const count = await db.withIdentity(dbIdentityFrom(req), (client) =>
-      sessions.revokeAll(
+    const count = await db.withIdentity(dbIdentityFrom(req), async (client) => {
+      const n = await sessions.revokeAll(
         client,
         {
           parentId: auth.identity.parentId ?? null,
           staffUserId: auth.identity.staffUserId ?? null,
         },
         'déconnexion de tous les appareils',
-      ),
-    );
+      );
+      // Tous les abonnements push du compte sont désactivés.
+      await desactiverAbonnement(client, {
+        audience: auth.identity.audience as 'parent' | 'ecole',
+        parentId: auth.identity.parentId ?? null,
+        staffUserId: auth.identity.staffUserId ?? null,
+      });
+      return n;
+    });
 
     reply.clearCookie(REFRESH_COOKIE, { path: '/api/auth' });
     return noStore(reply).send({

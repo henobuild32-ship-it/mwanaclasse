@@ -32,12 +32,13 @@ import {
   lireEtatJour,
   lireEtatsJours,
 } from '../domain/calendrier-scolaire.js';
+import { notifier } from '../services/notifier.js';
 
 const uuid = z.string().uuid('Identifiant invalide.');
 const optionalText = (max: number) => z.string().trim().max(max).optional().nullable();
 
 export async function registerParentRoutes(deps: AppDependencies): Promise<void> {
-  const { app, db, audit, secrets, guard } = deps;
+  const { app, db, audit, secrets, guard, push } = deps;
 
   const authDeps = {
     db,
@@ -463,17 +464,17 @@ export async function registerParentRoutes(deps: AppDependencies): Promise<void>
 
       // L'école est prévenue qu'un parent demande l'accès.
       if (!autoApprove) {
-        await client.query(
-          `INSERT INTO app.notifications
-             (school_id, audience, kind, title, body, severity, entity_type, entity_id, action_url)
-           VALUES ($1,'ecole','parent_a_valider',$2,$3,'attention','student',$4,'/ecole/parents')`,
-          [
-            student.school_id,
-            'Nouvelle demande de connexion parent',
-            `${req.auth!.displayName} souhaite accéder au suivi de ${student.full_name} (${student.classe}).`,
-            student.student_id,
-          ],
-        );
+        await notifier(client, push, {
+          schoolId: student.school_id,
+          audience: 'ecole',
+          kind: 'parent_a_valider',
+          title: 'Nouvelle demande de connexion parent',
+          body: `${req.auth!.displayName} souhaite accéder au suivi de ${student.full_name} (${student.classe}).`,
+          severity: 'attention',
+          entityType: 'student',
+          entityId: student.student_id,
+          actionUrl: '/ecole/parents',
+        });
       }
 
       return { student, link: linkRows[0]!, created: true, autoApprove };
@@ -1141,18 +1142,17 @@ export async function registerParentRoutes(deps: AppDependencies): Promise<void>
       });
 
       // L'administration est prévenue
-      await client.query(
-        `INSERT INTO app.notifications
-           (school_id, audience, kind, title, body, severity, entity_type, entity_id, action_url)
-         VALUES ($1,'ecole','nouvelle_demande',$2,$3,$4,'request',$5,'/ecole/demandes')`,
-        [
-          schoolId,
-          `${input.kind === 'justification_absence' ? 'Justification d’absence' : 'Nouvelle demande'} : ${input.subject}`,
-          input.message.slice(0, 400),
-          input.kind === 'justification_absence' ? 'attention' : 'info',
-          request.id,
-        ],
-      );
+      await notifier(client, push, {
+        schoolId,
+        audience: 'ecole',
+        kind: 'nouvelle_demande',
+        title: `${input.kind === 'justification_absence' ? 'Justification d’absence' : 'Nouvelle demande'} : ${input.subject}`,
+        body: input.message.slice(0, 400),
+        severity: input.kind === 'justification_absence' ? 'attention' : 'info',
+        entityType: 'request',
+        entityId: request.id,
+        actionUrl: '/ecole/demandes',
+      });
 
       return request;
     });
@@ -1208,12 +1208,17 @@ export async function registerParentRoutes(deps: AppDependencies): Promise<void>
         [id],
       );
 
-      await client.query(
-        `INSERT INTO app.notifications
-           (school_id, audience, kind, title, body, severity, entity_type, entity_id, action_url)
-         VALUES ($1,'ecole','message_parent','Nouveau message d’un parent',$2,'info','request',$3,'/ecole/demandes')`,
-        [owned.rows[0].school_id, parsed.data.message.slice(0, 400), id],
-      );
+      await notifier(client, push, {
+        schoolId: owned.rows[0].school_id,
+        audience: 'ecole',
+        kind: 'message_parent',
+        title: 'Nouveau message d’un parent',
+        body: parsed.data.message.slice(0, 400),
+        severity: 'info',
+        entityType: 'request',
+        entityId: id,
+        actionUrl: '/ecole/demandes',
+      });
 
       return { ok: true };
     });

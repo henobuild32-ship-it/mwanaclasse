@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { Observable, firstValueFrom, from, map } from 'rxjs';
 import { ApiService, ApiError } from './api.service';
 import { EnfantActifService } from './enfant-actif.service';
+import { PushService } from './push.service';
 import { Interface, ProfilConnexion, ReponseConnexion } from './models';
 import { proposeSections } from './types-ecole';
 
@@ -25,6 +26,7 @@ export class SessionService {
   private readonly api = inject(ApiService);
   private readonly router = inject(Router);
   private readonly enfantActif = inject(EnfantActifService);
+  private readonly push = inject(PushService);
 
   readonly profil = signal<ProfilConnexion | null>(null);
   readonly charge = signal(true);
@@ -95,6 +97,9 @@ export class SessionService {
       this.profil.set({ ...profil, kind: iface });
       this.interface.set(iface);
       this.enregistrerLocal();
+      // L'abonnement push de l'appareil est renouvelé à chaque ouverture
+      // (synchronisation offline-first, sans blocage de l'interface).
+      void this.push.resynchroniser();
     } catch (err) {
       const e = err as ApiError;
       if (e.status === 401 || e.status === 403) this.vider();
@@ -143,6 +148,9 @@ export class SessionService {
   }
 
   async deconnexion(): Promise<void> {
+    // L'abonnement push de l'appareil est désactivé côté serveur avant la
+    // révocation de la session.
+    await this.push.desactiverSilencieusement();
     try {
       await firstValueFrom(this.api.post('auth/deconnexion'));
     } catch {
@@ -153,6 +161,7 @@ export class SessionService {
   }
 
   async deconnexionPartout(): Promise<void> {
+    await this.push.desactiverSilencieusement();
     try {
       await firstValueFrom(this.api.post('auth/deconnexion-partout'));
     } catch {

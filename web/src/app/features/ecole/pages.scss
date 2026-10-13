@@ -40,6 +40,94 @@
 .lien-carte__titre { font-weight: 600; font-size: 1rem; margin-bottom: 2px; }
 .lien-carte__sous { font-size: 0.82rem; color: var(--mc-texte-2); }
 
+/* ==========================================================================
+ *  Module « Plus » — sections + lignes pleine largeur (spec §5)
+ * ========================================================================== */
+
+.menu-section__titre {
+  margin: 4px 0 8px;
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--mc-texte-3);
+}
+
+.menu-section__lignes {
+  background: var(--mc-fond-2);
+  border: 1px solid var(--mc-trait);
+  border-radius: var(--mc-rayon);
+  box-shadow: var(--mc-ombre);
+  overflow: hidden;
+}
+
+.menu-ligne {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 64px;
+  padding: 12px 14px;
+  text-decoration: none;
+  color: var(--mc-texte);
+  border-bottom: 1px solid var(--mc-trait);
+  transition: background 0.12s;
+}
+.menu-ligne:last-child { border-bottom: 0; }
+.menu-ligne:hover { background: var(--mc-fond); }
+.menu-ligne:active { background: var(--mc-primaire-10); }
+
+.menu-ligne__icone {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: var(--mc-primaire-10);
+  display: grid;
+  place-items: center;
+  font-size: 1.25rem;
+  flex: 0 0 auto;
+}
+
+.menu-ligne__texte {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.menu-ligne__titre {
+  font-weight: 600;
+  font-size: 0.98rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.menu-ligne__sous {
+  font-size: 0.8rem;
+  color: var(--mc-texte-2);
+  overflow-wrap: anywhere;
+}
+
+.menu-ligne__badge {
+  flex: 0 0 auto;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--mc-danger);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 22px;
+  text-align: center;
+}
+
+.menu-ligne__chevron {
+  flex: 0 0 auto;
+  font-size: 1.3rem;
+  color: var(--mc-texte-3);
+  line-height: 1;
+}
+
 /* Jauge de progression */
 .jauge {
   height: 8px;

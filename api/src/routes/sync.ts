@@ -37,6 +37,7 @@ import {
 import { AUDIT_ACTIONS } from '../security/audit.js';
 import { normalizeStudentCode } from '../security/codes.js';
 import { libelleFermeture, lireEtatJour } from '../domain/calendrier-scolaire.js';
+import { notifier } from '../services/notifier.js';
 
 /* ==========================================================================
  *  Schémas
@@ -1411,17 +1412,17 @@ async function applyOperation(
       );
 
       if (!autoApprove) {
-        await client.query(
-          `INSERT INTO app.notifications
-             (school_id, audience, kind, title, body, severity, entity_type, entity_id, action_url)
-           VALUES ($1,'ecole','parent_a_valider',$2,$3,'attention','student',$4,'/ecole/parents')`,
-          [
-            student.school_id,
-            'Nouvelle demande de connexion parent',
-            `${auth.displayName} souhaite accéder au suivi de ${student.full_name} (${student.classe}).`,
-            student.student_id,
-          ],
-        );
+        await notifier(client, deps.push, {
+          schoolId: student.school_id,
+          audience: 'ecole',
+          kind: 'parent_a_valider',
+          title: 'Nouvelle demande de connexion parent',
+          body: `${auth.displayName} souhaite accéder au suivi de ${student.full_name} (${student.classe}).`,
+          severity: 'attention',
+          entityType: 'student',
+          entityId: student.student_id,
+          actionUrl: '/ecole/parents',
+        });
       }
 
       return {
