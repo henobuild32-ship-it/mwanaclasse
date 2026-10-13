@@ -16,19 +16,21 @@
         Activer les notifications
       </button>
     } @else if (abonne() && permission === 'granted') {
-      <div class="ligne-reglages">
-        <span class="vignette-icone" aria-hidden="true">🔔</span>
-        <div class="ligne-reglages__principal">
-          <div class="ligne-reglages__titre">Cet appareil reçoit les notifications</div>
-          <div class="texte-doux">Vous pouvez les désactiver à tout moment.</div>
+      <div class="etat-appareil">
+        <div class="etat-appareil__ligne">
+          <span class="vignette-icone" aria-hidden="true">🔔</span>
+          <div class="etat-appareil__texte">
+            <div class="etat-appareil__titre">Cet appareil reçoit les notifications</div>
+            <div class="texte-doux">Vous pouvez les désactiver à tout moment.</div>
+          </div>
         </div>
         <button class="btn btn--secondaire" type="button" [disabled]="enCours()" (click)="desactiver()">
           Désactiver
         </button>
+        <button class="btn btn--secondaire" type="button" [disabled]="enCours()" (click)="envoyerTest()">
+          Envoyer une notification de test
+        </button>
       </div>
-      <button class="btn btn--secondaire" type="button" [disabled]="enCours()" (click)="envoyerTest()">
-        Envoyer une notification de test
-      </button>
     } @else {
       <p class="texte-doux">
         La permission est refusée. Ouvrez les réglages de votre navigateur pour

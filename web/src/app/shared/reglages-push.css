@@ -22,20 +22,41 @@
   margin: var(--mc-espace-4, 20px) 0;
 }
 
-.ligne-reglages {
+/* État de l'appareil : icône + texte sur la ligne 1, boutons pleine
+   largeur empilés dessous (mobile-first, jamais de colonne étroite). */
+.etat-appareil {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 12px;
   margin-bottom: var(--mc-espace-3, 16px);
 }
 
-.ligne-reglages__principal {
-  flex: 1;
+.etat-appareil__ligne {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
   min-width: 0;
 }
 
-.ligne-reglages__titre {
+.etat-appareil__texte {
+  flex: 1;
+  min-width: 0;
+  word-break: normal;
+  overflow-wrap: break-word;
+}
+
+.etat-appareil__titre {
   font-weight: 600;
+  word-break: normal;
+  overflow-wrap: break-word;
+}
+
+/* Dans cette carte, les titres de liste ne tronquent jamais (ellipsis) :
+   ils passent à la ligne sur les petits écrans. */
+.carte--reglages-push .ligne-liste__titre {
+  white-space: normal;
+  overflow-wrap: break-word;
+  text-overflow: unset;
 }
 
 /* Interrupteur toggle (accessible, sans débordement). */
