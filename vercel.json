@@ -14,12 +14,6 @@
       "framework": "angular"
     }
   },
-  "crons": [
-    {
-      "path": "/api/cron/rappels-calendrier",
-      "schedule": "0 7 * * *"
-    }
-  ],
   "rewrites": [
     {
       "source": "/api/(.*)",
