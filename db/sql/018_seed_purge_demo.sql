@@ -7,8 +7,8 @@
 --  démonstration cohérent destiné à la mise en production initiale.
 --
 --  Comptes créés (mots de passe PUBLICS — jamais utiliser en réel) :
---    • École  : mwanaclasse12@gmail.com / 123456ecole
---    • Parent : mwanaclasse@gmail.com  / 123456ecole
+--    • École  : ecole@mwanaclasse.com  / 12345678
+--    • Parent : parent@mwanaclasse.com / 12345678
 --
 --  Le poivre (MWANA_PEPPER_PASSWORD) est lu depuis la variable de session
 --  « app.seed_pepper », posée par « npm run db:seed -- --force-production ».
@@ -212,11 +212,11 @@ BEGIN
   ) VALUES (
     gen_random_uuid(),
     v_school,
-    'mwanaclasse12@gmail.com',
+    'ecole@mwanaclasse.com',
     'Jean-Pierre Kabeya',
     'Directeur Général',
     '+243820000001',
-    app.demo_password_hash('123456ecole', current_setting('app.seed_pepper', true)),
+    app.demo_password_hash('12345678', current_setting('app.seed_pepper', true)),
     'bcrypt',
     'v1',
     true,
@@ -292,7 +292,7 @@ BEGIN
     app.format_parent_code(app.random_code(6)),
     'Marie-Claire Mwana',
     'mere',
-    'mwanaclasse@gmail.com',
+    'parent@mwanaclasse.com',
     '+243990000002',
     v_now - interval '3 months',
     v_now - interval '3 months',
@@ -318,7 +318,7 @@ BEGIN
     must_change_password, terms_accepted_at, privacy_accepted_at, last_login_at
   ) VALUES (
     v_parent,
-    app.demo_password_hash('123456ecole', current_setting('app.seed_pepper', true)),
+    app.demo_password_hash('12345678', current_setting('app.seed_pepper', true)),
     'bcrypt',
     'v1',
     false,
@@ -667,8 +667,8 @@ BEGIN
   -- =========================================================================
   RAISE NOTICE '=== JEU DE DÉMONSTRATION CRÉÉ ===';
   RAISE NOTICE 'École : Complexe Scolaire MwanaClasse (Kinshasa)';
-  RAISE NOTICE 'Compte école  : mwanaclasse12@gmail.com / 123456ecole';
-  RAISE NOTICE 'Compte parent : mwanaclasse@gmail.com  / 123456ecole';
+  RAISE NOTICE 'Compte école  : ecole@mwanaclasse.com  / 12345678';
+  RAISE NOTICE 'Compte parent : parent@mwanaclasse.com / 12345678';
   RAISE NOTICE 'Élèves : % — Classes : %', array_length(v_students, 1), array_length(v_classes, 1);
   RAISE NOTICE 'Présences : % présents, % absents, % justifiés, % retards',
                v_presents, v_absents, v_justifies, v_retards;
