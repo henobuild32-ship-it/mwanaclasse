@@ -1,0 +1,83 @@
+@if (chargement()) {
+  <app-chargement texte="Chargement des paramètres…" />
+} @else if (erreur()) {
+  <app-etat-vide texte="{{ erreur() }}" icone="📡" />
+} @else {
+  <div class="page-entete">
+    <div>
+      <h1>Paramètres</h1>
+      <p>Compte unique du Ministère de l'EPST.</p>
+    </div>
+  </div>
+
+  @if (donnees()!.compte.isDefaultPassword) {
+    <div class="encart" role="status">
+      🔐 <strong>Pour votre sécurité, changez le mot de passe dans Paramètres.</strong>
+      Le mot de passe de départ reste actif tant que vous ne l'avez pas modifié — la connexion n'est pas bloquée.
+    </div>
+  }
+
+  <section class="escalier">
+    <div class="carte">
+      <div class="carte__titre"><span>Identifiant de connexion</span></div>
+      <div class="champ">
+        <label for="identifiant-ministere">Identifiant (adresse e-mail) *</label>
+        <input
+          id="identifiant-ministere"
+          name="identifiant"
+          type="email"
+          maxlength="160"
+          [(ngModel)]="nouvelIdentifiant"
+        />
+      </div>
+      <div class="btn-groupe">
+        <button
+          class="btn btn--primaire btn--ligne"
+          type="button"
+          [disabled]="!identifiantValide() || enCoursId() || nouvelIdentifiant.trim() === donnees()!.compte.identifier"
+          (click)="changerIdentifiant()"
+        >
+          {{ enCoursId() ? 'Enregistrement…' : 'Enregistrer l’identifiant' }}
+        </button>
+      </div>
+      @if (donnees()!.compte.passwordChangedAt) {
+        <p class="texte-doux" style="margin-top: 10px">
+          Dernier changement de mot de passe : {{ donnees()!.compte.passwordChangedAt | slice: 0:16 }}
+        </p>
+      }
+    </div>
+
+    <div class="carte">
+      <div class="carte__titre"><span>Changer le mot de passe</span></div>
+      <div class="champ">
+        <label for="mdp-actuel">Mot de passe actuel *</label>
+        <input id="mdp-actuel" name="mdpActuel" type="password" [(ngModel)]="ancienMdp" autocomplete="current-password" />
+      </div>
+      <div class="grille-2">
+        <div class="champ">
+          <label for="mdp-nouveau">Nouveau mot de passe *</label>
+          <input id="mdp-nouveau" name="mdpNouveau" type="password" minlength="8" [(ngModel)]="nouveauMdp" autocomplete="new-password" />
+          <span class="champ__erreur">{{ nouveauMdp.length > 0 && nouveauMdp.length < 8 ? 'Au moins 8 caractères.' : '' }}</span>
+        </div>
+        <div class="champ">
+          <label for="mdp-confirm">Confirmation *</label>
+          <input id="mdp-confirm" name="mdpConfirm" type="password" minlength="8" [(ngModel)]="confirmationMdp" autocomplete="new-password" />
+          <span class="champ__erreur">{{ confirmationMdp.length > 0 && confirmationMdp !== nouveauMdp ? 'Les deux mots de passe ne correspondent pas.' : '' }}</span>
+        </div>
+      </div>
+      <div class="btn-groupe">
+        <button
+          class="btn btn--primaire btn--ligne"
+          type="button"
+          [disabled]="!motDePasseValide() || enCoursMdp()"
+          (click)="changerMotDePasse()"
+        >
+          {{ enCoursMdp() ? 'Changement…' : 'Modifier le mot de passe' }}
+        </button>
+      </div>
+      <p class="texte-doux" style="margin-top: 10px">
+        Le changement n'est pas obligatoire : la connexion reste possible avec le mot de passe de départ. Il est simplement recommandé.
+      </p>
+    </div>
+  </section>
+}

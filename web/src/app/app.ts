@@ -12,7 +12,7 @@ const ROUTES_PUBLIQUES = /^\/(connexion\/|inscription\/|mot-de-passe-oublie$|con
 
 /** Dernière page intérieure visitée : un rechargement y revient au lieu de l'accueil. */
 const CLE_DERNIER_CHEMIN = 'mwana.dernier_chemin';
-const CHEMIN_INTERIEUR = /^\/(ecole|parent)(\/|$)/;
+const CHEMIN_INTERIEUR = /^\/(ecole|parent|ministere)(\/|$)/;
 
 @Component({
   selector: 'app-root',

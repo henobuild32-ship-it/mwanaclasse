@@ -1,0 +1,145 @@
+<div class="page-entete">
+  <div>
+    <h1>Communiqués</h1>
+    <p>Envoyer les communiqués officiels aux écoles de Kinshasa.</p>
+  </div>
+  <div class="page-entete__actions">
+    <button class="btn btn--discret btn--ligne" type="button" [class.actif]="vue() === 'rediger'" (click)="vue.set('rediger')">Rédiger</button>
+    <button class="btn btn--discret btn--ligne" type="button" [class.actif]="vue() === 'historique'" (click)="chargerHistoire(); vue.set('historique')">Historique</button>
+  </div>
+</div>
+
+@if (vue() === 'rediger') {
+  <div class="carte">
+    <div class="carte__titre"><span>Nouveau communiqué</span></div>
+
+    <div class="champ">
+      <label for="titre-communique">Titre *</label>
+      <input id="titre-communique" name="titre" maxlength="250" [(ngModel)]="titre" placeholder="Ex. Ouverture officielle des classes" />
+    </div>
+
+    <div class="champ">
+      <label for="message-communique">Message *</label>
+      <textarea id="message-communique" rows="6" maxlength="5000" [(ngModel)]="message" placeholder="Texte du communiqué…" style="white-space: pre-wrap"></textarea>
+    </div>
+
+    <div class="champ">
+      <label>Pièce jointe (PDF ou image, facultatif)</label>
+      <input type="file" accept="application/pdf,image/*" (change)="ecouterFichier($event)" />
+      @if (nomPiece) {
+        <div class="texte-doux">Fichier choisi : {{ nomPiece }}</div>
+      }
+    </div>
+
+    <div class="champ">
+      <div class="choix-multiples" role="radiogroup" aria-label="Destinataires">
+        <label class="choix-multiple" [class.choix-multiple--actif]="destinataire === 'toutes'">
+          <input type="radio" name="destinataire" [(ngModel)]="destinataire" value="toutes" />
+          <span>À toutes les écoles de Kinshasa</span>
+        </label>
+        <label class="choix-multiple" [class.choix-multiple--actif]="destinataire === 'ecole'">
+          <input type="radio" name="destinataire" [(ngModel)]="destinataire" value="ecole" />
+          <span>À une école précise</span>
+        </label>
+      </div>
+    </div>
+
+    @if (destinataire === 'ecole') {
+      <div class="champ">
+        <label for="ecole-dest">École destinataire *</label>
+        <select id="ecole-dest" [(ngModel)]="ecoleChoisieId">
+          <option value="">— Choisir une école —</option>
+          @for (e of ecoles(); track e.id) {
+            <option [value]="e.id">{{ e.official_name }} ({{ e.commune ?? '—' }})</option>
+          }
+        </select>
+      </div>
+    }
+
+    <div class="champ">
+      <div class="choix-multiples" role="radiogroup" aria-label="Niveau">
+        <label class="choix-multiple" [class.choix-multiple--actif]="urgent === false">
+          <input type="radio" name="niveau" [(ngModel)]="urgent" [value]="false" />
+          <span>Normal</span>
+        </label>
+        <label class="choix-multiple" [class.choix-multiple--actif]="urgent === true">
+          <input type="radio" name="niveau" [(ngModel)]="urgent" [value]="true" />
+          <span>🚨 Urgent</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="btn-groupe">
+      <button class="btn btn--primaire btn--ligne" type="button" [disabled]="!formValide() || enCours()" (click)="demanderConfirmation()">
+        Envoyer
+      </button>
+    </div>
+  </div>
+}
+
+@if (vue() === 'historique') {
+  <div class="carte">
+    <div class="carte__titre">
+      <span>Historique des envois</span>
+      <button class="btn btn--discret btn--ligne" type="button" (click)="chargerHistoire()" [disabled]="chargementHisto()">Actualiser</button>
+    </div>
+    @if (chargementHisto()) {
+      <app-chargement texte="Chargement de l'historique…" />
+    } @else if (erreurHisto()) {
+      <app-etat-vide texte="{{ erreurHisto() }}" icone="📡" />
+    } @else if (historique().length === 0) {
+      <app-etat-vide texte="Aucun communiqué envoyé pour l'instant." icone="📤" />
+    } @else {
+      <ul class="liste">
+        @for (c of historique(); track c.id) {
+          <li class="ligne-liste ligne-liste--haut">
+            <div class="ligne-liste__principal">
+              <div class="ligne-liste__titre">
+                {{ c.title }}
+                @if (c.is_urgent) {
+                  <span class="pastille pastille--danger">Urgent</span>
+                }
+              </div>
+              <div class="ligne-liste__sous">
+                {{ cible(c) }} · envoyé le {{ c.sent_at | slice: 0:16 | slice: 0:16 }}
+              </div>
+              <div class="texte-doux" style="margin-top: 4px; white-space: pre-wrap">{{ c.message }}</div>
+              @if (c.attachment_name) {
+                <div class="texte-doux">📎 {{ c.attachment_name }}</div>
+              }
+            </div>
+            <div class="ligne-liste__fin">
+              <span class="texte-petit">{{ c.target_count ?? 0 }} école(s)</span>
+            </div>
+          </li>
+        }
+      </ul>
+    }
+  </div>
+}
+
+<!-- Écran de confirmation avant l'envoi -->
+@if (confirmationVisible()) {
+  <div class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="titre-confirm">
+    <div class="feuille">
+      <div class="feuille__entete">
+        <strong id="titre-confirm">Confirmer l'envoi</strong>
+        <button class="btn-icone" type="button" (click)="annulerEnvoi()" aria-label="Fermer">✕</button>
+      </div>
+      <div class="feuille__corps">
+        <p style="margin: 0 0 8px; font-size: 1rem; font-weight: 600;">
+          Ce communiqué sera envoyé à {{ confirmationNombre() }} école(s).
+        </p>
+        <p class="texte-doux" style="margin: 0 0 12px;">
+          Cette action ne peut pas être annulée. Chaque envoi est enregistré dans l'historique (qui, quand, à qui).
+        </p>
+        <div class="btn-groupe">
+          <button class="btn btn--primaire btn--ligne" type="button" (click)="envoyer()" [disabled]="enCours()">
+            {{ enCours() ? 'Envoi…' : 'Confirmer l’envoi' }}
+          </button>
+          <button class="btn btn--discret btn--ligne" type="button" (click)="annulerEnvoi()" [disabled]="enCours()">Annuler</button>
+        </div>
+      </div>
+    </div>
+  </div>
+}

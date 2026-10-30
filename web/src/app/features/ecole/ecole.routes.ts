@@ -49,6 +49,12 @@ export const ECOLE_ROUTES: Routes = [
         loadComponent: () => import('./communiques').then((m) => m.CommuniquesEcole),
       },
       {
+        // Communiqués officiels reçus du Ministère de l'EPST (lecture seule).
+        path: 'communiques-recus',
+        loadComponent: () =>
+          import('./communiques-recus').then((m) => m.CommuniquesRecusMinistere),
+      },
+      {
         path: 'demandes',
         loadComponent: () => import('./demandes').then((m) => m.DemandesEcole),
       },

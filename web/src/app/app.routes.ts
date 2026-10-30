@@ -74,5 +74,13 @@ export const routes: Routes = [
     loadChildren: () =>
       import('./features/parent/parent.routes').then((m) => m.PARENT_ROUTES),
   },
+  {
+    // Espace réservé au Ministère de l'EPST — invisible du public :
+    // accès uniquement depuis la connexion habituelle avec son compte dédié.
+    path: 'ministere',
+    canMatch: [gardeInterface('ministere')],
+    loadChildren: () =>
+      import('./features/ministere/ministere.routes').then((m) => m.MINISTERE_ROUTES),
+  },
   { path: '**', redirectTo: '' },
 ];

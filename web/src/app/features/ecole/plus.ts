@@ -31,6 +31,7 @@ export class PlusEcole {
   protected readonly notificationsNonLues = signal(0);
   protected readonly demandesNonTraitees = signal(0);
   protected readonly liaisonsEnAttente = signal(0);
+  protected readonly communiquesMinistereNonLus = signal(0);
 
   protected readonly sections = computed<Section[]>(() => {
     const avecSections = this.session.sectionsVisibles();
@@ -72,6 +73,13 @@ export class PlusEcole {
         titre: 'Communication',
         destinations: [
           { chemin: '/ecole/communiques', icone: '📢', titre: 'Communiqués', sous: 'Rédiger et publier' },
+          {
+            chemin: '/ecole/communiques-recus',
+            icone: '🏛️',
+            titre: 'Communiqués reçus',
+            sous: 'Officiels du Ministère de l\'EPST',
+            nonLus: () => this.communiquesMinistereNonLus(),
+          },
           { chemin: '/ecole/documents', icone: '📄', titre: 'Documents', sous: 'Fichiers mis à disposition' },
           { chemin: '/ecole/calendrier', icone: '📅', titre: 'Calendrier', sous: 'Événements à venir' },
           {
@@ -119,6 +127,12 @@ export class PlusEcole {
       this.liaisonsEnAttente.set(enAttente);
     } catch {
       /* best effort */
+    }
+    try {
+      const r = await this.api.lire<{ nonLusCount: number }>('ecole/communiques-recus');
+      this.communiquesMinistereNonLus.set(r?.nonLusCount ?? 0);
+    } catch {
+      /* best effort (ou si le module n'est pas encore déployé côté serveur) */
     }
   }
 }

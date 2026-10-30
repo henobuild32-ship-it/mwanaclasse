@@ -4,7 +4,7 @@
  * dont la présence varie selon les routes ou les versions.
  */
 
-export type Interface = 'ecole' | 'parent';
+export type Interface = 'ecole' | 'parent' | 'ministere';
 
 export interface ReponseConnexion {
   message: string;
@@ -35,6 +35,7 @@ export interface ProfilConnexion {
   is_owner?: boolean;
   permissions?: string[];
   mustChangePassword?: boolean;
+  isDefaultPassword?: boolean;
   twoFactorEnabled?: boolean;
   totp_enabled?: boolean;
   childrenCount?: number;
@@ -413,4 +414,54 @@ export interface EtatSync {
   operationsEnAttente?: number;
   conflitsNonResolus?: number;
   conseil?: string;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Ministère de l'EPST (Kinshasa)                                     */
+/* ------------------------------------------------------------------ */
+
+export interface EcoleKinshasa {
+  id: string;
+  public_code: string;
+  official_name: string;
+  short_name?: string | null;
+  type?: string | null;
+  types?: string[] | null;
+  commune?: string | null;
+  city?: string | null;
+  address_line?: string | null;
+  phone_contact?: string | null;
+  email?: string | null;
+  is_active: boolean;
+  created_at?: string;
+  eleves_count?: number;
+  classes_count?: number;
+}
+
+export interface CommuniqueMinistere {
+  id: string;
+  title: string;
+  message: string;
+  attachment_url?: string | null;
+  attachment_name?: string | null;
+  attachment_type?: string | null;
+  is_urgent: boolean;
+  target_type?: 'toutes_ecoles' | 'ecole_specifique';
+  target_school_id?: string | null;
+  target_school_name?: string | null;
+  target_count?: number;
+  sender_label?: string;
+  sent_by?: string;
+  sent_at: string;
+  lu?: boolean;
+  read_at?: string | null;
+  lectures_count?: number;
+}
+
+export interface ParametresMinistere {
+  id: string;
+  identifier: string;
+  isDefaultPassword: boolean;
+  passwordChangedAt?: string | null;
+  createdAt: string;
 }

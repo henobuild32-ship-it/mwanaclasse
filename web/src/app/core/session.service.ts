@@ -35,6 +35,7 @@ export class SessionService {
   readonly interface = signal<Interface | null>(null);
   readonly estEcole = computed(() => this.interface() === 'ecole');
   readonly estParent = computed(() => this.interface() === 'parent');
+  readonly estMinistere = computed(() => this.interface() === 'ministere');
   readonly nomAffiche = computed(() => {
     const p = this.profil();
     if (!p) return '';
@@ -93,7 +94,7 @@ export class SessionService {
       );
       const profil = reponse.profil;
       const iface: Interface =
-        profil.interface ?? (profil.school_id || profil.schoolId ? 'ecole' : 'parent');
+        profil.interface ?? (profil.kind === 'ministere' ? 'ministere' : profil.school_id || profil.schoolId ? 'ecole' : 'parent');
       this.profil.set({ ...profil, kind: iface });
       this.interface.set(iface);
       this.enregistrerLocal();
@@ -114,7 +115,11 @@ export class SessionService {
     const reponse = await firstValueFrom(
       this.api.post<ReponseConnexion>('auth/ecole/connexion', body),
     );
-    this.ouvrirSession(reponse, 'ecole');
+    const iface: Interface =
+      reponse.profil.kind === 'ministere' || reponse.profil.interface === 'ministere'
+        ? 'ministere'
+        : 'ecole';
+    this.ouvrirSession(reponse, iface);
     return reponse;
   }
 
@@ -126,7 +131,11 @@ export class SessionService {
     const reponse = await firstValueFrom(
       this.api.post<ReponseConnexion>('auth/parent/connexion', body),
     );
-    this.ouvrirSession(reponse, 'parent');
+    const iface: Interface =
+      reponse.profil.kind === 'ministere' || reponse.profil.interface === 'ministere'
+        ? 'ministere'
+        : 'parent';
+    this.ouvrirSession(reponse, iface);
     return reponse;
   }
 

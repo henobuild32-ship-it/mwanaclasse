@@ -184,6 +184,30 @@ export function requireAuth(deps: {
       return;
     }
 
+    if (identity.audience === 'ministere' && identity.ministereId) {
+      const account = await deps.db.withIdentity({ actor: 'system' }, async (client) => {
+        const { rows } = await client.query<{ id: string; identifier: string }>(
+          `SELECT id, identifier FROM app.ministere_account WHERE id = $1`,
+          [identity.ministereId],
+        );
+        return rows[0] ?? null;
+      });
+
+      if (!account) {
+        return reply.code(403).send({ erreur: 'COMPTE_INTROUVABLE', message: 'Compte Ministère introuvable.' });
+      }
+
+      req.auth = {
+        identity,
+        schoolId: null,
+        userId: account.id,
+        displayName: 'Ministère de l\'EPST',
+        permissions: ['ministere.*'],
+        isOwner: true,
+      };
+      return;
+    }
+
     return reply.code(401).send({
       erreur: 'SESSION_INVALIDE',
       message: 'Votre session n’est plus valide. Reconnectez-vous.',

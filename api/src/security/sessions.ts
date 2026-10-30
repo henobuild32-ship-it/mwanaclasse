@@ -25,7 +25,7 @@ import type { PoolClient } from 'pg';
 import { randomToken, sha256Hex } from './crypto.js';
 import type { AppConfig } from '../config/index.js';
 
-export type Audience = 'parent' | 'ecole';
+export type Audience = 'parent' | 'ecole' | 'ministere';
 
 export interface SessionIdentity {
   sessionId: string;
@@ -33,6 +33,7 @@ export interface SessionIdentity {
   parentId?: string | null;
   staffUserId?: string | null;
   schoolId?: string | null;
+  ministereId?: string | null;
   mfaSatisfied: boolean;
   deviceId?: string | null;
 }
@@ -81,6 +82,7 @@ export class SessionService {
       parentId?: string | null;
       staffUserId?: string | null;
       schoolId?: string | null;
+      ministereId?: string | null;
       ip?: string | null;
       userAgent?: string | null;
       deviceId?: string | null;
@@ -99,16 +101,17 @@ export class SessionService {
 
     const { rows } = await client.query<{ id: string }>(
       `INSERT INTO sec.sessions
-         (audience, parent_id, staff_user_id, school_id, refresh_token_hash, token_family,
+         (audience, parent_id, staff_user_id, school_id, ministere_id, refresh_token_hash, token_family,
           ip, user_agent, device_id, device_label, mfa_satisfied, mfa_method,
           expires_at, absolute_expires_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
        RETURNING id`,
       [
         input.audience,
         input.parentId ?? null,
         input.staffUserId ?? null,
         input.schoolId ?? null,
+        input.ministereId ?? null,
         refreshHash,
         family,
         input.ip ?? null,
@@ -129,6 +132,7 @@ export class SessionService {
       parentId: input.parentId ?? null,
       staffUserId: input.staffUserId ?? null,
       schoolId: input.schoolId ?? null,
+      ministereId: input.ministereId ?? null,
       deviceId: input.deviceId ?? null,
       mfa: input.mfaSatisfied ?? false,
     });
@@ -161,6 +165,7 @@ export class SessionService {
       parent_id: string | null;
       staff_user_id: string | null;
       school_id: string | null;
+      ministere_id: string | null;
       token_family: string;
       device_id: string | null;
       mfa_satisfied: boolean;
@@ -169,7 +174,7 @@ export class SessionService {
       revoked_at: string | null;
       revoked_reason: string | null;
     }>(
-      `SELECT id, audience, parent_id, staff_user_id, school_id, token_family,
+      `SELECT id, audience, parent_id, staff_user_id, school_id, ministere_id, token_family,
               device_id, mfa_satisfied, expires_at, absolute_expires_at,
               revoked_at, revoked_reason
          FROM sec.sessions
@@ -223,6 +228,7 @@ export class SessionService {
       parentId: session.parent_id,
       staffUserId: session.staff_user_id,
       schoolId: session.school_id,
+      ministereId: session.ministere_id,
       ip: input.ip ?? null,
       userAgent: input.userAgent ?? null,
       deviceId: session.device_id,
@@ -240,6 +246,7 @@ export class SessionService {
         parentId: session.parent_id,
         staffUserId: session.staff_user_id,
         schoolId: session.school_id,
+        ministereId: session.ministere_id,
         mfaSatisfied: session.mfa_satisfied,
         deviceId: session.device_id,
       },
@@ -314,13 +321,14 @@ export class SessionService {
       parent_id: string | null;
       staff_user_id: string | null;
       school_id: string | null;
+      ministere_id: string | null;
       mfa_satisfied: boolean;
       device_id: string | null;
       revoked_at: string | null;
       expires_at: string;
       absolute_expires_at: string;
     }>(
-      `SELECT id, audience, parent_id, staff_user_id, school_id, mfa_satisfied,
+      `SELECT id, audience, parent_id, staff_user_id, school_id, ministere_id, mfa_satisfied,
               device_id, revoked_at, expires_at, absolute_expires_at
          FROM sec.sessions WHERE id = $1`,
       [sessionId],
@@ -340,6 +348,7 @@ export class SessionService {
       parentId: s.parent_id,
       staffUserId: s.staff_user_id,
       schoolId: s.school_id,
+      ministereId: s.ministere_id,
       mfaSatisfied: s.mfa_satisfied,
       deviceId: s.device_id,
     };
@@ -353,6 +362,7 @@ export class SessionService {
     parentId: string | null;
     staffUserId: string | null;
     schoolId: string | null;
+    ministereId?: string | null;
     deviceId: string | null;
     mfa: boolean;
   }): string {
@@ -363,6 +373,7 @@ export class SessionService {
         pid: payload.parentId,
         uid: payload.staffUserId,
         sch: payload.schoolId,
+        mid: payload.ministereId ?? null,
         did: payload.deviceId,
         mfa: payload.mfa,
       },

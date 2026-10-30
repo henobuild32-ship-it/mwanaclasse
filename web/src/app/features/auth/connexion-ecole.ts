@@ -37,7 +37,12 @@ export class ConnexionEcole {
         password: this.motDePasse,
       });
       const retour = this.route.snapshot.queryParamMap.get('retour') ?? '/ecole';
-      this.router.navigateByUrl(retour.startsWith('/parent') ? '/ecole' : retour);
+      const ifc = this.session.interface();
+      if (ifc === 'ministere') {
+        this.router.navigateByUrl('/ministere');
+      } else {
+        this.router.navigateByUrl(retour.startsWith('/parent') ? '/ecole' : retour);
+      }
     } catch (err) {
       this.erreur.set(toApiError(err).message);
     } finally {

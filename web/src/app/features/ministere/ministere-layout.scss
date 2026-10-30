@@ -1,0 +1,29 @@
+/* Layout espace Ministère — reprend exactement les styles globale (styles.scss).
+   Seule la teinte du bandeau change (bleu État), comme l'école et le parent ont la leur. */
+
+.bandeau-haut {
+  --bandeau-couleur: #1e40af;
+}
+
+.avatar--ministere {
+  background: var(--mc-primaire-10);
+}
+
+/* Rappel sécurité : bandeau discret sous l'en-tête, même ton que les encarts. */
+.rappel-securite {
+  margin: 0 clamp(12px, 4vw, 24px);
+  padding: 10px 14px;
+  border: 1px solid var(--mc-trait);
+  border-radius: 12px;
+  background: var(--mc-primaire-10);
+  color: var(--mc-texte);
+  font-size: 0.9rem;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+
+  a {
+    color: var(--mc-primaire);
+    font-weight: 600;
+  }
+}

@@ -18,7 +18,7 @@ export const gardeConnexion: CanMatchFn = (
 };
 
 /** Vérifie aussi que la session correspond bien à l'interface demandée. */
-export const gardeInterface = (iface: 'ecole' | 'parent'): CanMatchFn => {
+export const gardeInterface = (iface: 'ecole' | 'parent' | 'ministere'): CanMatchFn => {
   return (_route: Route, segments: { path: string }[]): boolean | UrlTree => {
     const session = inject(SessionService);
     const router = inject(Router);
@@ -26,9 +26,8 @@ export const gardeInterface = (iface: 'ecole' | 'parent'): CanMatchFn => {
       return router.createUrlTree(['/'], { queryParams: { retour: chemin(segments) } });
     }
     if (session.interface() !== iface) {
-      return router.createUrlTree([
-        session.interface() === 'parent' ? '/parent' : '/ecole',
-      ]);
+      const ifc = session.interface();
+      return router.createUrlTree([ifc === 'parent' ? '/parent' : ifc === 'ministere' ? '/ministere' : '/ecole']);
     }
     return true;
   };
@@ -39,5 +38,6 @@ export const gardeInvite: CanMatchFn = () => {
   const session = inject(SessionService);
   const router = inject(Router);
   if (!session.connecte()) return true;
-  return router.createUrlTree([session.interface() === 'parent' ? '/parent' : '/ecole']);
+  const ifc = session.interface();
+  return router.createUrlTree([ifc === 'parent' ? '/parent' : ifc === 'ministere' ? '/ministere' : '/ecole']);
 };

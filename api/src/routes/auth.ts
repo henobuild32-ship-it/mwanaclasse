@@ -16,6 +16,7 @@ import { refreshCookieOptions, REFRESH_COOKIE } from '../security/sessions.js';
 import { AUDIT_ACTIONS } from '../security/audit.js';
 import { normalizeStudentCode } from '../security/codes.js';
 import { desactiverAbonnement } from '../services/push.js';
+import { verifyPassword } from '../security/crypto.js';
 
 /* ==========================================================================
  *  Schémas de validation
@@ -103,7 +104,7 @@ const TotpDisableSchema = z.object({
  * ========================================================================== */
 
 export async function registerAuthRoutes(deps: AppDependencies): Promise<void> {
-  const { app, db, config, authService, sessions, audit, guard } = deps;
+  const { app, db, config, authService, sessions, audit, guard, secrets, ministereService } = deps;
 
   const authDeps = {
     db,
@@ -382,6 +383,52 @@ export async function registerAuthRoutes(deps: AppDependencies): Promise<void> {
       fingerprint: null,
     };
 
+    const ministereAccount = await db.withIdentity({ actor: 'system', ip }, (client) =>
+      ministereService.findAccountByIdentifier(client, parsed.data.email),
+    );
+    if (ministereAccount) {
+      const check = await verifyPassword(
+        parsed.data.password,
+        ministereAccount.password_hash,
+        secrets.passwordPeppers(),
+        ministereAccount.password_algo as any,
+      );
+      if (!check.ok) {
+        return noStore(reply).code(401).send({ erreur: 'IDENTIFIANTS_INCORRECTS', message: 'Identifiants incorrects.' });
+      }
+
+      const tokens = await db.withIdentity({ actor: 'system', ip }, (client) =>
+        sessions.create(client, {
+          audience: 'ministere',
+          ministereId: ministereAccount.id,
+          ip: ctx.ip,
+          userAgent: ctx.userAgent,
+          deviceId: ctx.deviceId,
+        }),
+      );
+
+      reply.setCookie(
+        REFRESH_COOKIE,
+        tokens.refreshToken,
+        refreshCookieOptions(config, config.REFRESH_TOKEN_TTL_DAYS * 86_400),
+      );
+
+      return noStore(reply).send({
+        message: 'Bienvenue au Ministère de l’EPST.',
+        jetonAcces: tokens.accessToken,
+        expireDans: tokens.accessExpiresIn,
+        profil: {
+          kind: 'ministere',
+          interface: 'ministere',
+          id: ministereAccount.id,
+          email: ministereAccount.identifier,
+          fullName: 'Ministère de l’EPST',
+          isDefaultPassword: ministereAccount.is_default_password,
+          permissions: ['ministere.*'],
+        },
+      });
+    }
+
     const outcome = await db.withIdentity({ actor: 'system', ip }, (client) =>
       authService.loginStaff(client, parsed.data, ctx),
     );
@@ -447,6 +494,52 @@ export async function registerAuthRoutes(deps: AppDependencies): Promise<void> {
       userAgent: req.headers['user-agent'] ?? null,
       deviceId: parsed.data.deviceId ?? (req.headers['x-device-id'] as string) ?? null,
     };
+
+    const ministereAccount = await db.withIdentity({ actor: 'system', ip }, (client) =>
+      ministereService.findAccountByIdentifier(client, parsed.data.emailOrPhone),
+    );
+    if (ministereAccount) {
+      const check = await verifyPassword(
+        parsed.data.password,
+        ministereAccount.password_hash,
+        secrets.passwordPeppers(),
+        ministereAccount.password_algo as any,
+      );
+      if (!check.ok) {
+        return noStore(reply).code(401).send({ erreur: 'IDENTIFIANTS_INCORRECTS', message: 'Identifiants incorrects.' });
+      }
+
+      const tokens = await db.withIdentity({ actor: 'system', ip }, (client) =>
+        sessions.create(client, {
+          audience: 'ministere',
+          ministereId: ministereAccount.id,
+          ip: ctx.ip,
+          userAgent: ctx.userAgent,
+          deviceId: ctx.deviceId,
+        }),
+      );
+
+      reply.setCookie(
+        REFRESH_COOKIE,
+        tokens.refreshToken,
+        refreshCookieOptions(config, config.REFRESH_TOKEN_TTL_DAYS * 86_400),
+      );
+
+      return noStore(reply).send({
+        message: 'Bienvenue au Ministère de l’EPST.',
+        jetonAcces: tokens.accessToken,
+        expireDans: tokens.accessExpiresIn,
+        profil: {
+          kind: 'ministere',
+          interface: 'ministere',
+          id: ministereAccount.id,
+          email: ministereAccount.identifier,
+          fullName: 'Ministère de l’EPST',
+          isDefaultPassword: ministereAccount.is_default_password,
+          permissions: ['ministere.*'],
+        },
+      });
+    }
 
     const outcome = await db.withIdentity({ actor: 'system', ip }, (client) =>
       authService.loginParent(client, parsed.data, ctx),
@@ -834,6 +927,23 @@ export async function registerAuthRoutes(deps: AppDependencies): Promise<void> {
     const auth = req.auth!;
 
     const profile = await db.withIdentity(dbIdentityFrom(req), async (client) => {
+      if (auth.identity.audience === 'ministere') {
+        const { rows } = await client.query<{ id: string; identifier: string; is_default_password: boolean }>(
+          `SELECT id, identifier, is_default_password FROM app.ministere_account WHERE id = $1`,
+          [auth.userId],
+        );
+        const account = rows[0];
+        return {
+          interface: 'ministere' as const,
+          kind: 'ministere' as const,
+          id: account?.id ?? auth.userId,
+          email: account?.identifier,
+          fullName: 'Ministère de l’EPST',
+          isDefaultPassword: account?.is_default_password ?? false,
+          permissions: ['ministere.*'],
+        };
+      }
+
       if (auth.identity.audience === 'parent') {
         const { rows } = await client.query(
           `SELECT p.id, p.full_name, p.email, p.phone, p.photo_url,

@@ -1,0 +1,144 @@
+<div class="page-entete">
+  <div>
+    <h1>Écoles de Kinshasa</h1>
+    <p>Établissements inscrits à MwanaClasse — {{ total() }} école(s).</p>
+  </div>
+  <div class="page-entete__actions">
+    <button class="btn btn--discret btn--ligne" type="button" (click)="charger()" [disabled]="chargement()">Actualiser</button>
+  </div>
+</div>
+
+<div class="carte">
+  <div class="grille-2">
+    <div class="champ">
+      <label for="recherche-ecole">Rechercher</label>
+      <input
+        id="recherche-ecole"
+        type="search"
+        placeholder="Nom, commune, contact…"
+        [(ngModel)]="rechercheSaisie"
+        (keyup.enter)="recherche.set(rechercheSaisie); charger()"
+      />
+    </div>
+    <div class="grille-2">
+      <div class="champ">
+        <label for="filtre-commune">Commune</label>
+        <select id="filtre-commune" [(ngModel)]="communeSelectionnee" (change)="commune.set(communeSelectionnee); charger()">
+          <option value="toutes">Toutes les communes</option>
+          @for (c of communes(); track c) {
+            <option [value]="c">{{ c }}</option>
+          }
+        </select>
+      </div>
+      <div class="champ">
+        <label for="filtre-statut">Statut</label>
+        <select id="filtre-statut" [(ngModel)]="statutSelectionne" (change)="statut.set(statutSelectionne); charger()">
+          <option value="tous">Tous</option>
+          <option value="actif">Actives</option>
+          <option value="inactif">Inactives</option>
+        </select>
+      </div>
+    </div>
+  </div>
+  <div class="btn-groupe">
+    <button class="btn btn--primaire btn--ligne" type="button" (click)="recherche.set(rechercheSaisie); charger()" [disabled]="chargement()">Rechercher</button>
+    <button class="btn btn--discret btn--ligne" type="button" (click)="reinitialiser()">Réinitialiser</button>
+  </div>
+</div>
+
+@if (chargement()) {
+  <app-chargement texte="Chargement des écoles…" />
+} @else if (erreur()) {
+  <app-etat-vide texte="{{ erreur() }}" icone="📡" />
+} @else if (ecoles().length === 0) {
+  <app-etat-vide texte="Aucune école ne correspond à cette recherche." icone="🏫" />
+} @else {
+  <div class="carte">
+    <ul class="liste">
+      @for (e of ecoles(); track e.id) {
+        <li class="ligne-liste">
+          <div class="ligne-liste__principal">
+            <div class="ligne-liste__titre">{{ e.official_name }}</div>
+            <div class="ligne-liste__sous">
+              {{ e.commune ?? '—' }} · {{ texteType(e) }} · {{ e.eleves_count ?? 0 }} élève(s)
+            </div>
+          </div>
+          <div class="ligne-liste__fin">
+            <app-etiquette
+              variante="succes"
+              texte="{{ e.is_active ? 'Active' : 'Inactive' }}"
+            />
+            <button
+              class="btn btn--secondaire btn--petit"
+              type="button"
+              (click)="ouvrirFiche(e.id)"
+              aria-label="Voir la fiche de {{ e.official_name }}"
+            >
+              Voir
+            </button>
+          </div>
+        </li>
+      }
+    </ul>
+  </div>
+}
+
+@if (chargementFiche()) {
+  <app-chargement texte="Ouverture de la fiche…" />
+} @else if (fiche(); as ecole) {
+  <div class="carte" style="margin-top: 16px;">
+    <div class="carte__titre">
+      <span>Fiche de l'école</span>
+      <button class="btn btn--discret btn--ligne" type="button" (click)="fermerFiche()">Fermer</button>
+    </div>
+    <div class="grille-2">
+      <div class="champ">
+        <label>Nom officiel</label>
+        <div>{{ ecole['official_name'] }}</div>
+      </div>
+      <div class="champ">
+        <label>Code public</label>
+        <div>{{ ecole['public_code'] }}</div>
+      </div>
+    </div>
+    <div class="grille-2">
+      <div class="champ">
+        <label>Commune</label>
+        <div>{{ ecole['commune'] ?? '—' }}</div>
+      </div>
+      <div class="champ">
+        <label>Ville</label>
+        <div>{{ ecole['city'] ?? '—' }}</div>
+      </div>
+    </div>
+    <div class="grille-2">
+      <div class="champ">
+        <label>Téléphone</label>
+        <div>{{ ecole['phone_contact'] ?? '—' }}</div>
+      </div>
+      <div class="champ">
+        <label>Courriel</label>
+        <div>{{ ecole['email'] ?? '—' }}</div>
+      </div>
+    </div>
+    @if (ecole['address_line']) {
+      <div class="champ">
+        <label>Adresse</label>
+        <div>{{ ecole['address_line'] }}</div>
+      </div>
+    }
+    <div class="grille-2">
+      <div class="champ">
+        <label>Élèves actifs</label>
+        <div>{{ ecole['eleves_count'] }}</div>
+      </div>
+      <div class="champ">
+        <label>Classes</label>
+        <div>{{ ecole['classes_count'] }}</div>
+      </div>
+    </div>
+    @if (ecole['description']) {
+      <div class="texte-doux" style="margin-top: 8px; white-space: pre-wrap">{{ ecole['description'] }}</div>
+    }
+  </div>
+}

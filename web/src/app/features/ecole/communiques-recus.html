@@ -1,0 +1,74 @@
+<div class="page-entete">
+  <div>
+    <h1>Communiqués reçus</h1>
+    <p>Ministère de l'EPST — {{ nonLus() }} non lu(s) sur {{ communiques().length }} communiqué(s).</p>
+  </div>
+  <div class="page-entete__actions">
+    <button class="btn btn--discret btn--ligne" type="button" (click)="charger()" [disabled]="chargement()">Actualiser</button>
+  </div>
+</div>
+
+<!-- Message de partenariat -->
+<div class="encart" role="note">
+  🏛️ Vous recevez ici les communiqués de la ville-province de Kinshasa, car le Ministère de l'EPST est partenaire de Mwana Classe.
+</div>
+
+@if (chargement()) {
+  <app-chargement texte="Chargement des communiqués du Ministère…" />
+} @else if (erreur()) {
+  <app-etat-vide texte="{{ erreur() }}" icone="📡" />
+} @else if (communiques().length === 0) {
+  <app-etat-vide texte="Aucun communiqué reçu pour l'instant." icone="📭" />
+} @else {
+  <div class="carte">
+    <ul class="liste">
+      @for (c of communiques(); track c.id) {
+        <li class="ligne-liste ligne-liste--haut" [class.non-lue]="!c.lu">
+          <div class="ligne-liste__principal">
+            <div class="ligne-liste__titre">
+              {{ c.title }}
+              @if (c.is_urgent) {
+                <span class="pastille pastille--danger">Urgent</span>
+              }
+              @if (!c.lu) {
+                <span class="pastille pastille--info">Nouveau</span>
+              }
+            </div>
+            <div class="ligne-liste__sous">
+              {{ c.sender_label ?? 'Ministère de l’EPST' }} · {{ c.sent_at | slice: 0:16 }}
+            </div>
+            @if (c.attachment_name) {
+              <div class="texte-doux">📎 {{ c.attachment_name }}</div>
+            }
+          </div>
+          <div class="ligne-liste__fin">
+            <app-etiquette variante="info" texte="{{ c.lu ? 'Lu' : 'Non lu' }}" />
+            <button
+              class="btn btn--secondaire btn--petit"
+              type="button"
+              (click)="basculer(c.id)"
+              aria-expanded="{{ ouvertId() === c.id }}"
+            >
+              {{ ouvertId() === c.id ? 'Fermer' : 'Lire' }}
+            </button>
+          </div>
+        </li>
+
+        @if (ouvertId() === c.id) {
+          <li class="bloc-note">
+            <div class="texte-doux" style="white-space: pre-wrap">{{ c.message }}</div>
+            @if (c.attachment_url && c.attachment_name) {
+              <div style="margin-top: 10px">
+                @if (c.attachment_type === 'image') {
+                  <img [src]="c.attachment_url" [alt]="c.attachment_name" style="max-width: 100%; border-radius: 12px; border: 1px solid var(--mc-trait)" />
+                } @else {
+                  <a [href]="c.attachment_url" [download]="c.attachment_name" class="btn btn--secondaire btn--ligne">📄 Télécharger {{ c.attachment_name }}</a>
+                }
+              </div>
+            }
+          </li>
+        }
+      }
+    </ul>
+  </div>
+}
