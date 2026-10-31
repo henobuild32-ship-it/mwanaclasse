@@ -58,7 +58,7 @@ export class MinistereService {
 
   /**
    * Crée automatiquement le compte unique Ministère au démarrage s'il n'existe pas encore.
-   * Identifiant : ministere-epst@classe.com
+   * Identifiant : min-epst@mwanaclasse.com
    * Mot de passe de départ : 12345678
    */
   async ensureMinistereAccountExists(db: Database): Promise<void> {
@@ -74,7 +74,7 @@ export class MinistereService {
           `INSERT INTO app.ministere_account (identifier, password_hash, password_algo, is_default_password)
            VALUES ($1, $2, $3, true)
            ON CONFLICT DO NOTHING`,
-          ['ministere-epst@classe.com', hash, hasher.algo],
+          ['min-epst@mwanaclasse.com', hash, hasher.algo],
         );
       }
     });
